@@ -250,7 +250,8 @@ export default function DailyTracker() {
 
   // Отметка квеста
   const toggleQuest = (category) => {
-    const questKey = category;
+    const currentQuest = getCurrentQuest(category);
+    const questKey = `${category}_${currentQuest.level}`;
     const wasCompleted = completedToday[questKey];
     const today = getTodayKey();
     
@@ -267,17 +268,21 @@ export default function DailyTracker() {
       setCompletionHistory(prev => {
         const newHistory = { ...prev };
         if (newHistory[today]) {
-          newHistory[today] = newHistory[today].filter(c => c.category !== category);
+          newHistory[today] = newHistory[today].filter(c => !(c.category === category && c.level === currentQuest.level));
           if (newHistory[today].length === 0) {
             delete newHistory[today];
           }
         }
         return newHistory;
       });
+      
+      // Понизить уровень обратно
+      setCategoryLevels(prev => ({
+        ...prev,
+        [category]: Math.max((prev[category] || 1) - 1, 1)
+      }));
     } else {
       // Выполнить квест
-      const currentQuest = getCurrentQuest(category);
-      
       setCompletedToday(prev => ({
         ...prev,
         [questKey]: true
