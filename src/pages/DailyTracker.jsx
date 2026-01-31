@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity } from 'lucide-react';
+import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CalendarView from '@/components/daily/CalendarView.jsx';
+import QuestEditor from '@/components/daily/QuestEditor.jsx';
+import confetti from 'canvas-confetti';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -75,8 +77,8 @@ const CATEGORIES = {
   }
 };
 
-// Квесты с уровнями сложности (измените под свои нужды)
-const QUEST_DATA = {
+// Квесты по умолчанию (будут загружены из localStorage или использованы эти)
+const DEFAULT_QUEST_DATA = {
   health: [
     { level: 1, name: "Прогулка 15 мин", emoji: "🚶" },
     { level: 2, name: "Зарядка 20 мин", emoji: "🏃" },
@@ -124,6 +126,7 @@ const LEVELS = [
    ============================================ */
 
 export default function DailyTracker() {
+  const [questData, setQuestData] = useState(DEFAULT_QUEST_DATA);
   const [categoryLevels, setCategoryLevels] = useState({});
   const [completedToday, setCompletedToday] = useState({});
   const [completionHistory, setCompletionHistory] = useState({});
@@ -134,6 +137,7 @@ export default function DailyTracker() {
   const [tgUser, setTgUser] = useState(null);
   const [celebrationQuest, setCelebrationQuest] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -159,6 +163,11 @@ export default function DailyTracker() {
     const savedData = localStorage.getItem('dailyQuestsData');
     if (savedData) {
       const data = JSON.parse(savedData);
+      
+      // Загрузка кастомных квестов
+      if (data.questData) {
+        setQuestData(data.questData);
+      }
       
       // Инициализация уровней категорий
       const levels = {};
@@ -203,6 +212,7 @@ export default function DailyTracker() {
     if (!isLoaded) return;
     
     const data = {
+      questData,
       categoryLevels,
       totalCompleted,
       streak,
@@ -212,14 +222,57 @@ export default function DailyTracker() {
       lastVisitDate: getTodayKey()
     };
     localStorage.setItem('dailyQuestsData', JSON.stringify(data));
-  }, [categoryLevels, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, isLoaded]);
+  }, [questData, categoryLevels, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, isLoaded]);
 
   // Получить текущий квест для категории
   const getCurrentQuest = (category) => {
     const level = categoryLevels[category] || 1;
-    const quests = QUEST_DATA[category];
+    const quests = questData[category];
     const quest = quests.find(q => q.level === level) || quests[quests.length - 1];
     return { ...quest, category };
+  };
+
+  // Конфетти
+  const fireConfetti = () => {
+    const count = 200;
+    const defaults = {
+      origin: { y: 0.7 }
+    };
+
+    function fire(particleRatio, opts) {
+      confetti({
+        ...defaults,
+        ...opts,
+        particleCount: Math.floor(count * particleRatio)
+      });
+    }
+
+    fire(0.25, {
+      spread: 26,
+      startVelocity: 55,
+    });
+
+    fire(0.2, {
+      spread: 60,
+    });
+
+    fire(0.35, {
+      spread: 100,
+      decay: 0.91,
+      scalar: 0.8
+    });
+
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 25,
+      decay: 0.92,
+      scalar: 1.2
+    });
+
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 45,
+    });
   };
 
   // Подсчёт текущего уровня игрока
@@ -307,6 +360,9 @@ export default function DailyTracker() {
       // Анимация
       setCelebrationQuest(category);
       setTimeout(() => setCelebrationQuest(null), 1500);
+      
+      // Конфетти
+      fireConfetti();
       
       // Вибрация
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -407,72 +463,53 @@ export default function DailyTracker() {
       <div className="px-5 -mt-2">
         <div className="grid grid-cols-2 gap-3">
           {/* Level Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-4 border border-white/5">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rounded-full blur-2xl" />
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-3 border border-white/5">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 rounded-full blur-2xl" />
             <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="w-4 h-4 text-purple-400" />
+              <div className="flex items-center gap-1.5 mb-1">
+                <Trophy className="w-3.5 h-3.5 text-purple-400" />
                 <span className="text-xs text-gray-400 uppercase tracking-wider">{APP_CONFIG.levelLabel}</span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl">{currentLevel.icon}</span>
-                <span className="text-lg font-semibold" style={{ color: currentLevel.color }}>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl">{currentLevel.icon}</span>
+                <span className="text-base font-semibold" style={{ color: currentLevel.color }}>
                   {currentLevel.name}
                 </span>
-              </div>
-              <div className="mt-3">
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all duration-500 ease-out"
-                    style={{ 
-                      width: `${levelProgress.progress}%`,
-                      background: `linear-gradient(90deg, ${currentLevel.color}, ${levelProgress.nextLevel?.color || currentLevel.color})`
-                    }}
-                  />
-                </div>
-                {levelProgress.nextLevel && (
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    {levelProgress.remaining} до {levelProgress.nextLevel.icon}
-                  </p>
-                )}
               </div>
             </div>
           </div>
 
           {/* Streak Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-4 border border-white/5">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/10 rounded-full blur-2xl" />
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-3 border border-white/5">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-full blur-2xl" />
             <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <Flame className="w-4 h-4 text-orange-400" />
+              <div className="flex items-center gap-1.5 mb-1">
+                <Flame className="w-3.5 h-3.5 text-orange-400" />
                 <span className="text-xs text-gray-400 uppercase tracking-wider">{APP_CONFIG.streakLabel}</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-orange-400">{streak}</span>
+                <span className="text-2xl font-bold text-orange-400">{streak}</span>
                 <span className="text-sm text-gray-500">дней</span>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Всего: {totalCompleted} квестов
-              </p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Today's Progress */}
-      <div className="px-5 mt-6">
-        <div className="rounded-2xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-5 border border-white/5">
-          <div className="flex items-center justify-between mb-4">
+      <div className="px-5 mt-4">
+        <div className="rounded-xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-4 border border-white/5">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-cyan-400" />
-              <span className="font-medium">Квесты на сегодня</span>
+              <Target className="w-4 h-4 text-cyan-400" />
+              <span className="text-sm font-medium">Прогресс</span>
             </div>
-            <span className="text-sm px-3 py-1 rounded-full bg-white/5 text-gray-400">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-400">
               {completedCount}/{totalQuests}
             </span>
           </div>
           
-          <div className="relative h-3 bg-white/5 rounded-full overflow-hidden mb-2">
+          <div className="relative h-2 bg-white/5 rounded-full overflow-hidden">
             <div 
               className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
               style={{ 
@@ -486,19 +523,12 @@ export default function DailyTracker() {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
             )}
           </div>
-          
-          {getMotivation() && (
-            <p className="text-sm text-center text-gray-400 mt-3 flex items-center justify-center gap-2">
-              <Sparkles className="w-4 h-4 text-yellow-400" />
-              {getMotivation()}
-            </p>
-          )}
         </div>
       </div>
 
       {/* Quest Categories */}
-      <div className="px-5 mt-6">
-        <div className="space-y-4">
+      <div className="px-5 mt-4">
+        <div className="space-y-3">
           {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => {
             const quest = getCurrentQuest(categoryKey);
             const questKey = `${categoryKey}_${quest.level}`;
@@ -509,7 +539,7 @@ export default function DailyTracker() {
             return (
               <div key={categoryKey} className="space-y-2">
                 {/* Category Header */}
-                <div className="flex items-center gap-2 px-2">
+                <div className="flex items-center gap-2 px-1">
                   <div className={`p-1.5 rounded-lg ${categoryInfo.bgColor}`}>
                     <Icon className={`w-4 h-4 ${categoryInfo.textColor}`} />
                   </div>
@@ -526,7 +556,7 @@ export default function DailyTracker() {
                 <div
                   onClick={() => toggleQuest(categoryKey)}
                   className={`
-                    relative overflow-hidden rounded-2xl p-4 cursor-pointer
+                    relative overflow-hidden rounded-2xl p-5 cursor-pointer
                     transition-all duration-300 ease-out border
                     ${isCompleted 
                       ? `${categoryInfo.bgColor} ${categoryInfo.borderColor}` 
@@ -543,26 +573,26 @@ export default function DailyTracker() {
                   <div className="relative flex items-center gap-4">
                     {/* Checkbox */}
                     <div className={`
-                      relative w-7 h-7 rounded-full flex items-center justify-center
-                      transition-all duration-300
+                      relative w-9 h-9 rounded-full flex items-center justify-center
+                      transition-all duration-300 flex-shrink-0
                       ${isCompleted 
                         ? categoryInfo.bgColor
                         : 'bg-white/5 border-2 border-white/10'
                       }
                     `}>
                       {isCompleted ? (
-                        <CheckCircle2 className={`w-5 h-5 ${categoryInfo.textColor}`} />
+                        <CheckCircle2 className={`w-6 h-6 ${categoryInfo.textColor}`} />
                       ) : (
-                        <Circle className="w-5 h-5 text-transparent" />
+                        <Circle className="w-6 h-6 text-transparent" />
                       )}
                     </div>
                     
                     {/* Quest Info */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{quest.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">{quest.emoji}</span>
                         <span className={`
-                          font-medium transition-all duration-300
+                          text-base font-medium transition-all duration-300
                           ${isCompleted ? 'text-gray-400 line-through' : 'text-white'}
                         `}>
                           {quest.name}
@@ -572,7 +602,7 @@ export default function DailyTracker() {
                     
                     {/* Status Badge */}
                     <div className={`
-                      w-6 h-6 rounded-full flex items-center justify-center text-sm
+                      w-7 h-7 rounded-full flex items-center justify-center text-base font-medium flex-shrink-0
                       transition-all duration-300
                       ${isCompleted 
                         ? `${categoryInfo.bgColor} ${categoryInfo.textColor}` 
@@ -588,6 +618,28 @@ export default function DailyTracker() {
           })}
         </div>
       </div>
+
+      {/* Edit Button */}
+      <div className="px-5 mt-6 pb-4">
+        <Button
+          onClick={() => setShowEditor(true)}
+          variant="outline"
+          className="w-full border-white/10 hover:bg-white/5 text-gray-300"
+        >
+          <Edit className="w-4 h-4 mr-2" />
+          Редактировать квесты
+        </Button>
+      </div>
+
+      {/* Quest Editor Modal */}
+      {showEditor && (
+        <QuestEditor
+          questData={questData}
+          categories={CATEGORIES}
+          onSave={setQuestData}
+          onClose={() => setShowEditor(false)}
+        />
+      )}
 
       <style jsx>{`
         @keyframes shimmer {
