@@ -501,7 +501,8 @@ export default function DailyTracker() {
         <div className="space-y-4">
           {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => {
             const quest = getCurrentQuest(categoryKey);
-            const isCompleted = completedToday[categoryKey];
+            const questKey = `${categoryKey}_${quest.level}`;
+            const isCompleted = completedToday[questKey];
             const isCelebrating = celebrationQuest === categoryKey;
             const Icon = categoryInfo.icon;
             
