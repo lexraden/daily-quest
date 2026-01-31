@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import CalendarView from '@/components/daily/CalendarView';
+import CalendarView from '@/components/daily/CalendarView.jsx';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
