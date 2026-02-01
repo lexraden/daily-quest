@@ -164,6 +164,8 @@ export default function DailyTracker() {
   // Загрузка данных из localStorage
   useEffect(() => {
     const savedData = localStorage.getItem('dailyQuestsData');
+    const today = getTodayKey();
+    
     if (savedData) {
       const data = JSON.parse(savedData);
       
@@ -180,30 +182,46 @@ export default function DailyTracker() {
       setCategoryLevels(levels);
       
       setTotalCompleted(data.totalCompleted || 0);
-      setStreak(data.streak || 0);
-      setLastCompletedDate(data.lastCompletedDate || null);
       setCompletionHistory(data.completionHistory || {});
       setStreakFreezes(data.streakFreezes ?? 1);
       
-      const today = getTodayKey();
-      if (data.completedToday && data.lastVisitDate === today) {
-        setCompletedToday(data.completedToday);
-      } else {
-        if (data.lastVisitDate) {
-          const lastVisit = new Date(data.lastVisitDate);
-          const todayDate = new Date(today);
-          const diffDays = Math.floor((todayDate - lastVisit) / (1000 * 60 * 60 * 24));
-          
-          if (diffDays > 1) {
-            // Защита стрика - используем freeze если есть
-            if (data.streakFreezes > 0 && diffDays === 2) {
-              setStreakFreezes(prev => prev - 1);
-            } else if (diffDays > 2 || data.streakFreezes === 0) {
-              setStreak(0);
-            }
+      // Проверка нового дня
+      if (data.lastVisitDate !== today) {
+        // Новый день начался!
+        const lastVisit = new Date(data.lastVisitDate);
+        const todayDate = new Date(today);
+        const diffDays = Math.floor((todayDate - lastVisit) / (1000 * 60 * 60 * 24));
+        
+        // Проверяем был ли прогресс вчера
+        const yesterdayKey = new Date(todayDate - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const hadProgressYesterday = data.completionHistory?.[yesterdayKey]?.length > 0;
+        
+        if (diffDays === 1 && hadProgressYesterday) {
+          // Продолжаем streak
+          setStreak(data.streak + 1);
+        } else if (diffDays === 1 && !hadProgressYesterday) {
+          // Пропустили день
+          if (data.streakFreezes > 0) {
+            // Используем freeze
+            setStreak(data.streak);
+            setStreakFreezes(data.streakFreezes - 1);
+          } else {
+            setStreak(0);
           }
+        } else if (diffDays > 1) {
+          // Пропустили больше дня - сбрасываем
+          setStreak(0);
+        } else {
+          setStreak(data.streak || 0);
         }
+        
+        setLastCompletedDate(data.lastCompletedDate || null);
         setCompletedToday({});
+      } else {
+        // Тот же день
+        setStreak(data.streak || 0);
+        setLastCompletedDate(data.lastCompletedDate || null);
+        setCompletedToday(data.completedToday || {});
       }
     } else {
       // Инициализация для новых пользователей
@@ -409,17 +427,8 @@ export default function DailyTracker() {
       }));
       
       // Обновить streak
-      const completedCount = Object.keys(completedToday).length;
-      if (completedCount === 0 && lastCompletedDate !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayKey = yesterday.toISOString().split('T')[0];
-        
-        if (lastCompletedDate === yesterdayKey) {
-          setStreak(prev => prev + 1);
-        } else if (!lastCompletedDate) {
-          setStreak(1);
-        }
+      // Обновляем lastCompletedDate при первом выполнении за день
+      if (lastCompletedDate !== today) {
         setLastCompletedDate(today);
       }
     }
