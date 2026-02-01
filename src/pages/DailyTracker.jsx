@@ -469,94 +469,59 @@ export default function DailyTracker() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white pb-8">
-      {/* Header */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-cyan-500/10 to-purple-600/20 blur-3xl" />
-        
-        <div className="relative px-5 pt-8 pb-6">
-          {tgUser && (
-            <p className="text-gray-400 text-sm mb-2">
-              Привет, {tgUser.first_name}! 👋
-            </p>
-          )}
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent">
-                {APP_CONFIG.title}
-              </h1>
-              <p className="text-gray-400 mt-1">{APP_CONFIG.subtitle}</p>
-            </div>
+      {/* Compact Header */}
+      <div className="px-5 pt-6 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Daily Quests</h1>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setShowEditor(true)}
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
             <Button
               onClick={() => setShowCalendar(true)}
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full bg-white/5 hover:bg-white/10"
+              className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10"
             >
-              <CalendarIcon className="w-5 h-5" />
+              <CalendarIcon className="w-4 h-4" />
             </Button>
           </div>
         </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="px-5 -mt-2">
-        <div className="grid grid-cols-2 gap-3">
-          {/* Level Card */}
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-3 border border-white/5">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 rounded-full blur-2xl" />
-            <div className="relative">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Trophy className="w-3.5 h-3.5 text-purple-400" />
-                <span className="text-xs text-gray-400 uppercase tracking-wider">{APP_CONFIG.levelLabel}</span>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl">{currentLevel.icon}</span>
-                <span className="text-base font-semibold" style={{ color: currentLevel.color }}>
-                  {currentLevel.name}
-                </span>
-              </div>
-            </div>
+        {/* Stats Row */}
+        <div className="flex items-center gap-3 mb-3 text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="text-lg">{currentLevel.icon}</span>
+            <span className="text-gray-400">{currentLevel.name}</span>
           </div>
-
-          {/* Streak Card */}
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-3 border border-white/5">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-full blur-2xl" />
-            <div className="relative">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Flame className="w-3.5 h-3.5 text-orange-400" />
-                <span className="text-xs text-gray-400 uppercase tracking-wider">{APP_CONFIG.streakLabel}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-orange-400">{streak}</span>
-                  <span className="text-sm text-gray-500">дней</span>
-                </div>
-                {streakFreezes > 0 && (
-                  <div className="flex items-center gap-1">
-                    <Shield className="w-3 h-3 text-cyan-400" />
-                    <span className="text-xs text-cyan-400">{streakFreezes}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="w-px h-4 bg-white/10" />
+          <div className="flex items-center gap-1.5">
+            <Flame className="w-4 h-4 text-orange-400" />
+            <span className="text-white font-semibold">{streak}</span>
+            <span className="text-gray-400">дней</span>
           </div>
+          {streakFreezes > 0 && (
+            <>
+              <div className="w-px h-4 bg-white/10" />
+              <div className="flex items-center gap-1">
+                <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-xs text-cyan-400">{streakFreezes}</span>
+              </div>
+            </>
+          )}
         </div>
-      </div>
-
-      {/* Today's Progress */}
-      <div className="px-5 mt-4">
-        <div className="rounded-xl bg-gradient-to-br from-[#1e2836] to-[#151c28] p-4 border border-white/5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-cyan-400" />
-              <span className="text-sm font-medium">Прогресс</span>
-            </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 text-gray-400">
-              {completedCount}/{totalQuests}
-            </span>
+        
+        {/* Progress Bar */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-400">Прогресс дня</span>
+            <span className="text-gray-400">{completedCount}/{totalQuests}</span>
           </div>
-          
           <div className="relative h-2 bg-white/5 rounded-full overflow-hidden">
             <div 
               className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
@@ -668,16 +633,7 @@ export default function DailyTracker() {
       </div>
 
       {/* Action Buttons */}
-      <div className="px-5 mt-6 space-y-3 pb-4">
-        <Button
-          onClick={() => setShowEditor(true)}
-          variant="outline"
-          className="w-full border-white/10 hover:bg-white/5 text-gray-300"
-        >
-          <Edit className="w-4 h-4 mr-2" />
-          Редактировать квесты
-        </Button>
-        
+      <div className="px-5 mt-6 pb-4">
         <div className="grid grid-cols-2 gap-3">
           <Button
             onClick={exportData}
