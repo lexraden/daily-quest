@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Edit } from 'lucide-react';
+import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Edit, Lock, Download, Shield, TrendingUp, Camera, Footprints } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CalendarView from '@/components/daily/CalendarView.jsx';
 import QuestEditor from '@/components/daily/QuestEditor.jsx';
+import PremiumModal from '@/components/daily/PremiumModal.jsx';
 import confetti from 'canvas-confetti';
 
 /* ============================================
@@ -138,6 +139,8 @@ export default function DailyTracker() {
   const [celebrationQuest, setCelebrationQuest] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [streakFreezes, setStreakFreezes] = useState(1);
+  const [showPremium, setShowPremium] = useState(false);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -180,6 +183,7 @@ export default function DailyTracker() {
       setStreak(data.streak || 0);
       setLastCompletedDate(data.lastCompletedDate || null);
       setCompletionHistory(data.completionHistory || {});
+      setStreakFreezes(data.streakFreezes ?? 1);
       
       const today = getTodayKey();
       if (data.completedToday && data.lastVisitDate === today) {
@@ -191,7 +195,12 @@ export default function DailyTracker() {
           const diffDays = Math.floor((todayDate - lastVisit) / (1000 * 60 * 60 * 24));
           
           if (diffDays > 1) {
-            setStreak(0);
+            // Защита стрика - используем freeze если есть
+            if (data.streakFreezes > 0 && diffDays === 2) {
+              setStreakFreezes(prev => prev - 1);
+            } else if (diffDays > 2 || data.streakFreezes === 0) {
+              setStreak(0);
+            }
           }
         }
         setCompletedToday({});
@@ -219,10 +228,32 @@ export default function DailyTracker() {
       lastCompletedDate,
       completedToday,
       completionHistory,
+      streakFreezes,
       lastVisitDate: getTodayKey()
     };
     localStorage.setItem('dailyQuestsData', JSON.stringify(data));
-  }, [questData, categoryLevels, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, isLoaded]);
+  }, [questData, categoryLevels, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, isLoaded]);
+
+  // Экспорт данных
+  const exportData = () => {
+    const data = {
+      questData,
+      categoryLevels,
+      totalCompleted,
+      streak,
+      streakFreezes,
+      completionHistory,
+      exportedAt: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `daily-quests-${getTodayKey()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Получить текущий квест для категории
   const getCurrentQuest = (category) => {
@@ -487,9 +518,17 @@ export default function DailyTracker() {
                 <Flame className="w-3.5 h-3.5 text-orange-400" />
                 <span className="text-xs text-gray-400 uppercase tracking-wider">{APP_CONFIG.streakLabel}</span>
               </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-orange-400">{streak}</span>
-                <span className="text-sm text-gray-500">дней</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-orange-400">{streak}</span>
+                  <span className="text-sm text-gray-500">дней</span>
+                </div>
+                {streakFreezes > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-cyan-400" />
+                    <span className="text-xs text-cyan-400">{streakFreezes}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -619,8 +658,8 @@ export default function DailyTracker() {
         </div>
       </div>
 
-      {/* Edit Button */}
-      <div className="px-5 mt-6 pb-4">
+      {/* Action Buttons */}
+      <div className="px-5 mt-6 space-y-3 pb-4">
         <Button
           onClick={() => setShowEditor(true)}
           variant="outline"
@@ -629,6 +668,24 @@ export default function DailyTracker() {
           <Edit className="w-4 h-4 mr-2" />
           Редактировать квесты
         </Button>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            onClick={exportData}
+            variant="outline"
+            className="border-white/10 hover:bg-white/5 text-gray-300"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Экспорт
+          </Button>
+          <Button
+            onClick={() => setShowPremium(true)}
+            className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+          >
+            <Lock className="w-4 h-4 mr-2" />
+            Premium
+          </Button>
+        </div>
       </div>
 
       {/* Quest Editor Modal */}
@@ -639,6 +696,11 @@ export default function DailyTracker() {
           onSave={setQuestData}
           onClose={() => setShowEditor(false)}
         />
+      )}
+
+      {/* Premium Modal */}
+      {showPremium && (
+        <PremiumModal onClose={() => setShowPremium(false)} />
       )}
 
       <style jsx>{`
