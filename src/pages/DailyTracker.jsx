@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Edit, Lock, Download, Shield, TrendingUp, Camera, Footprints } from 'lucide-react';
+import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Edit, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CalendarView from '@/components/daily/CalendarView.jsx';
 import QuestEditor from '@/components/daily/QuestEditor.jsx';
@@ -141,25 +141,35 @@ export default function DailyTracker() {
   const [showEditor, setShowEditor] = useState(false);
   const [streakFreezes, setStreakFreezes] = useState(1);
   const [showPremium, setShowPremium] = useState(false);
+  const [theme, setTheme] = useState('light');
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
-  // Инициализация Telegram Web App
+  // Инициализация Telegram Web App и темы
   useEffect(() => {
+    // Загрузка темы из localStorage (по умолчанию 'light')
+    const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
+    setTheme(savedTheme);
+    
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
       tg.expand();
-      
-      if (tg.colorScheme === 'dark') {
-        document.documentElement.style.setProperty('--bg-primary', '#0f1419');
-      }
       
       if (tg.initDataUnsafe?.user) {
         setTgUser(tg.initDataUnsafe.user);
       }
     }
   }, []);
+
+  // Сохранение темы
+  useEffect(() => {
+    localStorage.setItem('dailyQuestsTheme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   // Загрузка данных из localStorage
   useEffect(() => {
@@ -467,18 +477,30 @@ export default function DailyTracker() {
     );
   }
 
+  const bgClass = theme === 'light' 
+    ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
+    : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white pb-8">
+    <div className={`min-h-screen ${bgClass} pb-8`}>
       {/* Compact Header */}
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Daily Quests</h1>
           <div className="flex items-center gap-2">
             <Button
+              onClick={toggleTheme}
+              variant="ghost"
+              size="icon"
+              className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
+            >
+              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </Button>
+            <Button
               onClick={() => setShowEditor(true)}
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10"
+              className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
             >
               <Edit className="w-4 h-4" />
             </Button>
@@ -486,7 +508,7 @@ export default function DailyTracker() {
               onClick={() => setShowCalendar(true)}
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10"
+              className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
             >
               <CalendarIcon className="w-4 h-4" />
             </Button>
@@ -497,17 +519,17 @@ export default function DailyTracker() {
         <div className="flex items-center gap-3 mb-3 text-sm">
           <div className="flex items-center gap-1.5">
             <span className="text-lg">{currentLevel.icon}</span>
-            <span className="text-gray-400">{currentLevel.name}</span>
+            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{currentLevel.name}</span>
           </div>
-          <div className="w-px h-4 bg-white/10" />
+          <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
           <div className="flex items-center gap-1.5">
             <Flame className="w-4 h-4 text-orange-400" />
-            <span className="text-white font-semibold">{streak}</span>
-            <span className="text-gray-400">дней</span>
+            <span className={`font-semibold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{streak}</span>
+            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>дней</span>
           </div>
           {streakFreezes > 0 && (
             <>
-              <div className="w-px h-4 bg-white/10" />
+              <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
               <div className="flex items-center gap-1">
                 <Shield className="w-3.5 h-3.5 text-cyan-400" />
                 <span className="text-xs text-cyan-400">{streakFreezes}</span>
@@ -519,10 +541,10 @@ export default function DailyTracker() {
         {/* Progress Bar */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-400">Прогресс дня</span>
-            <span className="text-gray-400">{completedCount}/{totalQuests}</span>
+            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>Прогресс дня</span>
+            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{completedCount}/{totalQuests}</span>
           </div>
-          <div className="relative h-2 bg-white/5 rounded-full overflow-hidden">
+          <div className={`relative h-2 rounded-full overflow-hidden ${theme === 'light' ? 'bg-black/5' : 'bg-white/5'}`}>
             <div 
               className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
               style={{ 
@@ -573,7 +595,9 @@ export default function DailyTracker() {
                     transition-all duration-300 ease-out border
                     ${isCompleted 
                       ? `${categoryInfo.bgColor} ${categoryInfo.borderColor}` 
-                      : 'bg-[#1e2836] hover:bg-[#242f3d] border-white/5'
+                      : theme === 'light'
+                        ? 'bg-white hover:bg-gray-50 border-gray-200'
+                        : 'bg-[#1e2836] hover:bg-[#242f3d] border-white/5'
                     }
                     ${isCelebrating ? 'scale-[1.02]' : 'scale-100'}
                     active:scale-[0.98]
@@ -590,7 +614,9 @@ export default function DailyTracker() {
                       transition-all duration-300 flex-shrink-0
                       ${isCompleted 
                         ? categoryInfo.bgColor
-                        : 'bg-white/5 border-2 border-white/10'
+                        : theme === 'light'
+                          ? 'bg-gray-100 border-2 border-gray-200'
+                          : 'bg-white/5 border-2 border-white/10'
                       }
                     `}>
                       {isCompleted ? (
@@ -606,7 +632,10 @@ export default function DailyTracker() {
                         <span className="text-2xl">{quest.emoji}</span>
                         <span className={`
                           text-base font-medium transition-all duration-300
-                          ${isCompleted ? 'text-gray-400 line-through' : 'text-white'}
+                          ${isCompleted 
+                            ? theme === 'light' ? 'text-gray-500 line-through' : 'text-gray-400 line-through'
+                            : theme === 'light' ? 'text-gray-900' : 'text-white'
+                          }
                         `}>
                           {quest.name}
                         </span>
@@ -619,7 +648,9 @@ export default function DailyTracker() {
                       transition-all duration-300
                       ${isCompleted 
                         ? `${categoryInfo.bgColor} ${categoryInfo.textColor}` 
-                        : 'bg-white/5 text-gray-500'
+                        : theme === 'light'
+                          ? 'bg-gray-100 text-gray-600'
+                          : 'bg-white/5 text-gray-500'
                       }
                     `}>
                       {isCompleted ? APP_CONFIG.completedText : APP_CONFIG.pendingText}
@@ -638,7 +669,10 @@ export default function DailyTracker() {
           <Button
             onClick={exportData}
             variant="outline"
-            className="border-white/10 hover:bg-white/5 text-gray-300"
+            className={theme === 'light' 
+              ? 'border-gray-200 hover:bg-gray-50 text-gray-700'
+              : 'border-white/10 hover:bg-white/5 text-gray-300'
+            }
           >
             <Download className="w-4 h-4 mr-2" />
             Экспорт
