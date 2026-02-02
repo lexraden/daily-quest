@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import CalendarView from '@/components/daily/CalendarView.jsx';
 import QuestEditor from '@/components/daily/QuestEditor.jsx';
 import PremiumModal from '@/components/daily/PremiumModal.jsx';
+import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import confetti from 'canvas-confetti';
 
 /* ============================================
@@ -361,8 +362,8 @@ export default function DailyTracker() {
   }, [totalCompleted, getCurrentLevel]);
 
   // Отметка квеста
-  const toggleQuest = (category) => {
-    const currentQuest = getCurrentQuest(category);
+  const toggleQuest = (category, level = null) => {
+    const currentQuest = level ? questData[category].find(q => q.level === level) : getCurrentQuest(category);
     const questKey = `${category}_${currentQuest.level}`;
     const wasCompleted = completedToday[questKey];
     const today = getTodayKey();
@@ -564,102 +565,20 @@ export default function DailyTracker() {
       {/* Quest Categories */}
       <div className="px-5 mt-4">
         <div className="space-y-3">
-          {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => {
-            const quest = getCurrentQuest(categoryKey);
-            const questKey = `${categoryKey}_${quest.level}`;
-            const isCompleted = completedToday[questKey];
-            const isCelebrating = celebrationQuest === categoryKey;
-            const Icon = categoryInfo.icon;
-            
-            return (
-              <div key={categoryKey} className="space-y-2">
-                {/* Category Header */}
-                <div className="flex items-center gap-2 px-1">
-                  <div className={`p-1.5 rounded-lg ${categoryInfo.bgColor}`}>
-                    <Icon className={`w-4 h-4 ${categoryInfo.textColor}`} />
-                  </div>
-                  <span className={`text-sm font-medium ${categoryInfo.textColor}`}>
-                    {categoryInfo.name}
-                  </span>
-                  <div className="flex-1 h-px bg-white/5" />
-                  <span className="text-xs text-gray-500">
-                    Lvl {quest.level}
-                  </span>
-                </div>
-
-                {/* Quest Card */}
-                <div
-                  onClick={() => toggleQuest(categoryKey)}
-                  className={`
-                    relative overflow-hidden rounded-2xl p-5 cursor-pointer
-                    transition-all duration-300 ease-out border
-                    ${isCompleted 
-                      ? `${categoryInfo.bgColor} ${categoryInfo.borderColor}` 
-                      : theme === 'light'
-                        ? 'bg-white hover:bg-gray-50 border-gray-200'
-                        : 'bg-[#1e2836] hover:bg-[#242f3d] border-white/5'
-                    }
-                    ${isCelebrating ? 'scale-[1.02]' : 'scale-100'}
-                    active:scale-[0.98]
-                  `}
-                >
-                  {isCelebrating && (
-                    <div className={`absolute inset-0 ${categoryInfo.bgColor} animate-pulse`} />
-                  )}
-                  
-                  <div className="relative flex items-center gap-4">
-                    {/* Checkbox */}
-                    <div className={`
-                      relative w-9 h-9 rounded-full flex items-center justify-center
-                      transition-all duration-300 flex-shrink-0
-                      ${isCompleted 
-                        ? categoryInfo.bgColor
-                        : theme === 'light'
-                          ? 'bg-gray-100 border-2 border-gray-200'
-                          : 'bg-white/5 border-2 border-white/10'
-                      }
-                    `}>
-                      {isCompleted ? (
-                        <CheckCircle2 className={`w-6 h-6 ${categoryInfo.textColor}`} />
-                      ) : (
-                        <Circle className="w-6 h-6 text-transparent" />
-                      )}
-                    </div>
-                    
-                    {/* Quest Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl">{quest.emoji}</span>
-                        <span className={`
-                          text-base font-medium transition-all duration-300
-                          ${isCompleted 
-                            ? theme === 'light' ? 'text-gray-500 line-through' : 'text-gray-400 line-through'
-                            : theme === 'light' ? 'text-gray-900' : 'text-white'
-                          }
-                        `}>
-                          {quest.name}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Status Badge */}
-                    <div className={`
-                      w-7 h-7 rounded-full flex items-center justify-center text-base font-medium flex-shrink-0
-                      transition-all duration-300
-                      ${isCompleted 
-                        ? `${categoryInfo.bgColor} ${categoryInfo.textColor}` 
-                        : theme === 'light'
-                          ? 'bg-gray-100 text-gray-600'
-                          : 'bg-white/5 text-gray-500'
-                      }
-                    `}>
-                      {isCompleted ? APP_CONFIG.completedText : APP_CONFIG.pendingText}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => (
+            <SwipeableQuestCard
+              key={categoryKey}
+              categoryKey={categoryKey}
+              categoryInfo={categoryInfo}
+              quests={questData[categoryKey]}
+              completedToday={completedToday}
+              onToggleQuest={toggleQuest}
+              celebrationQuest={celebrationQuest}
+              completedText={APP_CONFIG.completedText}
+              pendingText={APP_CONFIG.pendingText}
+              theme={theme}
+            />
+          ))}
         </div>
       </div>
 
