@@ -92,18 +92,16 @@ export default function SwipeableQuestCard({
                 paginate(-1);
               }
             }}
-            onClick={() => onToggleQuest(categoryKey, currentQuest.level)}
             className={`
-              relative overflow-hidden rounded-2xl p-5 cursor-pointer
+              relative overflow-hidden rounded-2xl p-5
               transition-all duration-300 ease-out border
               ${isCompleted 
                 ? `${categoryInfo.bgColor} ${categoryInfo.borderColor}` 
                 : theme === 'light'
-                  ? 'bg-white hover:bg-gray-50 border-gray-200'
-                  : 'bg-[#1e2836] hover:bg-[#242f3d] border-white/5'
+                  ? 'bg-white border-gray-200'
+                  : 'bg-[#1e2836] border-white/5'
               }
               ${isCelebrating ? 'scale-[1.02]' : 'scale-100'}
-              active:scale-[0.98]
             `}
           >
             {isCelebrating && (
@@ -112,22 +110,29 @@ export default function SwipeableQuestCard({
             
             <div className="relative flex items-center gap-4">
               {/* Checkbox */}
-              <div className={`
-                relative w-9 h-9 rounded-full flex items-center justify-center
-                transition-all duration-300 flex-shrink-0
-                ${isCompleted 
-                  ? categoryInfo.bgColor
-                  : theme === 'light'
-                    ? 'bg-gray-100 border-2 border-gray-200'
-                    : 'bg-white/5 border-2 border-white/10'
-                }
-              `}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleQuest(categoryKey, currentQuest.level);
+                }}
+                className={`
+                  relative w-9 h-9 rounded-full flex items-center justify-center
+                  transition-all duration-300 flex-shrink-0 cursor-pointer
+                  hover:scale-110 active:scale-95
+                  ${isCompleted 
+                    ? categoryInfo.bgColor
+                    : theme === 'light'
+                      ? 'bg-gray-100 border-2 border-gray-200'
+                      : 'bg-white/5 border-2 border-white/10'
+                  }
+                `}
+              >
                 {isCompleted ? (
                   <CheckCircle2 className={`w-6 h-6 ${categoryInfo.textColor}`} />
                 ) : (
                   <Circle className="w-6 h-6 text-transparent" />
                 )}
-              </div>
+              </button>
               
               {/* Quest Info */}
               <div className="flex-1 min-w-0">
