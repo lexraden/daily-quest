@@ -67,8 +67,8 @@ export default function SwipeableQuestCard({
       </div>
 
       {/* Swipeable Quest Card */}
-      <div className="relative overflow-hidden h-[88px]">
-        <AnimatePresence initial={false} custom={direction} mode="wait">
+      <div className="relative overflow-hidden">
+        <AnimatePresence initial={false} custom={direction}>
           <motion.div
             key={currentIndex}
             custom={direction}
@@ -92,7 +92,6 @@ export default function SwipeableQuestCard({
                 paginate(-1);
               }
             }}
-            style={{ position: 'absolute', width: '100%' }}
             className={`
               relative overflow-hidden rounded-2xl p-5
               transition-all duration-300 ease-out border
