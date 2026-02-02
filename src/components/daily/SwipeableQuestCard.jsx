@@ -67,7 +67,8 @@ export default function SwipeableQuestCard({
       </div>
 
       {/* Swipeable Quest Card */}
-      <div className="relative overflow-hidden">
+      <div className="relative">
+        <div className="overflow-hidden">
         <AnimatePresence initial={false} custom={direction}>
           <motion.div
             key={currentIndex}
@@ -166,10 +167,12 @@ export default function SwipeableQuestCard({
             </div>
           </motion.div>
         </AnimatePresence>
+        </div>
 
         {/* Dots Indicator */}
+        <div className="flex items-center justify-center gap-1.5 mt-3 h-4">
         {quests.length > 1 && (
-          <div className="flex items-center justify-center gap-1.5 mt-3">
+          <>
             {quests.map((_, idx) => (
               <button
                 key={idx}
@@ -189,8 +192,9 @@ export default function SwipeableQuestCard({
                 style={idx === currentIndex ? { backgroundColor: categoryInfo.color } : {}}
               />
             ))}
-          </div>
+          </>
         )}
+        </div>
       </div>
     </div>
   );
