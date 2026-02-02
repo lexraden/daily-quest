@@ -68,8 +68,8 @@ export default function SwipeableQuestCard({
 
       {/* Swipeable Quest Card */}
       <div className="relative">
-        <div className="overflow-hidden">
-        <AnimatePresence initial={false} custom={direction}>
+        <div className="overflow-hidden min-h-[88px]">
+        <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
             key={currentIndex}
             custom={direction}
