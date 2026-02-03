@@ -173,25 +173,34 @@ export default function SwipeableQuestCard({
         <div className="flex items-center justify-center gap-1.5 mt-3 h-4">
         {quests.length > 1 && (
           <>
-            {quests.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => {
-                  setDirection(idx > currentIndex ? 1 : -1);
-                  setCurrentIndex(idx);
-                }}
-                className={`
-                  transition-all duration-300
-                  ${idx === currentIndex 
-                    ? `w-6 h-1.5 rounded-full ${categoryInfo.textColor}` 
-                    : theme === 'light'
-                      ? 'w-1.5 h-1.5 rounded-full bg-gray-300'
-                      : 'w-1.5 h-1.5 rounded-full bg-white/20'
-                  }
-                `}
-                style={idx === currentIndex ? { backgroundColor: categoryInfo.color } : {}}
-              />
-            ))}
+            {quests.map((quest, idx) => {
+              const questKey = `${categoryKey}_${quest.level}`;
+              const isQuestCompleted = completedToday[questKey];
+              
+              return (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setDirection(idx > currentIndex ? 1 : -1);
+                    setCurrentIndex(idx);
+                  }}
+                  className={`
+                    transition-all duration-300
+                    ${idx === currentIndex 
+                      ? 'w-6 h-1.5 rounded-full' 
+                      : 'w-1.5 h-1.5 rounded-full'
+                    }
+                  `}
+                  style={{ 
+                    backgroundColor: isQuestCompleted 
+                      ? categoryInfo.color 
+                      : theme === 'light' 
+                        ? '#d1d5db' 
+                        : 'rgba(255, 255, 255, 0.2)' 
+                  }}
+                />
+              );
+            })}
           </>
         )}
         </div>
