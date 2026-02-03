@@ -159,14 +159,7 @@ export default function SwipeableQuestCard({
                 </div>
               </div>
               
-              {/* Level Badge */}
-              <div className={`
-                px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0
-                transition-all duration-300
-                ${categoryInfo.bgColor} ${categoryInfo.textColor}
-              `}>
-                Lvl {categoryLevel || 1}
-              </div>
+
             </div>
           </motion.div>
         </AnimatePresence>

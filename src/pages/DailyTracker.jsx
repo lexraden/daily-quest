@@ -658,6 +658,7 @@ export default function DailyTracker() {
           categoryInfo={CATEGORIES[selectedCategory]}
           totalCompleted={categoryTotalCompleted[selectedCategory] || 0}
           currentLevel={categoryLevels[selectedCategory] || 1}
+          completionHistory={completionHistory}
           onClose={() => setSelectedCategory(null)}
           theme={theme}
         />

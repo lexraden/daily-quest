@@ -2,7 +2,7 @@ import React from 'react';
 import { X, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function CategoryProgressModal({ category, categoryInfo, totalCompleted, currentLevel, onClose, theme = 'dark' }) {
+export default function CategoryProgressModal({ category, categoryInfo, totalCompleted, currentLevel, completionHistory, onClose, theme = 'dark' }) {
   const Icon = categoryInfo.icon;
   
   // Calculate next level threshold (every 10 quests = +1 level)
@@ -10,6 +10,26 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
   const nextThreshold = currentLevel * 10;
   const progressInCurrentLevel = totalCompleted - currentThreshold;
   const progressPercentage = (progressInCurrentLevel / 10) * 100;
+
+  // Calculate weekly stats (last 7 days)
+  const getWeeklyStats = () => {
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    let weeklyCount = 0;
+    
+    Object.entries(completionHistory || {}).forEach(([dateKey, quests]) => {
+      const date = new Date(dateKey);
+      if (date >= weekAgo && date <= today) {
+        weeklyCount += quests.filter(q => q.category === category).length;
+      }
+    });
+    
+    return weeklyCount;
+  };
+
+  const weeklyCompleted = getWeeklyStats();
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -34,7 +54,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
                 {categoryInfo.name}
               </h2>
               <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Статистика прогресса
+                Недельный отчёт
               </p>
             </div>
           </div>
@@ -89,6 +109,30 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
                 />
               </div>
             </div>
+          </div>
+
+          {/* Weekly Stats */}
+          <div className={`rounded-xl p-5 border ${
+            theme === 'light' 
+              ? 'bg-gradient-to-br from-gray-50 to-white border-gray-200' 
+              : 'bg-gradient-to-br from-white/5 to-transparent border-white/10'
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                За последние 7 дней
+              </span>
+              <div className={`text-3xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                {weeklyCompleted}
+              </div>
+            </div>
+            <p className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+              {weeklyCompleted === 0 
+                ? 'Пора начать!'
+                : weeklyCompleted < 7 
+                  ? 'Хорошее начало! Продолжай в том же духе'
+                  : 'Отлично! Ты на правильном пути 🔥'
+              }
+            </p>
           </div>
 
           {/* Stats Grid */}
