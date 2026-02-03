@@ -5,6 +5,7 @@ import CalendarView from '@/components/daily/CalendarView.jsx';
 import QuestEditor from '@/components/daily/QuestEditor.jsx';
 import PremiumModal from '@/components/daily/PremiumModal.jsx';
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
+import CategoryProgressModal from '@/components/daily/CategoryProgressModal.jsx';
 import confetti from 'canvas-confetti';
 
 /* ============================================
@@ -144,6 +145,7 @@ export default function DailyTracker() {
   const [streakFreezes, setStreakFreezes] = useState(1);
   const [showPremium, setShowPremium] = useState(false);
   const [theme, setTheme] = useState('light');
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -602,8 +604,8 @@ export default function DailyTracker() {
               completedText={APP_CONFIG.completedText}
               pendingText={APP_CONFIG.pendingText}
               theme={theme}
-              streak={streak}
               categoryLevel={categoryLevels[categoryKey] || 1}
+              onCategoryClick={() => setSelectedCategory(categoryKey)}
             />
           ))}
         </div>
@@ -647,6 +649,18 @@ export default function DailyTracker() {
       {/* Premium Modal */}
       {showPremium && (
         <PremiumModal onClose={() => setShowPremium(false)} />
+      )}
+
+      {/* Category Progress Modal */}
+      {selectedCategory && (
+        <CategoryProgressModal
+          category={selectedCategory}
+          categoryInfo={CATEGORIES[selectedCategory]}
+          totalCompleted={categoryTotalCompleted[selectedCategory] || 0}
+          currentLevel={categoryLevels[selectedCategory] || 1}
+          onClose={() => setSelectedCategory(null)}
+          theme={theme}
+        />
       )}
 
       <style jsx>{`

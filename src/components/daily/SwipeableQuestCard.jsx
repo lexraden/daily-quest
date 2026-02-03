@@ -12,8 +12,8 @@ export default function SwipeableQuestCard({
   completedText,
   pendingText,
   theme,
-  streak,
-  categoryLevel 
+  categoryLevel,
+  onCategoryClick 
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -56,15 +56,20 @@ export default function SwipeableQuestCard({
     <div className="space-y-2">
       {/* Category Header */}
       <div className="flex items-center gap-2 px-1">
-        <div className={`p-1.5 rounded-lg ${categoryInfo.bgColor}`}>
-          <Icon className={`w-4 h-4 ${categoryInfo.textColor}`} />
-        </div>
-        <span className={`text-sm font-medium ${categoryInfo.textColor}`}>
-          {categoryInfo.name}
-        </span>
+        <button
+          onClick={onCategoryClick}
+          className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer"
+        >
+          <div className={`p-1.5 rounded-lg ${categoryInfo.bgColor}`}>
+            <Icon className={`w-4 h-4 ${categoryInfo.textColor}`} />
+          </div>
+          <span className={`text-sm font-medium ${categoryInfo.textColor}`}>
+            {categoryInfo.name}
+          </span>
+        </button>
         <div className="flex-1 h-px bg-white/5" />
-        <span className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-          🔥 {streak || 0}
+        <span className={`text-xs font-semibold ${categoryInfo.textColor}`}>
+          Lvl {categoryLevel || 1}
         </span>
       </div>
 
