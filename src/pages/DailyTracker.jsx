@@ -130,6 +130,7 @@ const LEVELS = [
 export default function DailyTracker() {
   const [questData, setQuestData] = useState(DEFAULT_QUEST_DATA);
   const [categoryLevels, setCategoryLevels] = useState({});
+  const [categoryTotalCompleted, setCategoryTotalCompleted] = useState({});
   const [completedToday, setCompletedToday] = useState({});
   const [completionHistory, setCompletionHistory] = useState({});
   const [totalCompleted, setTotalCompleted] = useState(0);
@@ -187,10 +188,13 @@ export default function DailyTracker() {
       
       // Инициализация уровней категорий
       const levels = {};
+      const totals = {};
       Object.keys(CATEGORIES).forEach(cat => {
         levels[cat] = data.categoryLevels?.[cat] || 1;
+        totals[cat] = data.categoryTotalCompleted?.[cat] || 0;
       });
       setCategoryLevels(levels);
+      setCategoryTotalCompleted(totals);
       
       setTotalCompleted(data.totalCompleted || 0);
       setCompletionHistory(data.completionHistory || {});
@@ -237,10 +241,13 @@ export default function DailyTracker() {
     } else {
       // Инициализация для новых пользователей
       const levels = {};
+      const totals = {};
       Object.keys(CATEGORIES).forEach(cat => {
         levels[cat] = 1;
+        totals[cat] = 0;
       });
       setCategoryLevels(levels);
+      setCategoryTotalCompleted(totals);
     }
     setIsLoaded(true);
   }, []);
@@ -252,6 +259,7 @@ export default function DailyTracker() {
     const data = {
       questData,
       categoryLevels,
+      categoryTotalCompleted,
       totalCompleted,
       streak,
       lastCompletedDate,
@@ -268,6 +276,7 @@ export default function DailyTracker() {
     const data = {
       questData,
       categoryLevels,
+      categoryTotalCompleted,
       totalCompleted,
       streak,
       streakFreezes,
@@ -389,10 +398,18 @@ export default function DailyTracker() {
         return newHistory;
       });
       
-      // Понизить уровень обратно
+      // Понизить счетчик категории
+      setCategoryTotalCompleted(prev => ({
+        ...prev,
+        [category]: Math.max((prev[category] || 0) - 1, 0)
+      }));
+      
+      // Пересчитать уровень категории
+      const newTotal = Math.max((categoryTotalCompleted[category] || 0) - 1, 0);
+      const newLevel = Math.floor(newTotal / 10) + 1; // Каждые 10 квестов = +1 уровень
       setCategoryLevels(prev => ({
         ...prev,
-        [category]: Math.max((prev[category] || 1) - 1, 1)
+        [category]: Math.max(newLevel, 1)
       }));
     } else {
       // Выполнить квест
@@ -431,10 +448,18 @@ export default function DailyTracker() {
         navigator.vibrate(50);
       }
       
-      // Повысить уровень квеста категории
+      // Повысить счетчик категории
+      setCategoryTotalCompleted(prev => ({
+        ...prev,
+        [category]: (prev[category] || 0) + 1
+      }));
+      
+      // Пересчитать уровень категории
+      const newTotal = (categoryTotalCompleted[category] || 0) + 1;
+      const newLevel = Math.floor(newTotal / 10) + 1; // Каждые 10 квестов = +1 уровень
       setCategoryLevels(prev => ({
         ...prev,
-        [category]: Math.min((prev[category] || 1) + 1, 3)
+        [category]: newLevel
       }));
       
       // Обновить streak
@@ -577,6 +602,8 @@ export default function DailyTracker() {
               completedText={APP_CONFIG.completedText}
               pendingText={APP_CONFIG.pendingText}
               theme={theme}
+              streak={streak}
+              categoryLevel={categoryLevels[categoryKey] || 1}
             />
           ))}
         </div>
@@ -613,6 +640,7 @@ export default function DailyTracker() {
           categories={CATEGORIES}
           onSave={setQuestData}
           onClose={() => setShowEditor(false)}
+          theme={theme}
         />
       )}
 
