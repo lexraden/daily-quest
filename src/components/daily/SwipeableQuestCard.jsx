@@ -78,7 +78,7 @@ export default function SwipeableQuestCard({
             animate="center"
             exit="exit"
             transition={{
-              x: { type: "spring", stiffness: 500, damping: 40 },
+              x: { type: "spring", stiffness: 350, damping: 35 },
               opacity: { duration: 0.1 }
             }}
             drag="x"
