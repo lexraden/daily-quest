@@ -3,7 +3,7 @@ import { X, Save, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-export default function QuestEditor({ questData, categories, onSave, onClose }) {
+export default function QuestEditor({ questData, categories, onSave, onClose, theme = 'dark' }) {
   const [editedQuests, setEditedQuests] = useState(JSON.parse(JSON.stringify(questData)));
 
   const handleQuestChange = (category, level, field, value) => {
@@ -22,10 +22,16 @@ export default function QuestEditor({ questData, categories, onSave, onClose }) 
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#1e2836] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/10">
+      <div className={`rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border ${
+        theme === 'light' 
+          ? 'bg-white border-gray-200' 
+          : 'bg-[#1e2836] border-white/10'
+      }`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/10">
-          <h2 className="text-xl font-bold text-white">Редактор квестов</h2>
+        <div className={`flex items-center justify-between p-5 border-b ${
+          theme === 'light' ? 'border-gray-200' : 'border-white/10'
+        }`}>
+          <h2 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Редактор квестов</h2>
           <Button
             onClick={onClose}
             variant="ghost"
@@ -57,10 +63,14 @@ export default function QuestEditor({ questData, categories, onSave, onClose }) 
                   {editedQuests[categoryKey]?.map((quest) => (
                     <div
                       key={quest.level}
-                      className="bg-white/5 rounded-xl p-3 border border-white/5"
+                      className={`rounded-xl p-3 border ${
+                        theme === 'light' 
+                          ? 'bg-gray-50 border-gray-200' 
+                          : 'bg-white/5 border-white/5'
+                      }`}
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="text-xs text-gray-500 font-medium">
+                        <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-500'}`}>
                           Lvl {quest.level}
                         </span>
                       </div>
@@ -68,14 +78,22 @@ export default function QuestEditor({ questData, categories, onSave, onClose }) 
                         <Input
                           value={quest.emoji}
                           onChange={(e) => handleQuestChange(categoryKey, quest.level, 'emoji', e.target.value)}
-                          className="w-16 text-center bg-white/5 border-white/10"
+                          className={`w-16 text-center ${
+                            theme === 'light' 
+                              ? 'bg-gray-100 border-gray-300 text-gray-900' 
+                              : 'bg-white/5 border-white/10 text-white'
+                          }`}
                           placeholder="🏃"
                           maxLength={2}
                         />
                         <Input
                           value={quest.name}
                           onChange={(e) => handleQuestChange(categoryKey, quest.level, 'name', e.target.value)}
-                          className="flex-1 bg-white/5 border-white/10"
+                          className={`flex-1 ${
+                            theme === 'light' 
+                              ? 'bg-gray-100 border-gray-300 text-gray-900' 
+                              : 'bg-white/5 border-white/10 text-white'
+                          }`}
                           placeholder="Название квеста"
                         />
                       </div>
@@ -88,11 +106,17 @@ export default function QuestEditor({ questData, categories, onSave, onClose }) 
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-white/10 flex gap-3">
+        <div className={`p-5 border-t flex gap-3 ${
+          theme === 'light' ? 'border-gray-200' : 'border-white/10'
+        }`}>
           <Button
             onClick={onClose}
             variant="outline"
-            className="flex-1 border-white/10 hover:bg-white/5"
+            className={`flex-1 ${
+              theme === 'light' 
+                ? 'border-gray-300 hover:bg-gray-100' 
+                : 'border-white/10 hover:bg-white/5'
+            }`}
           >
             Отмена
           </Button>

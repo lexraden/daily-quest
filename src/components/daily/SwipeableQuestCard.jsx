@@ -11,7 +11,9 @@ export default function SwipeableQuestCard({
   celebrationQuest,
   completedText,
   pendingText,
-  theme 
+  theme,
+  streak,
+  categoryLevel 
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -61,8 +63,8 @@ export default function SwipeableQuestCard({
           {categoryInfo.name}
         </span>
         <div className="flex-1 h-px bg-white/5" />
-        <span className="text-xs text-gray-500">
-          Lvl {currentQuest.level}
+        <span className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+          🔥 {streak || 0}
         </span>
       </div>
 
@@ -93,14 +95,15 @@ export default function SwipeableQuestCard({
                 paginate(-1);
               }
             }}
+            onClick={() => onToggleQuest(categoryKey, currentQuest.level)}
             className={`
-              relative overflow-hidden rounded-2xl p-5
+              relative overflow-hidden rounded-2xl p-5 cursor-pointer
               transition-all duration-300 ease-out border
               ${isCompleted 
                 ? `${categoryInfo.bgColor} ${categoryInfo.borderColor}` 
                 : theme === 'light'
-                  ? 'bg-white border-gray-200'
-                  : 'bg-[#1e2836] border-white/5'
+                  ? 'bg-white border-gray-200 hover:bg-gray-50'
+                  : 'bg-[#1e2836] border-white/5 hover:bg-[#242f3d]'
               }
               ${isCelebrating ? 'scale-[1.02]' : 'scale-100'}
             `}
@@ -151,18 +154,13 @@ export default function SwipeableQuestCard({
                 </div>
               </div>
               
-              {/* Status Badge */}
+              {/* Level Badge */}
               <div className={`
-                w-7 h-7 rounded-full flex items-center justify-center text-base font-medium flex-shrink-0
+                px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0
                 transition-all duration-300
-                ${isCompleted 
-                  ? `${categoryInfo.bgColor} ${categoryInfo.textColor}` 
-                  : theme === 'light'
-                    ? 'bg-gray-100 text-gray-600'
-                    : 'bg-white/5 text-gray-500'
-                }
+                ${categoryInfo.bgColor} ${categoryInfo.textColor}
               `}>
-                {isCompleted ? completedText : pendingText}
+                Lvl {categoryLevel || 1}
               </div>
             </div>
           </motion.div>
