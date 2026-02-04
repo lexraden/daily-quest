@@ -177,7 +177,7 @@ export default function SwipeableQuestCard({
                     <Input
                       value={editedEmoji}
                       onChange={(e) => setEditedEmoji(e.target.value)}
-                      className={`w-14 text-center text-lg p-1 ${
+                      className={`w-10 text-center text-lg p-1 ${
                         theme === 'light' 
                           ? 'bg-gray-100 border-gray-300 text-gray-900' 
                           : 'bg-white/5 border-white/10 text-white'
