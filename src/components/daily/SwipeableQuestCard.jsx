@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, Pencil } from 'lucide-react';
 
 export default function SwipeableQuestCard({ 
   categoryKey, 
@@ -13,7 +13,8 @@ export default function SwipeableQuestCard({
   pendingText,
   theme,
   categoryLevel,
-  onCategoryClick 
+  onCategoryClick,
+  onEditQuest 
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -148,7 +149,7 @@ export default function SwipeableQuestCard({
                 <div className="flex items-center gap-2.5">
                   <span className="text-2xl">{currentQuest.emoji}</span>
                   <span className={`
-                    text-base font-medium transition-all duration-300
+                    text-base font-medium transition-all duration-300 flex-1
                     ${isCompleted 
                       ? theme === 'light' ? 'text-gray-500 line-through' : 'text-gray-400 line-through'
                       : theme === 'light' ? 'text-gray-900' : 'text-white'
@@ -156,6 +157,23 @@ export default function SwipeableQuestCard({
                   `}>
                     {currentQuest.name}
                   </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditQuest(categoryKey, currentQuest.level);
+                    }}
+                    className={`
+                      p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95
+                      ${theme === 'light' 
+                        ? 'hover:bg-gray-100' 
+                        : 'hover:bg-white/10'
+                      }
+                    `}
+                  >
+                    <Pencil className={`w-4 h-4 ${
+                      theme === 'light' ? 'text-gray-400' : 'text-gray-500'
+                    }`} />
+                  </button>
                 </div>
               </div>
               
