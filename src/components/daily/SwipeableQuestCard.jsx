@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Circle, Pencil } from 'lucide-react';
+import { CheckCircle2, Circle, Pencil, Check, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 export default function SwipeableQuestCard({ 
   categoryKey, 
@@ -14,10 +15,13 @@ export default function SwipeableQuestCard({
   theme,
   categoryLevel,
   onCategoryClick,
-  onEditQuest 
+  onSaveQuest 
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedEmoji, setEditedEmoji] = useState('');
+  const [editedName, setEditedName] = useState('');
 
   const currentQuest = quests[currentIndex];
   const questKey = `${categoryKey}_${currentQuest.level}`;
@@ -36,6 +40,26 @@ export default function SwipeableQuestCard({
       setDirection(newDirection);
       setCurrentIndex(newIndex);
     }
+  };
+
+  const handleStartEdit = () => {
+    setIsEditing(true);
+    setEditedEmoji(currentQuest.emoji);
+    setEditedName(currentQuest.name);
+  };
+
+  const handleSaveEdit = () => {
+    onSaveQuest(categoryKey, currentQuest.level, {
+      emoji: editedEmoji,
+      name: editedName
+    });
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedEmoji('');
+    setEditedName('');
   };
 
   const variants = {
@@ -101,7 +125,7 @@ export default function SwipeableQuestCard({
                 paginate(-1);
               }
             }}
-            onClick={() => onToggleQuest(categoryKey, currentQuest.level)}
+            onClick={() => !isEditing && onToggleQuest(categoryKey, currentQuest.level)}
             className={`
               relative overflow-hidden rounded-2xl p-5 cursor-pointer
               transition-all duration-300 ease-out border
@@ -146,35 +170,91 @@ export default function SwipeableQuestCard({
               
               {/* Quest Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl">{currentQuest.emoji}</span>
-                  <span className={`
-                    text-base font-medium transition-all duration-300 flex-1
-                    ${isCompleted 
-                      ? theme === 'light' ? 'text-gray-500 line-through' : 'text-gray-400 line-through'
-                      : theme === 'light' ? 'text-gray-900' : 'text-white'
-                    }
-                  `}>
-                    {currentQuest.name}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditQuest(categoryKey, currentQuest.level);
-                    }}
-                    className={`
-                      p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95
-                      ${theme === 'light' 
-                        ? 'hover:bg-gray-100' 
-                        : 'hover:bg-white/10'
+                {isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editedEmoji}
+                      onChange={(e) => setEditedEmoji(e.target.value)}
+                      className={`w-14 text-center text-lg p-1 ${
+                        theme === 'light' 
+                          ? 'bg-gray-100 border-gray-300 text-gray-900' 
+                          : 'bg-white/5 border-white/10 text-white'
+                      }`}
+                      maxLength={2}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <Input
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className={`flex-1 ${
+                        theme === 'light' 
+                          ? 'bg-gray-100 border-gray-300 text-gray-900' 
+                          : 'bg-white/5 border-white/10 text-white'
+                      }`}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSaveEdit();
+                      }}
+                      className={`
+                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95
+                        ${theme === 'light' 
+                          ? 'hover:bg-green-100' 
+                          : 'hover:bg-green-500/20'
+                        }
+                      `}
+                    >
+                      <Check className="w-4 h-4 text-green-500" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCancelEdit();
+                      }}
+                      className={`
+                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95
+                        ${theme === 'light' 
+                          ? 'hover:bg-red-100' 
+                          : 'hover:bg-red-500/20'
+                        }
+                      `}
+                    >
+                      <X className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl">{currentQuest.emoji}</span>
+                    <span className={`
+                      text-base font-medium transition-all duration-300 flex-1
+                      ${isCompleted 
+                        ? theme === 'light' ? 'text-gray-500 line-through' : 'text-gray-400 line-through'
+                        : theme === 'light' ? 'text-gray-900' : 'text-white'
                       }
-                    `}
-                  >
-                    <Pencil className={`w-4 h-4 ${
-                      theme === 'light' ? 'text-gray-400' : 'text-gray-500'
-                    }`} />
-                  </button>
-                </div>
+                    `}>
+                      {currentQuest.name}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEdit();
+                      }}
+                      className={`
+                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95
+                        ${theme === 'light' 
+                          ? 'hover:bg-gray-100' 
+                          : 'hover:bg-white/10'
+                        }
+                      `}
+                    >
+                      <Pencil className={`w-4 h-4 ${
+                        theme === 'light' ? 'text-gray-400' : 'text-gray-500'
+                      }`} />
+                    </button>
+                  </div>
+                )}
               </div>
               
 

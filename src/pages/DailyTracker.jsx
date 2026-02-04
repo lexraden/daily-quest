@@ -142,7 +142,6 @@ export default function DailyTracker() {
   const [celebrationQuest, setCelebrationQuest] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
-  const [editingQuestFocus, setEditingQuestFocus] = useState(null);
   const [streakFreezes, setStreakFreezes] = useState(1);
   const [showPremium, setShowPremium] = useState(false);
   const [theme, setTheme] = useState('light');
@@ -176,9 +175,13 @@ export default function DailyTracker() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  const handleEditQuest = (categoryKey, questLevel) => {
-    setEditingQuestFocus({ category: categoryKey, level: questLevel });
-    setShowEditor(true);
+  const handleSaveQuest = (categoryKey, questLevel, updatedData) => {
+    setQuestData(prev => ({
+      ...prev,
+      [categoryKey]: prev[categoryKey].map(q => 
+        q.level === questLevel ? { ...q, ...updatedData } : q
+      )
+    }));
   };
 
   // Загрузка данных из localStorage
@@ -612,7 +615,7 @@ export default function DailyTracker() {
               theme={theme}
               categoryLevel={categoryLevels[categoryKey] || 1}
               onCategoryClick={() => setSelectedCategory(categoryKey)}
-              onEditQuest={handleEditQuest}
+              onSaveQuest={handleSaveQuest}
             />
           ))}
         </div>
@@ -648,12 +651,8 @@ export default function DailyTracker() {
           questData={questData}
           categories={CATEGORIES}
           onSave={setQuestData}
-          onClose={() => {
-            setShowEditor(false);
-            setEditingQuestFocus(null);
-          }}
+          onClose={() => setShowEditor(false)}
           theme={theme}
-          focusQuest={editingQuestFocus}
         />
       )}
 
