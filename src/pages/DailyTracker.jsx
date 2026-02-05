@@ -671,23 +671,34 @@ export default function DailyTracker() {
         {/* Quest Categories */}
         <div className="px-5 mt-1">
         <div className="space-y-3">
-          {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => (
-            <SwipeableQuestCard
-              key={categoryKey}
-              categoryKey={categoryKey}
-              categoryInfo={categoryInfo}
-              quests={questData[categoryKey]}
-              completedToday={completedToday}
-              onToggleQuest={toggleQuest}
-              celebrationQuest={celebrationQuest}
-              completedText={APP_CONFIG.completedText}
-              pendingText={APP_CONFIG.pendingText}
-              theme={theme}
-              categoryLevel={categoryLevels[categoryKey] || 1}
-              onCategoryClick={() => setSelectedCategory(categoryKey)}
-              onSaveQuest={handleSaveQuest}
-            />
-          ))}
+          {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => {
+            // Сортируем квесты: невыполненные отображаются первыми
+            const sortedQuests = [...questData[categoryKey]].sort((a, b) => {
+              const aCompleted = completedToday[`${categoryKey}_${a.level}`];
+              const bCompleted = completedToday[`${categoryKey}_${b.level}`];
+              if (!aCompleted && bCompleted) return -1;
+              if (aCompleted && !bCompleted) return 1;
+              return 0;
+            });
+
+            return (
+              <SwipeableQuestCard
+                key={categoryKey}
+                categoryKey={categoryKey}
+                categoryInfo={categoryInfo}
+                quests={sortedQuests}
+                completedToday={completedToday}
+                onToggleQuest={toggleQuest}
+                celebrationQuest={celebrationQuest}
+                completedText={APP_CONFIG.completedText}
+                pendingText={APP_CONFIG.pendingText}
+                theme={theme}
+                categoryLevel={categoryLevels[categoryKey] || 1}
+                onCategoryClick={() => setSelectedCategory(categoryKey)}
+                onSaveQuest={handleSaveQuest}
+              />
+            );
+          })}
         </div>
       </div>
 
