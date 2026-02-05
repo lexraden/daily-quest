@@ -86,28 +86,23 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
   };
 
   return (
-    <div 
-      className={`fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4 ${
-        theme === 'light' ? 'bg-black/60' : 'bg-black/80'
-      }`}
-    >
-      <div className={`rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border ${
+    <div className={`fixed inset-0 z-50 flex flex-col ${
+      theme === 'light' 
+        ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50'
+        : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
+    }`}>
+      {/* Header */}
+      <div className={`sticky top-0 z-10 backdrop-blur-xl border-b ${
         theme === 'light' 
-          ? 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
-          : 'bg-gradient-to-br from-[#1e2836] to-[#151c28] border-white/10'
+          ? 'bg-white/90 border-gray-200' 
+          : 'bg-[#0f1419]/90 border-white/10'
       }`}>
-        {/* Header */}
-        <div className="relative overflow-hidden">
-          {theme === 'dark' && (
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-cyan-500/10 to-purple-600/20 blur-3xl" />
-          )}
-          <div className={`relative flex items-center justify-between p-5 border-b ${
-            theme === 'light' ? 'border-gray-200' : 'border-white/10'
-          }`}>
+        <div className="px-5 py-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              <h1 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
                 Premium Features
-              </h2>
+              </h1>
               <p className={`text-sm mt-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
                 Расширенные возможности трекера
               </p>
@@ -116,14 +111,15 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
               onClick={onClose}
               variant="ghost"
               size="icon"
-              className={`h-9 w-9 rounded-full ${
+              className={`h-10 w-10 rounded-full ${
                 theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
               }`}
             >
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             </Button>
           </div>
         </div>
+      </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
