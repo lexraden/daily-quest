@@ -366,7 +366,7 @@ export default function CalendarView({ completionHistory, onClose, categories, t
 
       {/* Navigation */}
       <div className="px-5 py-4">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <Button
             onClick={navigatePrevious}
             variant="ghost"
@@ -398,6 +398,48 @@ export default function CalendarView({ completionHistory, onClose, categories, t
           >
             <ChevronRight className="w-5 h-5" />
           </Button>
+        </div>
+
+        {/* Stats Summary */}
+        <div className={`rounded-xl p-3 border mb-4 ${
+          theme === 'light'
+            ? 'bg-white border-gray-200'
+            : 'bg-white/5 border-white/5'
+        }`}>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <div className="text-xl font-bold text-purple-400">
+                {Object.keys(completionHistory).length}
+              </div>
+              <div className={`text-xs mt-0.5 ${
+                theme === 'light' ? 'text-gray-600' : 'text-gray-500'
+              }`}>
+                Активных дней
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-cyan-400">
+                {Object.values(completionHistory).reduce((sum, quests) => sum + quests.length, 0)}
+              </div>
+              <div className={`text-xs mt-0.5 ${
+                theme === 'light' ? 'text-gray-600' : 'text-gray-500'
+              }`}>
+                Всего квестов
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl font-bold text-green-400">
+                {Object.keys(completionHistory).length > 0
+                  ? Math.round(Object.values(completionHistory).reduce((sum, quests) => sum + quests.length, 0) / Object.keys(completionHistory).length)
+                  : 0}
+              </div>
+              <div className={`text-xs mt-0.5 ${
+                theme === 'light' ? 'text-gray-600' : 'text-gray-500'
+              }`}>
+                В среднем/день
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Today Button */}
@@ -445,55 +487,6 @@ export default function CalendarView({ completionHistory, onClose, categories, t
 
         {viewMode === 'week' && renderWeekView()}
         {viewMode === 'day' && renderDayDetails()}
-      </div>
-
-      {/* Stats Summary */}
-      <div className="px-5 mt-8">
-        <div className={`rounded-2xl p-5 border ${
-          theme === 'light'
-            ? 'bg-white border-gray-200'
-            : 'bg-white/5 border-white/5'
-        }`}>
-          <h3 className={`text-sm uppercase tracking-wider mb-4 ${
-          theme === 'light' ? 'text-gray-600' : 'text-gray-400'
-        }`}>
-          Статистика
-        </h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-400">
-                {Object.keys(completionHistory).length}
-              </div>
-              <div className={`text-xs mt-1 ${
-              theme === 'light' ? 'text-gray-600' : 'text-gray-500'
-            }`}>
-              Активных дней
-            </div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-cyan-400">
-                {Object.values(completionHistory).reduce((sum, quests) => sum + quests.length, 0)}
-              </div>
-              <div className={`text-xs mt-1 ${
-              theme === 'light' ? 'text-gray-600' : 'text-gray-500'
-            }`}>
-              Всего квестов
-            </div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">
-                {Object.keys(completionHistory).length > 0
-                  ? Math.round(Object.values(completionHistory).reduce((sum, quests) => sum + quests.length, 0) / Object.keys(completionHistory).length)
-                  : 0}
-              </div>
-              <div className={`text-xs mt-1 ${
-              theme === 'light' ? 'text-gray-600' : 'text-gray-500'
-            }`}>
-              В среднем/день
-            </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
