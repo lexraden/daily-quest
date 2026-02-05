@@ -122,7 +122,7 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
       </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+        <div className="flex-1 overflow-y-auto px-5 py-6 space-y-3">
           {premiumFeatures.map((feature, idx) => {
             const Icon = feature.icon;
             const isAvailable = feature.status === 'free' || feature.status === 'active';
