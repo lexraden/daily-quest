@@ -6,6 +6,8 @@ import QuestEditor from '@/components/daily/QuestEditor.jsx';
 import PremiumModal from '@/components/daily/PremiumModal.jsx';
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import CategoryProgressModal from '@/components/daily/CategoryProgressModal.jsx';
+import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
+import QuestSuggestionModal from '@/components/daily/QuestSuggestionModal.jsx';
 import confetti from 'canvas-confetti';
 
 /* ============================================
@@ -146,6 +148,7 @@ export default function DailyTracker() {
   const [showPremium, setShowPremium] = useState(false);
   const [theme, setTheme] = useState('light');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [questSuggestion, setQuestSuggestion] = useState(null);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -182,6 +185,35 @@ export default function DailyTracker() {
         q.level === questLevel ? { ...q, ...updatedData } : q
       )
     }));
+  };
+
+  const handleQuestSuggestion = (suggestion) => {
+    setQuestSuggestion(suggestion);
+  };
+
+  const handleAcceptSuggestion = (suggestion) => {
+    const { category, emoji, name, level, action } = suggestion;
+
+    if (action === 'add' || action === 'replace') {
+      // Find the highest level and add new quest
+      const highestLevel = Math.max(...questData[category].map(q => q.level));
+      const newLevel = level || highestLevel + 1;
+
+      setQuestData(prev => ({
+        ...prev,
+        [category]: [...prev[category], { level: newLevel, name, emoji }]
+      }));
+    } else if (action === 'edit') {
+      // Edit existing quest
+      const targetLevel = level || categoryLevels[category] || 1;
+      handleSaveQuest(category, targetLevel, { emoji, name });
+    }
+
+    setQuestSuggestion(null);
+  };
+
+  const handleRejectSuggestion = () => {
+    setQuestSuggestion(null);
   };
 
   // Загрузка данных из localStorage
@@ -596,10 +628,16 @@ export default function DailyTracker() {
             )}
           </div>
         </div>
-      </div>
+        </div>
 
-      {/* Quest Categories */}
-      <div className="px-5 mt-4">
+        {/* Voice Quest Input */}
+        <VoiceQuestInput 
+          onQuestSuggestion={handleQuestSuggestion}
+          theme={theme}
+        />
+
+        {/* Quest Categories */}
+        <div className="px-5 mt-1">
         <div className="space-y-3">
           {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => (
             <SwipeableQuestCard
@@ -670,6 +708,17 @@ export default function DailyTracker() {
           currentLevel={categoryLevels[selectedCategory] || 1}
           completionHistory={completionHistory}
           onClose={() => setSelectedCategory(null)}
+          theme={theme}
+        />
+      )}
+
+      {/* Quest Suggestion Modal */}
+      {questSuggestion && (
+        <QuestSuggestionModal
+          suggestion={questSuggestion}
+          categories={CATEGORIES}
+          onAccept={handleAcceptSuggestion}
+          onReject={handleRejectSuggestion}
           theme={theme}
         />
       )}
