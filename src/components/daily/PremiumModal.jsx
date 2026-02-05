@@ -170,15 +170,15 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
                 </div>
               </div>
             );
-            })}
-            </div>
+          })}
+        </div>
 
-            {/* Footer */}
-            <div className={`sticky bottom-0 p-5 border-t space-y-3 backdrop-blur-xl ${
-            theme === 'light' 
+        {/* Footer */}
+        <div className={`sticky bottom-0 p-5 border-t space-y-3 backdrop-blur-xl ${
+          theme === 'light' 
             ? 'bg-white/90 border-gray-200' 
             : 'bg-[#0f1419]/90 border-white/10'
-            }`}>
+        }`}>
           <div className={`text-center text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
             <p>Premium функции будут доступны после релиза 🚀</p>
             <p className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
@@ -191,8 +191,7 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
           >
             Понятно
           </Button>
-          </div>
-          </div>
-          </div>
-          );
-}
+        </div>
+      </div>
+    );
+  }
