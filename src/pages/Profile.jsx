@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, User, Flame, Trophy, TrendingUp, Calendar, Award } from 'lucide-react';
+import { X, User, Flame, Trophy, TrendingUp, Calendar, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
@@ -136,21 +136,23 @@ export default function Profile() {
           ? 'bg-white/80 border-gray-200' 
           : 'bg-[#0f1419]/80 border-white/10'
       }`}>
-        <div className="px-5 py-4 flex items-center gap-4">
-          <Link to={createPageUrl('DailyTracker')}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-10 w-10 rounded-full ${
-                theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
-              }`}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <h1 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-            Профиль
-          </h1>
+        <div className="px-5 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+              Профиль
+            </h1>
+            <Link to={createPageUrl('DailyTracker')}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-10 w-10 rounded-full ${
+                  theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
+                }`}
+              >
+                <X className="w-6 h-6" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 

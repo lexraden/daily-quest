@@ -297,7 +297,7 @@ export default function CalendarView({ completionHistory, onClose, categories })
               size="icon"
               className="h-10 w-10 rounded-full hover:bg-white/10"
             >
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             </Button>
           </div>
 
