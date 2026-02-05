@@ -93,14 +93,9 @@ export default function SwipeableQuestCard({
           </span>
         </button>
         <div className="flex-1 h-px bg-white/5" />
-        <div className="flex items-center gap-2">
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${categoryInfo.bgColor} ${categoryInfo.textColor}`}>
-            Level {currentQuest.level}
-          </span>
-          <span className={`text-xs font-semibold ${categoryInfo.textColor}`}>
-            Cat Lvl {categoryLevel || 1}
-          </span>
-        </div>
+        <span className={`text-xs font-semibold ${categoryInfo.textColor}`}>
+          Lvl {categoryLevel || 1}
+        </span>
       </div>
 
       {/* Swipeable Quest Card */}

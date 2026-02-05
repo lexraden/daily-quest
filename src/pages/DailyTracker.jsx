@@ -431,8 +431,8 @@ export default function DailyTracker() {
         const newState = { ...prev };
         delete newState[questKey];
         return newState;
-        });
-        setTotalCompleted(prev => Math.max(0, prev - currentQuest.level));
+      });
+      setTotalCompleted(prev => Math.max(0, prev - 1));
       
       // Удалить из истории
       setCompletionHistory(prev => {
@@ -465,8 +465,8 @@ export default function DailyTracker() {
         ...prev,
         [questKey]: true
       }));
-
-      setTotalCompleted(prev => prev + currentQuest.level);
+      
+      setTotalCompleted(prev => prev + 1);
       
       // Добавить в историю
       setCompletionHistory(prev => ({
