@@ -284,13 +284,7 @@ export default function SwipeableQuestCard({
                     setDirection(idx > currentIndex ? 1 : -1);
                     setCurrentIndex(idx);
                   }}
-                  className={`
-                    transition-all duration-300
-                    ${idx === currentIndex 
-                      ? 'w-6 h-1.5 rounded-full' 
-                      : 'w-1.5 h-1.5 rounded-full'
-                    }
-                  `}
+                  className="w-1.5 h-1.5 rounded-full transition-all duration-300"
                   style={{ 
                     backgroundColor: isQuestCompleted 
                       ? categoryInfo.color 
