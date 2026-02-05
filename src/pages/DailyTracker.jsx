@@ -543,6 +543,7 @@ export default function DailyTracker() {
         completionHistory={completionHistory}
         onClose={() => setShowCalendar(false)}
         categories={CATEGORIES}
+        theme={theme}
       />
     );
   }

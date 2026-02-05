@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export default function CalendarView({ completionHistory, onClose, categories }) {
+export default function CalendarView({ completionHistory, onClose, categories, theme = 'dark' }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('day'); // 'day', 'week', 'month'
 
@@ -125,15 +125,35 @@ export default function CalendarView({ completionHistory, onClose, categories })
         className={`
           aspect-square p-2 rounded-xl cursor-pointer
           transition-all duration-200
-          ${today ? 'bg-purple-500/20 border-2 border-purple-500' : ''}
-          ${hasQuests && !today ? 'bg-white/5 hover:bg-white/10' : ''}
-          ${!hasQuests && !today ? 'hover:bg-white/5' : ''}
+          ${today 
+            ? theme === 'light'
+              ? 'bg-purple-100 border-2 border-purple-500'
+              : 'bg-purple-500/20 border-2 border-purple-500'
+            : ''
+          }
+          ${hasQuests && !today 
+            ? theme === 'light'
+              ? 'bg-gray-100 hover:bg-gray-200'
+              : 'bg-white/5 hover:bg-white/10'
+            : ''
+          }
+          ${!hasQuests && !today 
+            ? theme === 'light'
+              ? 'hover:bg-gray-50'
+              : 'hover:bg-white/5'
+            : ''
+          }
         `}
       >
         <div className="flex flex-col h-full">
           <span className={`
             text-xs font-medium mb-1
-            ${today ? 'text-purple-400' : hasQuests ? 'text-white' : 'text-gray-500'}
+            ${today 
+              ? 'text-purple-600' 
+              : hasQuests 
+                ? theme === 'light' ? 'text-gray-900' : 'text-white'
+                : theme === 'light' ? 'text-gray-400' : 'text-gray-500'
+            }
           `}>
             {date.getDate()}
           </span>
@@ -166,8 +186,10 @@ export default function CalendarView({ completionHistory, onClose, categories })
     return (
       <div className="space-y-4">
         <div className="text-center mb-6">
-          <h3 className="text-2xl font-bold">{formatDayDate()}</h3>
-          <p className="text-gray-400 mt-1">
+          <h3 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+            {formatDayDate()}
+          </h3>
+          <p className={`mt-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
             {quests.length === 0 ? 'Нет выполненных квестов' : `${quests.length} квест${quests.length === 1 ? '' : quests.length < 5 ? 'а' : 'ов'}`}
           </p>
         </div>
@@ -212,10 +234,14 @@ export default function CalendarView({ completionHistory, onClose, categories })
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-              <CalendarIcon className="w-8 h-8 text-gray-500" />
+            <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
+              theme === 'light' ? 'bg-gray-100' : 'bg-white/5'
+            }`}>
+              <CalendarIcon className={`w-8 h-8 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
             </div>
-            <p className="text-gray-500">В этот день квесты не выполнялись</p>
+            <p className={theme === 'light' ? 'text-gray-600' : 'text-gray-500'}>
+              В этот день квесты не выполнялись
+            </p>
           </div>
         )}
       </div>
@@ -238,20 +264,34 @@ export default function CalendarView({ completionHistory, onClose, categories })
               key={idx}
               className={`
                 p-4 rounded-xl border transition-all
-                ${today ? 'bg-purple-500/10 border-purple-500/30' : 'bg-white/5 border-white/10'}
-                ${quests.length > 0 ? 'hover:bg-white/10' : ''}
+                ${today 
+                  ? theme === 'light'
+                    ? 'bg-purple-50 border-purple-200'
+                    : 'bg-purple-500/10 border-purple-500/30'
+                  : theme === 'light'
+                    ? 'bg-white border-gray-200'
+                    : 'bg-white/5 border-white/10'
+                }
+                ${quests.length > 0 
+                  ? theme === 'light' ? 'hover:bg-gray-50' : 'hover:bg-white/10'
+                  : ''
+                }
               `}
             >
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <span className={`font-medium ${today ? 'text-purple-400' : 'text-white'}`}>
+                  <span className={`font-medium ${
+                    today 
+                      ? 'text-purple-600'
+                      : theme === 'light' ? 'text-gray-900' : 'text-white'
+                  }`}>
                     {dayNames[idx]}
                   </span>
-                  <span className="text-gray-400 ml-2">
+                  <span className={theme === 'light' ? 'text-gray-600 ml-2' : 'text-gray-400 ml-2'}>
                     {date.getDate()}.{String(date.getMonth() + 1).padStart(2, '0')}
                   </span>
                 </div>
-                <span className="text-sm text-gray-500">
+                <span className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-500'}`}>
                   {quests.length} квест{quests.length === 1 ? '' : quests.length < 5 ? 'а' : 'ов'}
                 </span>
               </div>
@@ -285,9 +325,17 @@ export default function CalendarView({ completionHistory, onClose, categories })
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white pb-8">
+    <div className={`min-h-screen pb-8 ${
+      theme === 'light'
+        ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
+        : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white'
+    }`}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#0f1419]/90 backdrop-blur-lg border-b border-white/5">
+      <div className={`sticky top-0 z-10 backdrop-blur-lg border-b ${
+        theme === 'light'
+          ? 'bg-white/90 border-gray-200'
+          : 'bg-[#0f1419]/90 border-white/5'
+      }`}>
         <div className="px-5 py-4">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">История квестов</h1>
@@ -295,7 +343,9 @@ export default function CalendarView({ completionHistory, onClose, categories })
               onClick={onClose}
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full hover:bg-white/10"
+              className={`h-10 w-10 rounded-full ${
+                theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
+              }`}
             >
               <X className="w-6 h-6" />
             </Button>
@@ -303,7 +353,9 @@ export default function CalendarView({ completionHistory, onClose, categories })
 
           {/* View Mode Tabs */}
           <Tabs value={viewMode} onValueChange={setViewMode}>
-            <TabsList className="w-full bg-white/5">
+            <TabsList className={`w-full ${
+              theme === 'light' ? 'bg-black/5' : 'bg-white/5'
+            }`}>
               <TabsTrigger value="day" className="flex-1">День</TabsTrigger>
               <TabsTrigger value="week" className="flex-1">Неделя</TabsTrigger>
               <TabsTrigger value="month" className="flex-1">Месяц</TabsTrigger>
@@ -319,7 +371,11 @@ export default function CalendarView({ completionHistory, onClose, categories })
             onClick={navigatePrevious}
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/5 hover:bg-white/10"
+            className={`h-10 w-10 rounded-full ${
+              theme === 'light'
+                ? 'bg-black/5 hover:bg-black/10'
+                : 'bg-white/5 hover:bg-white/10'
+            }`}
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
@@ -334,7 +390,11 @@ export default function CalendarView({ completionHistory, onClose, categories })
             onClick={navigateNext}
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-white/5 hover:bg-white/10"
+            className={`h-10 w-10 rounded-full ${
+              theme === 'light'
+                ? 'bg-black/5 hover:bg-black/10'
+                : 'bg-white/5 hover:bg-white/10'
+            }`}
           >
             <ChevronRight className="w-5 h-5" />
           </Button>
@@ -347,7 +407,11 @@ export default function CalendarView({ completionHistory, onClose, categories })
               onClick={goToToday}
               variant="outline"
               size="sm"
-              className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+              className={
+                theme === 'light'
+                  ? 'border-purple-400 text-purple-600 hover:bg-purple-50'
+                  : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10'
+              }
             >
               Сегодня
             </Button>
@@ -385,20 +449,36 @@ export default function CalendarView({ completionHistory, onClose, categories })
 
       {/* Stats Summary */}
       <div className="px-5 mt-8">
-        <div className="bg-white/5 rounded-2xl p-5 border border-white/5">
-          <h3 className="text-sm text-gray-400 uppercase tracking-wider mb-4">Статистика</h3>
+        <div className={`rounded-2xl p-5 border ${
+          theme === 'light'
+            ? 'bg-white border-gray-200'
+            : 'bg-white/5 border-white/5'
+        }`}>
+          <h3 className={`text-sm uppercase tracking-wider mb-4 ${
+          theme === 'light' ? 'text-gray-600' : 'text-gray-400'
+        }`}>
+          Статистика
+        </h3>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-400">
                 {Object.keys(completionHistory).length}
               </div>
-              <div className="text-xs text-gray-500 mt-1">Активных дней</div>
+              <div className={`text-xs mt-1 ${
+              theme === 'light' ? 'text-gray-600' : 'text-gray-500'
+            }`}>
+              Активных дней
+            </div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-cyan-400">
                 {Object.values(completionHistory).reduce((sum, quests) => sum + quests.length, 0)}
               </div>
-              <div className="text-xs text-gray-500 mt-1">Всего квестов</div>
+              <div className={`text-xs mt-1 ${
+              theme === 'light' ? 'text-gray-600' : 'text-gray-500'
+            }`}>
+              Всего квестов
+            </div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-400">
@@ -406,7 +486,11 @@ export default function CalendarView({ completionHistory, onClose, categories })
                   ? Math.round(Object.values(completionHistory).reduce((sum, quests) => sum + quests.length, 0) / Object.keys(completionHistory).length)
                   : 0}
               </div>
-              <div className="text-xs text-gray-500 mt-1">В среднем/день</div>
+              <div className={`text-xs mt-1 ${
+              theme === 'light' ? 'text-gray-600' : 'text-gray-500'
+            }`}>
+              В среднем/день
+            </div>
             </div>
           </div>
         </div>
