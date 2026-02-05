@@ -121,15 +121,15 @@ const DEFAULT_QUEST_DATA = {
 // Система уровней (прогрессивная как в RPG)
 const LEVELS = [
   { level: 1, threshold: 0, name: "Новичок", icon: "🌱", color: "#6c5ce7" },
-  { level: 2, threshold: 100, name: "Ученик", icon: "📚", color: "#00cec9" },
-  { level: 3, threshold: 250, name: "Практик", icon: "⚡", color: "#fdcb6e" },
-  { level: 4, threshold: 500, name: "Мастер", icon: "🔥", color: "#e17055" },
-  { level: 5, threshold: 1000, name: "Эксперт", icon: "💎", color: "#d63031" },
-  { level: 6, threshold: 2000, name: "Герой", icon: "⚔️", color: "#fd79a8" },
-  { level: 7, threshold: 3500, name: "Чемпион", icon: "🏆", color: "#fdcb6e" },
-  { level: 8, threshold: 5500, name: "Легенда", icon: "👑", color: "#ffeaa7" },
-  { level: 9, threshold: 8000, name: "Титан", icon: "⚡", color: "#a29bfe" },
-  { level: 10, threshold: 11000, name: "Бог", icon: "✨", color: "#ffffff" }
+  { level: 2, threshold: 10, name: "Ученик", icon: "📚", color: "#00cec9" },
+  { level: 3, threshold: 25, name: "Практик", icon: "⚡", color: "#fdcb6e" },
+  { level: 4, threshold: 50, name: "Мастер", icon: "🔥", color: "#e17055" },
+  { level: 5, threshold: 100, name: "Эксперт", icon: "💎", color: "#d63031" },
+  { level: 6, threshold: 200, name: "Герой", icon: "⚔️", color: "#fd79a8" },
+  { level: 7, threshold: 350, name: "Чемпион", icon: "🏆", color: "#fdcb6e" },
+  { level: 8, threshold: 550, name: "Легенда", icon: "👑", color: "#ffeaa7" },
+  { level: 9, threshold: 800, name: "Титан", icon: "⚡", color: "#a29bfe" },
+  { level: 10, threshold: 1100, name: "Бог", icon: "✨", color: "#ffffff" }
 ];
 
 /* ============================================
@@ -426,15 +426,13 @@ export default function DailyTracker() {
     const today = getTodayKey();
     
     if (wasCompleted) {
-        // Отменить выполнение
-        const questXP = currentQuest.level === 1 ? 10 : currentQuest.level === 2 ? 20 : 30;
-
-        setCompletedToday(prev => {
-          const newState = { ...prev };
-          delete newState[questKey];
-          return newState;
-        });
-        setTotalCompleted(prev => Math.max(0, prev - questXP));
+      // Отменить выполнение
+      setCompletedToday(prev => {
+        const newState = { ...prev };
+        delete newState[questKey];
+        return newState;
+      });
+      setTotalCompleted(prev => Math.max(0, prev - 1));
       
       // Удалить из истории
       setCompletionHistory(prev => {
@@ -463,14 +461,12 @@ export default function DailyTracker() {
       }));
     } else {
       // Выполнить квест
-      const questXP = currentQuest.level === 1 ? 10 : currentQuest.level === 2 ? 20 : 30;
-
       setCompletedToday(prev => ({
         ...prev,
         [questKey]: true
       }));
-
-      setTotalCompleted(prev => prev + questXP);
+      
+      setTotalCompleted(prev => prev + 1);
       
       // Добавить в историю
       setCompletionHistory(prev => ({
