@@ -61,6 +61,6 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "DailyTracker",
+    mainPage: "Home",
     Pages: PAGES,
 };
