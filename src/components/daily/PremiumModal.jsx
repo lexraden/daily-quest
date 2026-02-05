@@ -98,7 +98,9 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
       }`}>
         {/* Header */}
         <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-cyan-500/10 to-purple-600/20 blur-3xl" />
+          {theme === 'dark' && (
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-cyan-500/10 to-purple-600/20 blur-3xl" />
+          )}
           <div className={`relative flex items-center justify-between p-5 border-b ${
             theme === 'light' ? 'border-gray-200' : 'border-white/10'
           }`}>
