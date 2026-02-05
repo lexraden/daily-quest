@@ -49,11 +49,13 @@
  */
 import DailyTracker from './pages/DailyTracker';
 import TelegramCode from './pages/TelegramCode';
+import Profile from './pages/Profile';
 
 
 export const PAGES = {
     "DailyTracker": DailyTracker,
     "TelegramCode": TelegramCode,
+    "Profile": Profile,
 }
 
 export const pagesConfig = {

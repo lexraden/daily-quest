@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, User, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import CalendarView from '@/components/daily/CalendarView.jsx';
 import PremiumModal from '@/components/daily/PremiumModal.jsx';
-import ProfileModal from '@/components/daily/ProfileModal.jsx';
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import CategoryProgressModal from '@/components/daily/CategoryProgressModal.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
@@ -144,7 +145,6 @@ export default function DailyTracker() {
   const [tgUser, setTgUser] = useState(null);
   const [celebrationQuest, setCelebrationQuest] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [streakFreezes, setStreakFreezes] = useState(1);
   const [showPremium, setShowPremium] = useState(false);
   const [theme, setTheme] = useState('light');
@@ -558,14 +558,15 @@ export default function DailyTracker() {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Daily Quests</h1>
           <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setShowProfile(true)}
-              variant="ghost"
-              size="icon"
-              className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
-            >
-              <User className="w-4 h-4" />
-            </Button>
+            <Link to={createPageUrl('Profile')}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
+              >
+                <User className="w-4 h-4" />
+              </Button>
+            </Link>
             <Button
               onClick={() => setShowCalendar(true)}
               variant="ghost"
@@ -690,21 +691,6 @@ export default function DailyTracker() {
           </Button>
         </div>
       </div>
-
-      {/* Profile Modal */}
-      {showProfile && (
-        <ProfileModal
-          userName={tgUser?.first_name}
-          userPhoto={tgUser?.photo_url}
-          streak={streak}
-          totalCompleted={totalCompleted}
-          currentLevel={currentLevel}
-          categoryLevels={categoryLevels}
-          categories={CATEGORIES}
-          onClose={() => setShowProfile(false)}
-          theme={theme}
-        />
-      )}
 
       {/* Premium Modal */}
       {showPremium && (
