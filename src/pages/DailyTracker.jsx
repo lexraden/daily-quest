@@ -432,7 +432,9 @@ export default function DailyTracker() {
         delete newState[questKey];
         return newState;
       });
-      setTotalCompleted(prev => Math.max(0, prev - 1));
+      // Вернуть XP в зависимости от уровня
+      const xpLoss = currentQuest.level * 10;
+      setTotalCompleted(prev => Math.max(0, prev - xpLoss));
       
       // Удалить из истории
       setCompletionHistory(prev => {
@@ -465,8 +467,10 @@ export default function DailyTracker() {
         ...prev,
         [questKey]: true
       }));
-      
-      setTotalCompleted(prev => prev + 1);
+
+      // Начислить XP в зависимости от уровня: level 1 = 10, level 2 = 20, level 3 = 30
+      const xpGain = currentQuest.level * 10;
+      setTotalCompleted(prev => prev + xpGain);
       
       // Добавить в историю
       setCompletionHistory(prev => ({
