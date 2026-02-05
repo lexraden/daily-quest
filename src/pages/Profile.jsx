@@ -56,12 +56,16 @@ const CATEGORIES = {
 };
 
 const LEVELS = [
-  { threshold: 0, name: "Новичок", icon: "🌱", color: "#6c5ce7" },
-  { threshold: 20, name: "Ученик", icon: "📚", color: "#00cec9" },
-  { threshold: 50, name: "Практик", icon: "⚡", color: "#fdcb6e" },
-  { threshold: 100, name: "Мастер", icon: "🔥", color: "#e17055" },
-  { threshold: 200, name: "Эксперт", icon: "💎", color: "#d63031" },
-  { threshold: 400, name: "Легенда", icon: "👑", color: "#ffeaa7" }
+  { level: 1, threshold: 0, name: "Новичок", icon: "🌱", color: "#6c5ce7" },
+  { level: 2, threshold: 10, name: "Ученик", icon: "📚", color: "#00cec9" },
+  { level: 3, threshold: 25, name: "Практик", icon: "⚡", color: "#fdcb6e" },
+  { level: 4, threshold: 50, name: "Мастер", icon: "🔥", color: "#e17055" },
+  { level: 5, threshold: 100, name: "Эксперт", icon: "💎", color: "#d63031" },
+  { level: 6, threshold: 200, name: "Герой", icon: "⚔️", color: "#fd79a8" },
+  { level: 7, threshold: 350, name: "Чемпион", icon: "🏆", color: "#fdcb6e" },
+  { level: 8, threshold: 550, name: "Легенда", icon: "👑", color: "#ffeaa7" },
+  { level: 9, threshold: 800, name: "Титан", icon: "⚡", color: "#a29bfe" },
+  { level: 10, threshold: 1100, name: "Бог", icon: "✨", color: "#ffffff" }
 ];
 
 export default function Profile() {
@@ -216,24 +220,38 @@ export default function Profile() {
             </div>
 
             {/* Level Progress */}
-            {levelProgress.nextLevel && (
-              <div className={`p-4 rounded-xl ${
-                theme === 'light' 
-                  ? 'bg-gradient-to-br from-gray-50 to-purple-50/30' 
-                  : 'bg-white/5'
-              }`}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className={`w-4 h-4 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
-                    <span className={`text-sm font-semibold ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
-                      До уровня {levelProgress.nextLevel.name}
-                    </span>
-                  </div>
+            <div className={`p-4 rounded-xl ${
+              theme === 'light' 
+                ? 'bg-gradient-to-br from-gray-50 to-purple-50/30' 
+                : 'bg-white/5'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className={`w-4 h-4 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
+                  <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                    {stats.totalCompleted} / {levelProgress.nextLevel ? levelProgress.nextLevel.threshold : 'MAX'} XP
+                  </span>
+                </div>
+                {levelProgress.nextLevel && (
                   <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                     theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-400'
                   }`}>
-                    {levelProgress.remaining} квестов
+                    {levelProgress.remaining} до Level {levelProgress.nextLevel.level}
                   </span>
+                )}
+              </div>
+              
+              {/* Progress Bar with Level Labels */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs font-bold mb-1">
+                  <span className={theme === 'light' ? 'text-purple-600' : 'text-purple-400'}>
+                    Level {stats.currentLevel.level}
+                  </span>
+                  {levelProgress.nextLevel && (
+                    <span className={theme === 'light' ? 'text-cyan-600' : 'text-cyan-400'}>
+                      Level {levelProgress.nextLevel.level}
+                    </span>
+                  )}
                 </div>
                 <div className={`h-3 rounded-full overflow-hidden ${
                   theme === 'light' ? 'bg-gray-200' : 'bg-white/10'
@@ -246,7 +264,7 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
 

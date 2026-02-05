@@ -118,14 +118,18 @@ const DEFAULT_QUEST_DATA = {
   ]
 };
 
-// Система уровней
+// Система уровней (прогрессивная как в RPG)
 const LEVELS = [
-  { threshold: 0, name: "Новичок", icon: "🌱", color: "#6c5ce7" },
-  { threshold: 20, name: "Ученик", icon: "📚", color: "#00cec9" },
-  { threshold: 50, name: "Практик", icon: "⚡", color: "#fdcb6e" },
-  { threshold: 100, name: "Мастер", icon: "🔥", color: "#e17055" },
-  { threshold: 200, name: "Эксперт", icon: "💎", color: "#d63031" },
-  { threshold: 400, name: "Легенда", icon: "👑", color: "#ffeaa7" }
+  { level: 1, threshold: 0, name: "Новичок", icon: "🌱", color: "#6c5ce7" },
+  { level: 2, threshold: 10, name: "Ученик", icon: "📚", color: "#00cec9" },
+  { level: 3, threshold: 25, name: "Практик", icon: "⚡", color: "#fdcb6e" },
+  { level: 4, threshold: 50, name: "Мастер", icon: "🔥", color: "#e17055" },
+  { level: 5, threshold: 100, name: "Эксперт", icon: "💎", color: "#d63031" },
+  { level: 6, threshold: 200, name: "Герой", icon: "⚔️", color: "#fd79a8" },
+  { level: 7, threshold: 350, name: "Чемпион", icon: "🏆", color: "#fdcb6e" },
+  { level: 8, threshold: 550, name: "Легенда", icon: "👑", color: "#ffeaa7" },
+  { level: 9, threshold: 800, name: "Титан", icon: "⚡", color: "#a29bfe" },
+  { level: 10, threshold: 1100, name: "Бог", icon: "✨", color: "#ffffff" }
 ];
 
 /* ============================================
@@ -609,9 +613,47 @@ export default function DailyTracker() {
             </>
           )}
         </div>
-        
-        {/* Progress Bar */}
+
+        {/* Level Progress Bar */}
         <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className={`font-semibold ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`}>
+                Level {currentLevel.level}
+              </span>
+              <span className={theme === 'light' ? 'text-gray-500' : 'text-gray-500'}>
+                {totalCompleted} XP
+              </span>
+            </div>
+            {levelProgress.nextLevel && (
+              <div className="flex items-center gap-1.5">
+                <span className={theme === 'light' ? 'text-gray-500' : 'text-gray-500'}>
+                  {levelProgress.remaining} до
+                </span>
+                <span className={`font-semibold ${theme === 'light' ? 'text-cyan-600' : 'text-cyan-400'}`}>
+                  Level {levelProgress.nextLevel.level}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className={`relative h-3 rounded-full overflow-hidden ${theme === 'light' ? 'bg-black/5' : 'bg-white/5'}`}>
+            <div 
+              className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
+              style={{ 
+                width: `${levelProgress.progress}%`,
+                background: levelProgress.progress === 100
+                  ? 'linear-gradient(90deg, #6c5ce7, #00cec9, #fdcb6e)'
+                  : 'linear-gradient(90deg, #6c5ce7, #a29bfe, #00cec9)'
+              }}
+            />
+            {levelProgress.progress === 100 && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+            )}
+          </div>
+        </div>
+
+        {/* Daily Progress */}
+        <div className="space-y-2 mt-3 pt-3 border-t border-white/5">
           <div className="flex items-center justify-between text-xs">
             <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>Прогресс дня</span>
             <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{completedCount}/{totalQuests}</span>
