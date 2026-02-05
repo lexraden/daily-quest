@@ -48,15 +48,15 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 
   const processVoiceInput = async (audioBlob) => {
     setIsProcessing(true);
+    toast.info('Обрабатываю запись...', { duration: 2000 });
     
     try {
       // Upload audio file
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'voice.webm');
-      
       const uploadResult = await base44.integrations.Core.UploadFile({
         file: audioBlob
       });
+
+      toast.info('Анализирую задачу...', { duration: 3000 });
 
       // Use LLM to transcribe and generate quest
       const result = await base44.integrations.Core.InvokeLLM({
@@ -67,6 +67,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 2. О какой сфере жизни идет речь: здоровье (health), разум/обучение (mind), работа (work), финансы (money), любовь/семья (love), друзья (friends)
 3. Придумай краткое название квеста (максимум 25 символов)
 4. Подбери подходящий эмодзи
+5. Напиши дружелюбное сообщение пользователю о том, что ты понял
 
 Верни результат в JSON формате.`,
         file_urls: [uploadResult.file_url],
@@ -90,6 +91,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
         }
       });
 
+      console.log('AI Response:', result);
       onQuestSuggestion(result);
       toast.success('Квест готов! 🎯');
       
@@ -98,7 +100,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       }
     } catch (error) {
       console.error('Error processing voice input:', error);
-      toast.error('Не удалось обработать голосовое сообщение');
+      toast.error(`Ошибка: ${error.message || 'Не удалось обработать'}`);
     } finally {
       setIsProcessing(false);
     }

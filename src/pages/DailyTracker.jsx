@@ -8,6 +8,7 @@ import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import CategoryProgressModal from '@/components/daily/CategoryProgressModal.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
 import QuestSuggestionModal from '@/components/daily/QuestSuggestionModal.jsx';
+import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
 import confetti from 'canvas-confetti';
 
 /* ============================================

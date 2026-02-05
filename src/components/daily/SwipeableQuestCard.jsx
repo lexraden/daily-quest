@@ -125,7 +125,11 @@ export default function SwipeableQuestCard({
                 paginate(-1);
               }
             }}
-            onClick={() => !isEditing && onToggleQuest(categoryKey, currentQuest.level)}
+            onClick={(e) => {
+              if (!isEditing && !e.target.closest('button')) {
+                onToggleQuest(categoryKey, currentQuest.level);
+              }
+            }}
             className={`
               relative overflow-hidden rounded-2xl p-5 cursor-pointer
               transition-all duration-300 ease-out border
@@ -173,7 +177,7 @@ export default function SwipeableQuestCard({
               {/* Quest Info */}
               <div className="flex-1 min-w-0">
                 {isEditing ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Input
                       value={editedEmoji}
                       onChange={(e) => setEditedEmoji(e.target.value)}
@@ -201,7 +205,7 @@ export default function SwipeableQuestCard({
                         handleSaveEdit();
                       }}
                       className={`
-                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95
+                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 flex-shrink-0
                         ${theme === 'light' 
                           ? 'hover:bg-green-100' 
                           : 'hover:bg-green-500/20'
@@ -216,7 +220,7 @@ export default function SwipeableQuestCard({
                         handleCancelEdit();
                       }}
                       className={`
-                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95
+                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 flex-shrink-0
                         ${theme === 'light' 
                           ? 'hover:bg-red-100' 
                           : 'hover:bg-red-500/20'
