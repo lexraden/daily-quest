@@ -270,7 +270,7 @@ export default function SwipeableQuestCard({
         </div>
 
         {/* Dots Indicator */}
-        <div className="flex items-center justify-center gap-1.5 mt-3 h-4">
+        <div className="flex items-center justify-center gap-2 mt-3 h-4">
         {quests.length > 1 && (
           <>
             {quests.map((quest, idx) => {
@@ -284,19 +284,17 @@ export default function SwipeableQuestCard({
                     setDirection(idx > currentIndex ? 1 : -1);
                     setCurrentIndex(idx);
                   }}
-                  className={`
-                    transition-all duration-300
-                    ${idx === currentIndex 
-                      ? 'w-6 h-1.5 rounded-full' 
-                      : 'w-1.5 h-1.5 rounded-full'
-                    }
-                  `}
+                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                    idx === currentIndex ? 'font-bold' : ''
+                  }`}
                   style={{ 
                     backgroundColor: isQuestCompleted 
                       ? categoryInfo.color 
                       : theme === 'light' 
                         ? '#d1d5db' 
-                        : 'rgba(255, 255, 255, 0.2)' 
+                        : 'rgba(255, 255, 255, 0.2)',
+                    fontWeight: idx === currentIndex ? '700' : '400',
+                    transform: idx === currentIndex ? 'scale(1.3)' : 'scale(1)'
                   }}
                 />
               );
