@@ -47,17 +47,17 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import DailyTracker from './pages/DailyTracker';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import TelegramCode from './pages/TelegramCode';
+import DailyTracker from './pages/DailyTracker';
 
 
 export const PAGES = {
-    "DailyTracker": DailyTracker,
     "Home": Home,
     "Profile": Profile,
     "TelegramCode": TelegramCode,
+    "DailyTracker": DailyTracker,
 }
 
 export const pagesConfig = {
