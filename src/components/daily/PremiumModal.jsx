@@ -2,7 +2,7 @@ import React from 'react';
 import { X, Lock, Camera, Footprints, TrendingUp, History, Sparkles, Shield, FileText, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function PremiumModal({ onClose }) {
+export default function PremiumModal({ onClose, theme = 'dark' }) {
   const premiumFeatures = [
     {
       icon: Camera,
@@ -57,36 +57,66 @@ export default function PremiumModal({ onClose }) {
   const getStatusBadge = (status) => {
     switch(status) {
       case 'free':
-        return <span className="text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400">Бесплатно</span>;
+        return <span className={`text-xs px-2 py-1 rounded-full ${
+          theme === 'light' 
+            ? 'bg-green-100 text-green-700' 
+            : 'bg-green-500/20 text-green-400'
+        }`}>Бесплатно</span>;
       case 'active':
-        return <span className="text-xs px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400">1 freeze</span>;
+        return <span className={`text-xs px-2 py-1 rounded-full ${
+          theme === 'light' 
+            ? 'bg-cyan-100 text-cyan-700' 
+            : 'bg-cyan-500/20 text-cyan-400'
+        }`}>1 freeze</span>;
       case 'coming_soon':
-        return <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400">Скоро</span>;
+        return <span className={`text-xs px-2 py-1 rounded-full ${
+          theme === 'light' 
+            ? 'bg-purple-100 text-purple-700' 
+            : 'bg-purple-500/20 text-purple-400'
+        }`}>Скоро</span>;
       case 'unavailable':
-        return <span className="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-500">Web ограничен</span>;
+        return <span className={`text-xs px-2 py-1 rounded-full ${
+          theme === 'light' 
+            ? 'bg-gray-200 text-gray-600' 
+            : 'bg-gray-500/20 text-gray-500'
+        }`}>Web ограничен</span>;
       default:
         return null;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-gradient-to-br from-[#1e2836] to-[#151c28] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/10">
+    <div 
+      className={`fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4 ${
+        theme === 'light' ? 'bg-black/60' : 'bg-black/80'
+      }`}
+    >
+      <div className={`rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border ${
+        theme === 'light' 
+          ? 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
+          : 'bg-gradient-to-br from-[#1e2836] to-[#151c28] border-white/10'
+      }`}>
         {/* Header */}
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-cyan-500/10 to-purple-600/20 blur-3xl" />
-          <div className="relative flex items-center justify-between p-5 border-b border-white/10">
+          <div className={`relative flex items-center justify-between p-5 border-b ${
+            theme === 'light' ? 'border-gray-200' : 'border-white/10'
+          }`}>
             <div>
               <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
                 Premium Features
               </h2>
-              <p className="text-sm text-gray-400 mt-1">Расширенные возможности трекера</p>
+              <p className={`text-sm mt-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                Расширенные возможности трекера
+              </p>
             </div>
             <Button
               onClick={onClose}
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full hover:bg-white/10"
+              className={`h-9 w-9 rounded-full ${
+                theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
+              }`}
             >
               <X className="w-5 h-5" />
             </Button>
@@ -104,25 +134,40 @@ export default function PremiumModal({ onClose }) {
                 key={idx}
                 className={`
                   rounded-xl p-4 border transition-all
-                  ${isAvailable 
-                    ? 'bg-white/5 border-white/10 hover:bg-white/10' 
-                    : 'bg-white/[0.02] border-white/5 opacity-60'
+                  ${theme === 'light'
+                    ? isAvailable 
+                      ? 'bg-gray-50 border-gray-200 hover:bg-gray-100' 
+                      : 'bg-gray-50/50 border-gray-200 opacity-60'
+                    : isAvailable 
+                      ? 'bg-white/5 border-white/10 hover:bg-white/10' 
+                      : 'bg-white/[0.02] border-white/5 opacity-60'
                   }
                 `}
               >
                 <div className="flex items-start gap-3">
                   <div className={`
                     p-2.5 rounded-lg flex-shrink-0
-                    ${isAvailable ? 'bg-purple-500/20' : 'bg-white/5'}
+                    ${theme === 'light'
+                      ? isAvailable ? 'bg-purple-100' : 'bg-gray-100'
+                      : isAvailable ? 'bg-purple-500/20' : 'bg-white/5'
+                    }
                   `}>
-                    <Icon className={`w-5 h-5 ${isAvailable ? 'text-purple-400' : 'text-gray-500'}`} />
+                    <Icon className={`w-5 h-5 ${
+                      theme === 'light'
+                        ? isAvailable ? 'text-purple-600' : 'text-gray-400'
+                        : isAvailable ? 'text-purple-400' : 'text-gray-500'
+                    }`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <h3 className="font-semibold text-white">{feature.title}</h3>
+                      <h3 className={`font-semibold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                        {feature.title}
+                      </h3>
                       {getStatusBadge(feature.status)}
                     </div>
-                    <p className="text-sm text-gray-400">{feature.description}</p>
+                    <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                      {feature.description}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -131,10 +176,14 @@ export default function PremiumModal({ onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-white/10 space-y-3">
-          <div className="text-center text-sm text-gray-400">
+        <div className={`p-5 border-t space-y-3 ${
+          theme === 'light' ? 'border-gray-200' : 'border-white/10'
+        }`}>
+          <div className={`text-center text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
             <p>Premium функции будут доступны после релиза 🚀</p>
-            <p className="text-xs mt-1">Telegram Mini Apps пока имеют технические ограничения</p>
+            <p className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+              Telegram Mini Apps пока имеют технические ограничения
+            </p>
           </div>
           <Button
             onClick={onClose}

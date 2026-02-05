@@ -717,7 +717,7 @@ export default function DailyTracker() {
 
       {/* Premium Modal */}
       {showPremium && (
-        <PremiumModal onClose={() => setShowPremium(false)} />
+        <PremiumModal onClose={() => setShowPremium(false)} theme={theme} />
       )}
 
       {/* Category Progress Modal */}
