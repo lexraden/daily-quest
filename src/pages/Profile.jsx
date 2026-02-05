@@ -159,64 +159,91 @@ export default function Profile() {
       {/* Content */}
       <div className="px-5 py-6 space-y-4 max-w-2xl mx-auto pb-20">
         {/* User Header Card */}
-        <div className={`rounded-2xl overflow-hidden border ${
+        <div className={`rounded-3xl overflow-hidden border ${
           theme === 'light' 
-            ? 'bg-white border-gray-200' 
+            ? 'bg-white border-gray-200 shadow-lg' 
             : 'bg-[#1e2836] border-white/10'
         }`}>
-          {/* Gradient Background */}
-          <div className="h-24 bg-gradient-to-r from-purple-600 via-cyan-600 to-purple-600 relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
+          {/* Hero Banner with Pattern */}
+          <div className="h-32 bg-gradient-to-br from-purple-500 via-purple-600 to-cyan-500 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute inset-0" style={{
+                backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+                backgroundSize: '40px 40px'
+              }} />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30" />
           </div>
           
           {/* Profile Info */}
           <div className="px-6 pb-6">
-            <div className="flex items-end gap-4 -mt-10">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl border-4 ${
-                theme === 'light' ? 'bg-gray-100 border-white' : 'bg-white/10 border-[#1e2836]'
+            {/* Avatar */}
+            <div className="relative -mt-16 mb-4">
+              <div className={`w-28 h-28 rounded-full border-4 overflow-hidden ${
+                theme === 'light' ? 'bg-white border-white shadow-xl' : 'bg-[#0f1419] border-[#1e2836] shadow-2xl'
               }`}>
                 {tgUser?.photo_url ? (
-                  <img src={tgUser.photo_url} alt="Profile" className="w-full h-full rounded-full" />
+                  <img src={tgUser.photo_url} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
-                  <User className={`w-10 h-10 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <div className={`w-full h-full flex items-center justify-center ${
+                    theme === 'light'
+                      ? 'bg-gradient-to-br from-purple-100 to-cyan-100'
+                      : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20'
+                  }`}>
+                    <User className={`w-14 h-14 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
+                  </div>
                 )}
               </div>
-              <div className="flex-1 mb-2">
-                <h2 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                  {tgUser?.first_name || 'Пользователь'}
-                </h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-lg">{stats.currentLevel.icon}</span>
-                  <span className={`text-sm font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                    {stats.currentLevel.name}
-                  </span>
-                </div>
+            </div>
+            
+            {/* Name and Level Badge */}
+            <div className="mb-4">
+              <h2 className={`text-2xl font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                {tgUser?.first_name || 'Пользователь'}
+              </h2>
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-purple-100 to-cyan-100 border border-purple-200'
+                  : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30'
+              }`}>
+                <span className="text-2xl">{stats.currentLevel.icon}</span>
+                <span className={`font-bold text-sm ${
+                  theme === 'light' ? 'text-purple-900' : 'text-purple-300'
+                }`}>
+                  {stats.currentLevel.name}
+                </span>
               </div>
             </div>
 
             {/* Level Progress */}
             {levelProgress.nextLevel && (
-              <div className={`mt-4 p-3 rounded-lg ${
-                theme === 'light' ? 'bg-gray-50' : 'bg-white/5'
+              <div className={`p-4 rounded-xl ${
+                theme === 'light' 
+                  ? 'bg-gradient-to-br from-gray-50 to-purple-50/30' 
+                  : 'bg-white/5'
               }`}>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className={`w-4 h-4 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
-                    <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                    <TrendingUp className={`w-4 h-4 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
+                    <span className={`text-sm font-semibold ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
                       До уровня {levelProgress.nextLevel.name}
                     </span>
                   </div>
-                  <span className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-400'
+                  }`}>
                     {levelProgress.remaining} квестов
                   </span>
                 </div>
-                <div className={`h-2 rounded-full overflow-hidden ${
+                <div className={`h-3 rounded-full overflow-hidden ${
                   theme === 'light' ? 'bg-gray-200' : 'bg-white/10'
                 }`}>
                   <div 
-                    className="h-full bg-gradient-to-r from-purple-600 to-cyan-600 transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-purple-600 via-purple-500 to-cyan-500 transition-all duration-700 relative overflow-hidden"
                     style={{ width: `${levelProgress.progress}%` }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+                  </div>
                 </div>
               </div>
             )}
