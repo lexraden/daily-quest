@@ -94,7 +94,7 @@ export default function SwipeableQuestCard({
         </button>
         <div className="flex-1 h-px bg-white/5" />
         <span className={`text-xs font-semibold ${categoryInfo.textColor}`}>
-          Level {currentQuest.level}
+          Lvl {categoryLevel || 1}
         </span>
       </div>
 
