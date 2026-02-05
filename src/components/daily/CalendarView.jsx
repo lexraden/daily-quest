@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function CalendarView({ completionHistory, onClose, categories }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState('month'); // 'day', 'week', 'month'
+  const [viewMode, setViewMode] = useState('day'); // 'day', 'week', 'month'
 
   // Навигация
   const navigatePrevious = () => {
