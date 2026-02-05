@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, User, Flame, Trophy } from 'lucide-react';
+import { ArrowLeft, User, Flame, Trophy, TrendingUp, Calendar, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
@@ -111,10 +111,31 @@ export default function Profile() {
     ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
     : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
 
+  // Calculate next level progress
+  const getNextLevelProgress = () => {
+    const currentLevelIndex = LEVELS.findIndex(l => l === stats.currentLevel);
+    const nextLevel = LEVELS[currentLevelIndex + 1];
+    
+    if (!nextLevel) return { progress: 100, remaining: 0, nextLevel: null };
+    
+    const currentThreshold = stats.currentLevel.threshold;
+    const nextThreshold = nextLevel.threshold;
+    const progress = ((stats.totalCompleted - currentThreshold) / (nextThreshold - currentThreshold)) * 100;
+    const remaining = nextThreshold - stats.totalCompleted;
+    
+    return { progress: Math.min(progress, 100), remaining, nextLevel };
+  };
+
+  const levelProgress = getNextLevelProgress();
+
   return (
     <div className={`min-h-screen ${bgClass}`}>
       {/* Header */}
-      <div className="sticky top-0 z-10 backdrop-blur-lg bg-black/5 border-b border-white/10">
+      <div className={`sticky top-0 z-10 backdrop-blur-xl border-b ${
+        theme === 'light' 
+          ? 'bg-white/80 border-gray-200' 
+          : 'bg-[#0f1419]/80 border-white/10'
+      }`}>
         <div className="px-5 py-4 flex items-center gap-4">
           <Link to={createPageUrl('DailyTracker')}>
             <Button
@@ -134,88 +155,130 @@ export default function Profile() {
       </div>
 
       {/* Content */}
-      <div className="px-5 py-6 space-y-6 max-w-2xl mx-auto">
-        {/* User Card */}
-        <div className={`rounded-2xl p-6 border ${
+      <div className="px-5 py-6 space-y-4 max-w-2xl mx-auto pb-20">
+        {/* User Header Card */}
+        <div className={`rounded-2xl overflow-hidden border ${
           theme === 'light' 
             ? 'bg-white border-gray-200' 
             : 'bg-[#1e2836] border-white/10'
         }`}>
-          <div className="flex items-center gap-4 mb-6">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl ${
-              theme === 'light' ? 'bg-gray-100' : 'bg-white/10'
-            }`}>
-              {tgUser?.photo_url ? (
-                <img src={tgUser.photo_url} alt="Profile" className="w-full h-full rounded-full" />
-              ) : (
-                <User className={`w-10 h-10 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
-              )}
-            </div>
-            <div>
-              <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                {tgUser?.first_name || 'Пользователь'}
-              </h2>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-2xl">{stats.currentLevel.icon}</span>
-                <span className={`text-base ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  {stats.currentLevel.name}
-                </span>
+          {/* Gradient Background */}
+          <div className="h-24 bg-gradient-to-r from-purple-600 via-cyan-600 to-purple-600 relative">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
+          </div>
+          
+          {/* Profile Info */}
+          <div className="px-6 pb-6">
+            <div className="flex items-end gap-4 -mt-10">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl border-4 ${
+                theme === 'light' ? 'bg-gray-100 border-white' : 'bg-white/10 border-[#1e2836]'
+              }`}>
+                {tgUser?.photo_url ? (
+                  <img src={tgUser.photo_url} alt="Profile" className="w-full h-full rounded-full" />
+                ) : (
+                  <User className={`w-10 h-10 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
+                )}
               </div>
+              <div className="flex-1 mb-2">
+                <h2 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                  {tgUser?.first_name || 'Пользователь'}
+                </h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-lg">{stats.currentLevel.icon}</span>
+                  <span className={`text-sm font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                    {stats.currentLevel.name}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Level Progress */}
+            {levelProgress.nextLevel && (
+              <div className={`mt-4 p-3 rounded-lg ${
+                theme === 'light' ? 'bg-gray-50' : 'bg-white/5'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className={`w-4 h-4 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
+                    <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                      До уровня {levelProgress.nextLevel.name}
+                    </span>
+                  </div>
+                  <span className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+                    {levelProgress.remaining} квестов
+                  </span>
+                </div>
+                <div className={`h-2 rounded-full overflow-hidden ${
+                  theme === 'light' ? 'bg-gray-200' : 'bg-white/10'
+                }`}>
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-600 to-cyan-600 transition-all duration-500"
+                    style={{ width: `${levelProgress.progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className={`rounded-2xl p-5 border ${
+            theme === 'light' 
+              ? 'bg-gradient-to-br from-orange-50 to-white border-orange-200' 
+              : 'bg-gradient-to-br from-orange-900/20 to-transparent border-orange-500/30'
+          }`}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 rounded-lg bg-orange-500/10">
+                <Flame className="w-5 h-5 text-orange-400" />
+              </div>
+              <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                Серия
+              </span>
+            </div>
+            <div className={`text-3xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+              {stats.streak}
+            </div>
+            <div className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+              дней подряд
             </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className={`rounded-xl p-5 border ${
-              theme === 'light' 
-                ? 'bg-gradient-to-br from-orange-50 to-white border-orange-200' 
-                : 'bg-gradient-to-br from-orange-900/20 to-transparent border-orange-500/30'
-            }`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Flame className="w-6 h-6 text-orange-400" />
-                <span className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Серия
-                </span>
+          <div className={`rounded-2xl p-5 border ${
+            theme === 'light' 
+              ? 'bg-gradient-to-br from-purple-50 to-white border-purple-200' 
+              : 'bg-gradient-to-br from-purple-900/20 to-transparent border-purple-500/30'
+          }`}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Trophy className="w-5 h-5 text-purple-400" />
               </div>
-              <div className={`text-3xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                {stats.streak}
-              </div>
-              <div className={`text-sm mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
-                дней подряд
-              </div>
+              <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                Всего
+              </span>
             </div>
-
-            <div className={`rounded-xl p-5 border ${
-              theme === 'light' 
-                ? 'bg-gradient-to-br from-purple-50 to-white border-purple-200' 
-                : 'bg-gradient-to-br from-purple-900/20 to-transparent border-purple-500/30'
-            }`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Trophy className="w-6 h-6 text-purple-400" />
-                <span className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Всего
-                </span>
-              </div>
-              <div className={`text-3xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                {stats.totalCompleted}
-              </div>
-              <div className={`text-sm mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
-                квестов выполнено
-              </div>
+            <div className={`text-3xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+              {stats.totalCompleted}
+            </div>
+            <div className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+              квестов
             </div>
           </div>
         </div>
 
         {/* Category Levels */}
-        <div className={`rounded-2xl p-6 border ${
+        <div className={`rounded-2xl p-5 border ${
           theme === 'light' 
             ? 'bg-white border-gray-200' 
             : 'bg-[#1e2836] border-white/10'
         }`}>
-          <h3 className={`text-lg font-bold mb-4 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-            Уровни по категориям
-          </h3>
-          <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-4">
+            <Award className={`w-5 h-5 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
+            <h3 className={`text-base font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+              Уровни категорий
+            </h3>
+          </div>
+          <div className="space-y-2">
             {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => {
               const CategoryIcon = categoryInfo.icon;
               const level = stats.categoryLevels[categoryKey] || 1;
@@ -223,21 +286,23 @@ export default function Profile() {
               return (
                 <div 
                   key={categoryKey}
-                  className={`flex items-center justify-between p-4 rounded-xl ${
-                    theme === 'light' ? 'bg-gray-50' : 'bg-white/5'
+                  className={`flex items-center justify-between p-3 rounded-xl transition-all ${
+                    theme === 'light' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white/5 hover:bg-white/10'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-lg ${categoryInfo.bgColor}`}>
+                    <div className={`p-2 rounded-lg ${categoryInfo.bgColor}`}>
                       <CategoryIcon />
                     </div>
-                    <span className={`text-base font-medium ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
+                    <span className={`text-sm font-medium ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
                       {categoryInfo.name}
                     </span>
                   </div>
-                  <span className={`text-base font-bold ${categoryInfo.textColor}`}>
-                    Уровень {level}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-1 rounded-full font-bold ${categoryInfo.bgColor} ${categoryInfo.textColor}`}>
+                      LVL {level}
+                    </span>
+                  </div>
                 </div>
               );
             })}
