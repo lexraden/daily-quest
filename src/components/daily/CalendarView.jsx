@@ -185,15 +185,6 @@ export default function CalendarView({ completionHistory, onClose, categories, t
 
     return (
       <div className="space-y-4">
-        <div className="text-center mb-6">
-          <h3 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-            {formatDayDate()}
-          </h3>
-          <p className={`mt-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-            {quests.length === 0 ? 'Нет выполненных квестов' : `${quests.length} квест${quests.length === 1 ? '' : quests.length < 5 ? 'а' : 'ов'}`}
-          </p>
-        </div>
-
         {quests.length > 0 ? (
           <div className="space-y-3">
             {quests.map((quest, idx) => {
