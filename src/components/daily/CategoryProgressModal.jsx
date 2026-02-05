@@ -32,7 +32,12 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
   const weeklyCompleted = getWeeklyStats();
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <div 
+      className={`fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4 ${
+        theme === 'light' ? 'bg-black/60' : 'bg-black/80'
+      }`}
+      onClick={onClose}
+    >
       <div 
         className={`rounded-2xl max-w-md w-full border ${
           theme === 'light' 

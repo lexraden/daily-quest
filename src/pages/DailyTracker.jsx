@@ -652,27 +652,7 @@ export default function DailyTracker() {
           </div>
         </div>
 
-        {/* Daily Progress */}
-        <div className={`space-y-2 mt-3 pt-3 border-t ${theme === 'light' ? 'border-black/5' : 'border-white/5'}`}>
-          <div className="flex items-center justify-between text-xs">
-            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>Прогресс дня</span>
-            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{completedCount}/{totalQuests}</span>
-          </div>
-          <div className={`relative h-2 rounded-full overflow-hidden ${theme === 'light' ? 'bg-black/5' : 'bg-white/5'}`}>
-            <div 
-              className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
-              style={{ 
-                width: `${progress}%`,
-                background: progress === 100 
-                  ? 'linear-gradient(90deg, #6c5ce7, #00cec9, #fdcb6e)'
-                  : 'linear-gradient(90deg, #6c5ce7, #00cec9)'
-              }}
-            />
-            {progress === 100 && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-            )}
-          </div>
-        </div>
+
         </div>
 
         {/* Motivational Banner */}
