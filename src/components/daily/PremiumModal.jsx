@@ -191,8 +191,8 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
           >
             Понятно
           </Button>
-        </div>
-      </div>
-    </div>
-  );
+          </div>
+          </div>
+          </div>
+          );
 }
