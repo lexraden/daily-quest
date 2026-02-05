@@ -631,6 +631,13 @@ export default function DailyTracker() {
         </div>
         </div>
 
+        {/* Motivational Banner */}
+        <MotivationalBanner 
+          userName={tgUser?.first_name}
+          completedCount={completedCount}
+          theme={theme}
+        />
+
         {/* Voice Quest Input */}
         <VoiceQuestInput 
           onQuestSuggestion={handleQuestSuggestion}
