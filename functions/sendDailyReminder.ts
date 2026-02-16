@@ -23,26 +23,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const payload = await req.json();
 
-    // If called with specific user (from automation)
-    if (payload.telegram_chat_id) {
-      const message = `
-🌟 <b>Доброе утро!</b>
-
-Время прокачивать свою жизнь! 💪
-
-Твои квесты на сегодня ждут тебя в Daily Quests.
-
-🔥 Продолжай свою серию!
-🎯 Каждый день - шаг к цели
-
-<a href="https://t.me/${Deno.env.get('TELEGRAM_BOT_USERNAME') || 'your_bot'}">Открыть Daily Quests</a>
-      `.trim();
-
-      await sendTelegramMessage(payload.telegram_chat_id, message);
-      return Response.json({ success: true });
-    }
-
-    // Batch send to all users (called from automation without params)
+    // Batch send to all users
     const users = await base44.asServiceRole.entities.User.list();
     let sent = 0;
     let failed = 0;
@@ -50,21 +31,64 @@ Deno.serve(async (req) => {
     for (const user of users) {
       if (user.telegram_chat_id) {
         try {
-          const message = `
-🌟 <b>Доброе утро, ${user.full_name || 'друг'}!</b>
+          // Загрузить данные пользователя для проверки невыполненных квестов
+          const userDataList = await base44.asServiceRole.entities.UserQuestData.filter({ 
+            created_by: user.email 
+          });
 
-Время прокачивать свою жизнь! 💪
+          if (userDataList.length === 0) continue;
 
-Твои квесты на сегодня ждут тебя.
-
-🔥 Продолжай свою серию!
-🎯 Каждый день - шаг к цели
-          `.trim();
-
-          await sendTelegramMessage(user.telegram_chat_id, message);
-          sent++;
+          const userData = userDataList[0];
+          const today = new Date().toISOString().split('T')[0];
+          const todayHistory = userData.completion_history?.[today] || [];
           
-          // Rate limiting - 30 messages per second max
+          // Найти невыполненные квесты
+          const categories = ['health', 'mind', 'work', 'money', 'love', 'friends'];
+          const uncompleted = [];
+          
+          for (const category of categories) {
+            const categoryQuests = userData.quest_data?.[category] || [];
+            const categoryLevel = userData.category_levels?.[category] || 1;
+            
+            for (const quest of categoryQuests) {
+              const isCompleted = todayHistory.some(h => 
+                h.category === category && h.level === quest.level
+              );
+              
+              if (!isCompleted && quest.level <= categoryLevel) {
+                uncompleted.push({ ...quest, category });
+              }
+            }
+          }
+
+          // Если есть невыполненные квесты, выбрать случайный
+          if (uncompleted.length > 0) {
+            const randomQuest = uncompleted[Math.floor(Math.random() * uncompleted.length)];
+            const categoryNames = {
+              health: 'Здоровье',
+              mind: 'Разум',
+              work: 'Работа',
+              money: 'Финансы',
+              love: 'Любовь',
+              friends: 'Друзья'
+            };
+
+            const message = `
+${randomQuest.emoji} <b>Напоминание!</b>
+
+Ещё не выполнен квест из категории "${categoryNames[randomQuest.category]}":
+
+<b>${randomQuest.name}</b>
+
+🔥 Серия: ${userData.streak || 0} дней
+🎯 Продолжай прокачивать свою жизнь!
+            `.trim();
+
+            await sendTelegramMessage(user.telegram_chat_id, message);
+            sent++;
+          }
+          
+          // Rate limiting
           await new Promise(resolve => setTimeout(resolve, 50));
         } catch (error) {
           console.error(`Failed to send to user ${user.id}:`, error);
