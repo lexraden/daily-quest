@@ -121,30 +121,29 @@ export default function Profile() {
           throw new Error('User not authenticated');
         }
         const userDataList = await base44.entities.UserQuestData.filter({ created_by: authUser.email });
+        
+        if (userDataList.length > 0) {
+          const data = userDataList[0];
           
-          if (userDataList.length > 0) {
-            const data = userDataList[0];
-            
-            // Calculate current level
-            const totalCompleted = data.total_completed || 0;
-            let currentLevel = LEVELS[0];
-            for (const level of LEVELS) {
-              if (totalCompleted >= level.threshold) {
-                currentLevel = level;
-              }
+          // Calculate current level
+          const totalCompleted = data.total_completed || 0;
+          let currentLevel = LEVELS[0];
+          for (const level of LEVELS) {
+            if (totalCompleted >= level.threshold) {
+              currentLevel = level;
             }
+          }
 
-            setStats({
-              streak: data.streak || 0,
-              totalCompleted: totalCompleted,
-              categoryLevels: data.category_levels || {},
-              currentLevel: currentLevel
-            });
+          setStats({
+            streak: data.streak || 0,
+            totalCompleted: totalCompleted,
+            categoryLevels: data.category_levels || {},
+            currentLevel: currentLevel
+          });
 
-            // Load journal entries
-            if (data.journal_entries) {
-              setJournalEntries(data.journal_entries);
-            }
+          // Load journal entries
+          if (data.journal_entries) {
+            setJournalEntries(data.journal_entries);
           }
         }
       } catch (error) {
