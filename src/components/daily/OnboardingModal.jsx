@@ -8,53 +8,53 @@ const ONBOARDING_QUESTIONS = [
     category: 'health',
     emoji: '💪',
     title: 'Здоровье и спорт',
-    question: 'Расскажите о вашей физической форме. Занимаетесь ли спортом? Какие цели по здоровью?',
-    placeholder: 'Например: хожу в зал 2 раза в неделю, хочу похудеть на 5кг...'
+    question: 'Какие ежедневные активности помогут вам быть здоровее?',
+    placeholder: 'Например: хожу в зал, бегаю по утрам, делаю зарядку...'
   },
   {
     category: 'mind',
     emoji: '🧠',
     title: 'Разум и обучение',
-    question: 'Чем вы интересуетесь? Есть ли практика медитации или обучения?',
-    placeholder: 'Например: учу английский, читаю книги по психологии...'
+    question: 'Что вы делаете каждый день для саморазвития?',
+    placeholder: 'Например: читаю книги, учу языки, медитирую...'
   },
   {
     category: 'work',
     emoji: '💼',
     title: 'Работа и карьера',
-    question: 'Кем вы работаете? Какие профессиональные цели?',
-    placeholder: 'Например: разработчик, хочу получить повышение...'
+    question: 'Кем работаете? Какие задачи выполняете ежедневно?',
+    placeholder: 'Например: разработчик, пишу код, провожу встречи...'
   },
   {
     category: 'money',
     emoji: '💰',
     title: 'Финансы',
-    question: 'Какие у вас финансовые цели? Инвестируете ли?',
-    placeholder: 'Например: копить на квартиру, начать инвестировать...'
+    question: 'Какие финансовые привычки хотите развить?',
+    placeholder: 'Например: откладываю 10%, веду учет расходов...'
   },
   {
     category: 'love',
     emoji: '❤️',
     title: 'Любовь и отношения',
-    question: 'Как ваша личная жизнь? Что хотите улучшить?',
-    placeholder: 'Например: в отношениях, хочу больше времени вместе...'
+    question: 'Есть ли партнер? Что делаете для укрепления отношений?',
+    placeholder: 'Например: в отношениях, хочу больше времени с любимой...'
   },
   {
     category: 'friends',
     emoji: '👥',
     title: 'Друзья и социум',
-    question: 'Как часто общаетесь с друзьями? Хватает ли социализации?',
-    placeholder: 'Например: мало общаюсь, хочу найти новых друзей...'
+    question: 'Как часто общаетесь с друзьями? Хватает ли общения?',
+    placeholder: 'Например: встречаюсь с друзьями раз в неделю...'
   }
 ];
 
 export default function OnboardingModal({ onComplete, theme = 'dark' }) {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(-1); // -1 = welcome screen
   const [answers, setAnswers] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const currentQuestion = ONBOARDING_QUESTIONS[currentStep];
-  const progress = ((currentStep + 1) / ONBOARDING_QUESTIONS.length) * 100;
+  const currentQuestion = currentStep >= 0 ? ONBOARDING_QUESTIONS[currentStep] : null;
+  const progress = currentStep >= 0 ? ((currentStep + 1) / ONBOARDING_QUESTIONS.length) * 100 : 0;
 
   const handleAnswer = (answer) => {
     setAnswers(prev => ({
@@ -76,7 +76,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     await onComplete(answers);
   };
 
-  const canProceed = answers[currentQuestion?.category]?.trim().length > 0;
+  const canProceed = currentStep === -1 || answers[currentQuestion?.category]?.trim().length > 0;
 
   if (isGenerating) {
     return (
@@ -99,6 +99,57 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
             <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
             <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Welcome Screen
+  if (currentStep === -1) {
+    return (
+      <div className={`fixed inset-0 z-50 flex flex-col ${
+        theme === 'light' 
+          ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50'
+          : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
+      }`}>
+        <div className="flex-1 flex items-center justify-center px-5">
+          <div className="max-w-md text-center">
+            {/* Icon */}
+            <div className="mb-6">
+              <div className={`inline-flex p-6 rounded-3xl ${
+                theme === 'light'
+                  ? 'bg-gradient-to-br from-purple-100 to-cyan-100'
+                  : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20'
+              }`}>
+                <Sparkles className={`w-16 h-16 ${
+                  theme === 'light' ? 'text-purple-600' : 'text-purple-400'
+                }`} />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h1 className={`text-4xl font-bold mb-4 ${
+              theme === 'light' ? 'text-gray-900' : 'text-white'
+            }`}>
+              Welcome to<br />Daily Quests
+            </h1>
+
+            {/* Description */}
+            <p className={`text-lg mb-8 ${
+              theme === 'light' ? 'text-gray-600' : 'text-gray-400'
+            }`}>
+              Мы создадим персональные задания, которые помогут тебе прокачивать все аспекты жизни каждый день
+            </p>
+
+            {/* CTA */}
+            <Button
+              onClick={() => setCurrentStep(0)}
+              className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            >
+              Start Leveling Up Today
+              <ChevronRight className="w-6 h-6 ml-2" />
+            </Button>
           </div>
         </div>
       </div>
