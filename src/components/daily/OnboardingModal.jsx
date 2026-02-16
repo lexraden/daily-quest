@@ -318,68 +318,59 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   // Welcome Screen
   if (currentStep === -1) {
     return (
-      <div className={`fixed inset-0 z-50 flex flex-col ${
+      <div className={`fixed inset-0 z-50 flex flex-col overflow-y-auto ${
         theme === 'light' 
           ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50'
           : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
       }`}>
-        <div className="flex-1 flex items-center justify-center px-5 py-8">
-          <div className="max-w-md w-full">
-            {/* Hero Icon with Animation */}
-            <div className="mb-8 text-center relative">
-              <div className="inline-block relative">
-                <div className={`absolute inset-0 blur-3xl opacity-50 rounded-full ${
-                  theme === 'light'
-                    ? 'bg-gradient-to-r from-purple-300 to-cyan-300'
-                    : 'bg-gradient-to-r from-purple-500 to-cyan-500'
+        <div className="flex-1 flex items-center justify-center px-5 py-8 min-h-full">
+          <div className="max-w-md w-full my-auto">
+            {/* Hero Icon */}
+            <div className="mb-6 text-center">
+              <div className={`inline-flex p-5 rounded-3xl ${
+                theme === 'light'
+                  ? 'bg-gradient-to-br from-purple-100 to-cyan-100'
+                  : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20'
+              }`}>
+                <Sparkles className={`w-12 h-12 ${
+                  theme === 'light' ? 'text-purple-600' : 'text-purple-400'
                 }`} />
-                <div className={`relative inline-flex p-8 rounded-3xl border-2 ${
-                  theme === 'light'
-                    ? 'bg-gradient-to-br from-white to-purple-50 border-purple-200'
-                    : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border-purple-500/30'
-                }`}>
-                  <Sparkles className={`w-20 h-20 ${
-                    theme === 'light' ? 'text-purple-600' : 'text-purple-400'
-                  } animate-pulse`} />
-                </div>
               </div>
             </div>
 
             {/* Title */}
-            <h1 className={`text-5xl font-black mb-4 text-center leading-tight ${
-              theme === 'light' 
-                ? 'bg-gradient-to-r from-gray-900 via-purple-900 to-cyan-900 bg-clip-text text-transparent' 
-                : 'bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent'
+            <h1 className={`text-3xl font-bold mb-3 text-center ${
+              theme === 'light' ? 'text-gray-900' : 'text-white'
             }`}>
               {t.welcome.title}
               <br />
-              <span className="text-4xl">{t.welcome.subtitle}</span>
+              <span className="text-2xl">{t.welcome.subtitle}</span>
             </h1>
 
             {/* Description */}
-            <p className={`text-lg mb-8 text-center ${
-              theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+            <p className={`text-base mb-6 text-center ${
+              theme === 'light' ? 'text-gray-600' : 'text-gray-400'
             }`}>
               {t.welcome.description}
             </p>
 
-            {/* Features */}
-            <div className="space-y-3 mb-8">
+            {/* Features - compact */}
+            <div className="grid grid-cols-3 gap-2 mb-6">
               {t.welcome.features.map((feature, idx) => (
                 <div 
                   key={idx}
-                  className={`flex items-center gap-3 p-4 rounded-2xl transition-all hover:scale-105 ${
+                  className={`text-center p-3 rounded-xl ${
                     theme === 'light'
-                      ? 'bg-white border border-gray-200 hover:border-purple-300 shadow-sm'
-                      : 'bg-white/5 border border-white/10 hover:border-purple-500/50'
+                      ? 'bg-white border border-gray-200'
+                      : 'bg-white/5 border border-white/10'
                   }`}
                 >
-                  <span className="text-2xl">{feature.split(' ')[0]}</span>
-                  <span className={`text-base font-medium ${
-                    theme === 'light' ? 'text-gray-800' : 'text-gray-200'
+                  <div className="text-2xl mb-1">{feature.split(' ')[0]}</div>
+                  <div className={`text-xs font-medium ${
+                    theme === 'light' ? 'text-gray-700' : 'text-gray-300'
                   }`}>
                     {feature.substring(feature.indexOf(' ') + 1)}
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -387,15 +378,14 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             {/* CTA */}
             <Button
               onClick={() => setCurrentStep(0)}
-              className="w-full h-16 text-xl font-bold bg-gradient-to-r from-purple-600 via-purple-500 to-cyan-600 hover:from-purple-700 hover:via-purple-600 hover:to-cyan-700 shadow-xl hover:shadow-2xl transition-all hover:scale-105 relative overflow-hidden group"
+              className="w-full h-14 text-lg font-bold bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 shadow-lg"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               {t.welcome.button}
-              <ChevronRight className="w-7 h-7 ml-2 group-hover:translate-x-1 transition-transform" />
+              <ChevronRight className="w-6 h-6 ml-2" />
             </Button>
 
             {/* Time indicator */}
-            <p className={`text-center mt-4 text-sm ${
+            <p className={`text-center mt-3 text-xs ${
               theme === 'light' ? 'text-gray-500' : 'text-gray-500'
             }`}>
               ⏱️ {t.welcome.time}
