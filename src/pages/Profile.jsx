@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Flame, Trophy, TrendingUp, Calendar, Award, LogOut } from 'lucide-react';
+import { X, User, Flame, Trophy, TrendingUp, Calendar, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
@@ -577,31 +577,15 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <Link to={createPageUrl('DailyTracker')} className="w-full">
-            <Button
-              className="w-full h-11 text-sm bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
-            >
-              Вернуться к квестам
-            </Button>
-          </Link>
+        {/* Back Button */}
+        <Link to={createPageUrl('DailyTracker')}>
           <Button
-            onClick={() => {
-              base44.auth.logout();
-            }}
-            variant="outline"
-            className={`h-11 text-sm ${
-              theme === 'light' 
-                ? 'border-gray-300 hover:bg-gray-50 text-gray-700'
-                : 'border-white/10 hover:bg-white/5 text-gray-300'
-            }`}
+            className="w-full h-11 text-sm bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            Выйти
+            Вернуться к квестам
           </Button>
-        </div>
-        </div>
-        </div>
-        );
-        }
+        </Link>
+      </div>
+    </div>
+  );
+}
