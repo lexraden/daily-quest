@@ -23,6 +23,12 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const payload = await req.json();
 
+    // If called with specific user and custom message (for onboarding)
+    if (payload.telegram_chat_id && payload.message) {
+      await sendTelegramMessage(payload.telegram_chat_id, payload.message);
+      return Response.json({ success: true });
+    }
+
     // Batch send to all users
     const users = await base44.asServiceRole.entities.User.list();
     let sent = 0;
