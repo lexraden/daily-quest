@@ -50,14 +50,6 @@ const CATEGORIES = {
     borderColor: "border-purple-500/30",
     textColor: "text-purple-400"
   },
-  work: { 
-    name: "Work", 
-    icon: Briefcase, 
-    color: "#fdcb6e",
-    bgColor: "bg-yellow-500/10",
-    borderColor: "border-yellow-500/30",
-    textColor: "text-yellow-400"
-  },
   money: { 
     name: "Money", 
     icon: DollarSign, 
@@ -65,6 +57,14 @@ const CATEGORIES = {
     bgColor: "bg-cyan-500/10",
     borderColor: "border-cyan-500/30",
     textColor: "text-cyan-400"
+  },
+  work: { 
+    name: "Work", 
+    icon: Briefcase, 
+    color: "#fdcb6e",
+    bgColor: "bg-yellow-500/10",
+    borderColor: "border-yellow-500/30",
+    textColor: "text-yellow-400"
   },
   love: { 
     name: "Love", 
@@ -96,15 +96,15 @@ const DEFAULT_QUEST_DATA = {
     { level: 2, name: "Чтение 20 мин", emoji: "📖" },
     { level: 3, name: "Изучение нового 1 час", emoji: "🎓" }
   ],
-  work: [
-    { level: 1, name: "План на день", emoji: "📝" },
-    { level: 2, name: "Фокус-сессия 1 час", emoji: "⏰" },
-    { level: 3, name: "Завершить проект", emoji: "🎯" }
-  ],
   money: [
     { level: 1, name: "Проверить расходы", emoji: "💳" },
     { level: 2, name: "Отложить 10%", emoji: "💰" },
     { level: 3, name: "Инвестировать", emoji: "📈" }
+  ],
+  work: [
+    { level: 1, name: "План на день", emoji: "📝" },
+    { level: 2, name: "Фокус-сессия 1 час", emoji: "⏰" },
+    { level: 3, name: "Завершить проект", emoji: "🎯" }
   ],
   love: [
     { level: 1, name: "Позвонить близким", emoji: "☎️" },
@@ -488,7 +488,12 @@ export default function DailyTracker() {
       
       // Конфетти
       fireConfetti();
-      
+
+      // Звук
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS57OihUBELTKXh8bllHAU2jdXvzn0pBSl+zPLaizsIHGm98OmmUhELSqPf8blnHwU0i9Tv0IAqBSh6zPLcizsIHGa68OelUhEKSKLe8bhnHwU0i9Tvz38rBSh5zPLcizwIHGa68OelUhEKR6He8blnHwU0i9Tvz3wrBSh5y/PcizwIHGe78OalUhEKSKLe8bhnHwU0jNXvz38qBSh4y/PcizwIHGe78OalUhEKR6Hd8blnHwU1jdXvz38qBSh5zPLaizwIHGa68OelUhEKSKLe8bhoHwU0i9Tvz4AqBSh5zPLbizwIHGa68OelUhEKSKLe8bhoHwU0i9Tv0H8rBSh5y/LbizwIHGe78OalUhEKR6Hd8blnHwU1jdXvz38qBSh6zPLbizsIHGa58OelUhEKSKLe8bhnHwU0i9Tv0H8rBSh5y/LbizwIHGe78OalUhEKR6He8bln');
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
+
       // Вибрация
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
