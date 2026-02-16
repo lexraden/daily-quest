@@ -252,29 +252,36 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     await onComplete(answers);
   };
 
-  const startRecording = () => {
-    if (!isSupported) {
+  const permissionAskedRef = useRef(false);
+
+  const requestMicrophonePermission = async () => {
+    try {
+      const cachedPermission = localStorage.getItem('voicePermissionGranted');
+      if (cachedPermission === 'true') {
+        return true;
+      }
+
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStorage.setItem('voicePermissionGranted', 'true');
+      permissionAskedRef.current = true;
+      return true;
+    } catch (error) {
+      console.log('Microphone permission denied:', error);
+      toast.error('Доступ к микрофону запрещен. Проверьте настройки браузера.');
+      return false;
+    }
+  };
+
+  const startRecording = async () => {
+    if (!recognition) {
       toast.error('Голосовой ввод не поддерживается');
       return;
     }
 
-    if (!recognition) {
-      toast.error('Микрофон не инициализирован');
-      return;
-    }
-
-    // Request permission if not cached
-    try {
-      const cachedPermission = localStorage.getItem('speechRecognitionPermission');
-      if (cachedPermission !== 'granted') {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(() => {
-          localStorage.setItem('speechRecognitionPermission', 'granted');
-        }).catch(() => {
-          toast.error('Доступ к микрофону запрещен');
-        });
-      }
-    } catch (error) {
-      console.log('Permission check error:', error);
+    // Запрашиваем разрешение один раз
+    if (!permissionAskedRef.current) {
+      const granted = await requestMicrophonePermission();
+      if (!granted) return;
     }
 
     isStoppingRef.current = false;

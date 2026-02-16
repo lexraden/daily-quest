@@ -9,31 +9,39 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const { recognition, isSupported, permissionGranted } = useSpeechRecognition();
+  const { recognition } = useSpeechRecognition();
   const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
+  const permissionAskedRef = useRef(false);
+
+  const requestMicrophonePermission = async () => {
+    try {
+      const cachedPermission = localStorage.getItem('voicePermissionGranted');
+      if (cachedPermission === 'true') {
+        return true;
+      }
+
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStorage.setItem('voicePermissionGranted', 'true');
+      permissionAskedRef.current = true;
+      return true;
+    } catch (error) {
+      console.log('Microphone permission denied:', error);
+      toast.error('Доступ к микрофону запрещен. Проверьте настройки браузера.');
+      return false;
+    }
+  };
 
   const startRecording = async () => {
-    if (!isSupported) {
+    if (!recognition) {
       toast.error('Голосовой ввод не поддерживается');
       return;
     }
 
-    if (!recognition) {
-      toast.error('Микрофон не инициализирован');
-      return;
-    }
-
-    // Request permission if not cached
-    try {
-      const cachedPermission = localStorage.getItem('speechRecognitionPermission');
-      if (cachedPermission !== 'granted') {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        localStorage.setItem('speechRecognitionPermission', 'granted');
-      }
-    } catch (error) {
-      toast.error('Доступ к микрофону запрещен');
-      return;
+    // Запрашиваем разрешение один раз
+    if (!permissionAskedRef.current) {
+      const granted = await requestMicrophonePermission();
+      if (!granted) return;
     }
 
     isStoppingRef.current = false;
@@ -180,7 +188,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
             <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
           <span className={`text-sm font-medium ${theme === 'light' ? 'text-purple-700' : 'text-purple-300'}`}>
-            AI думает...
+            Обрабатываю...
           </span>
         </div>
       </div>
@@ -200,12 +208,12 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
         {isRecording ? (
           <>
             <Square className="w-5 h-5 mr-2" />
-            Остановить запись
+            Отпустить для отправки
           </>
         ) : (
           <>
             <Mic className="w-5 h-5 mr-2" />
-            Добавить квест голосом
+            Голосовой ввод
           </>
         )}
       </Button>
