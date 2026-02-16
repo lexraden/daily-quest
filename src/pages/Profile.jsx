@@ -21,14 +21,6 @@ const CATEGORIES = {
     borderColor: "border-purple-500/30",
     textColor: "text-purple-400"
   },
-  work: { 
-    name: "Work", 
-    icon: () => <span className="text-lg">💼</span>,
-    color: "#fdcb6e",
-    bgColor: "bg-yellow-500/10",
-    borderColor: "border-yellow-500/30",
-    textColor: "text-yellow-400"
-  },
   money: { 
     name: "Money", 
     icon: () => <span className="text-lg">💰</span>,
@@ -36,6 +28,14 @@ const CATEGORIES = {
     bgColor: "bg-cyan-500/10",
     borderColor: "border-cyan-500/30",
     textColor: "text-cyan-400"
+  },
+  work: { 
+    name: "Work", 
+    icon: () => <span className="text-lg">💼</span>,
+    color: "#fdcb6e",
+    bgColor: "bg-yellow-500/10",
+    borderColor: "border-yellow-500/30",
+    textColor: "text-yellow-400"
   },
   love: { 
     name: "Love", 
