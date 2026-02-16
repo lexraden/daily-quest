@@ -253,8 +253,13 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   };
 
   const startRecording = () => {
-    if (!recognitionRef.current) {
+    if (!isSupported) {
       toast.error('Голосовой ввод не поддерживается');
+      return;
+    }
+
+    if (!recognition) {
+      toast.error('Микрофон не инициализирован');
       return;
     }
 
@@ -262,16 +267,16 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     accumulatedTextRef.current = '';
 
     try {
-      recognitionRef.current.start();
+      recognition.start();
     } catch (e) {
       console.error('Failed to start recording:', e);
     }
   };
 
   const stopRecording = () => {
-    if (recognitionRef.current && isRecording) {
+    if (recognition && isRecording) {
       isStoppingRef.current = true;
-      recognitionRef.current.stop();
+      recognition.stop();
     }
   };
 
