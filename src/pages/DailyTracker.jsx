@@ -171,10 +171,18 @@ export default function DailyTracker() {
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
     setTheme(savedTheme);
 
-    // Load authenticated user
+    // Load authenticated user and save name on first login
     base44.auth.me().then(authUser => {
       if (authUser) {
         setUser(authUser);
+        
+        // Auto-save user name on first login if not set
+        if (!authUser.full_name) {
+          const name = tgUser?.first_name || authUser.email?.split('@')[0] || 'Пользователь';
+          base44.auth.updateMe({ full_name: name }).catch(err => {
+            console.log('Failed to save user name:', err);
+          });
+        }
       }
     }).catch(() => {});
 
