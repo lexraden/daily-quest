@@ -163,6 +163,73 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const t = TRANSLATIONS[userLang];
   const ONBOARDING_QUESTIONS = t.questions;
 
+  // Initialize speech recognition once on mount
+  React.useEffect(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+
+    recognition.lang = userLang === 'ru' ? 'ru-RU' : 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+      accumulatedTextRef.current = '';
+      
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      }
+    };
+
+    recognition.onresult = (event) => {
+      const result = event.results[0][0].transcript;
+      accumulatedTextRef.current = result;
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error !== 'aborted') {
+        console.error('Speech error:', event.error);
+        setIsRecording(false);
+        toast.error('Ошибка распознавания');
+      }
+    };
+
+    recognition.onend = () => {
+      if (!isStoppingRef.current && isRecording) {
+        try {
+          recognitionRef.current.start();
+        } catch (e) {
+          console.log('Restart failed');
+        }
+      } else {
+        setIsRecording(false);
+        const finalText = accumulatedTextRef.current.trim();
+        if (finalText && currentStep >= 0) {
+          const question = ONBOARDING_QUESTIONS[currentStep];
+          setAnswers(prev => ({
+            ...prev,
+            [question.category]: finalText
+          }));
+          toast.success(t.voice.success);
+        }
+      }
+    };
+
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+    };
+  }, [userLang]);
+
   const currentQuestion = currentStep >= 0 ? ONBOARDING_QUESTIONS[currentStep] : null;
   const progress = currentStep >= 0 ? ((currentStep + 1) / ONBOARDING_QUESTIONS.length) * 100 : 0;
 
@@ -187,60 +254,9 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   };
 
   const startRecording = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (!recognitionRef.current) {
       toast.error('Голосовой ввод не поддерживается');
       return;
-    }
-
-    // Reuse existing recognition instance if available
-    if (!recognitionRef.current) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognitionRef.current = recognition;
-
-      recognition.lang = userLang === 'ru' ? 'ru-RU' : 'en-US';
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
-        setIsRecording(true);
-        accumulatedTextRef.current = '';
-        
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-          window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-        }
-      };
-
-      recognition.onresult = (event) => {
-        const result = event.results[0][0].transcript;
-        accumulatedTextRef.current = result;
-      };
-
-      recognition.onerror = (event) => {
-        if (event.error !== 'aborted') {
-          console.error('Speech error:', event.error);
-          setIsRecording(false);
-          toast.error('Ошибка распознавания');
-        }
-      };
-
-      recognition.onend = () => {
-        if (!isStoppingRef.current && isRecording) {
-          try {
-            recognitionRef.current.start();
-          } catch (e) {
-            console.log('Restart failed');
-          }
-        } else {
-          setIsRecording(false);
-          const finalText = accumulatedTextRef.current.trim();
-          if (finalText) {
-            handleAnswer(finalText);
-            toast.success(t.voice.success);
-          }
-        }
-      };
     }
 
     isStoppingRef.current = false;
