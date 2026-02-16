@@ -585,7 +585,20 @@ export default function Profile() {
             Вернуться к квестам
           </Button>
         </Link>
-      </div>
-    </div>
-  );
-}
+
+        {/* Logout Button */}
+        <Button
+          onClick={() => base44.auth.logout()}
+          variant="outline"
+          className={`w-full h-11 text-sm ${
+            theme === 'light'
+              ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              : 'border-white/10 text-gray-300 hover:bg-white/5'
+          }`}
+        >
+          Выйти из аккаунта
+        </Button>
+        </div>
+        </div>
+        );
+        }
