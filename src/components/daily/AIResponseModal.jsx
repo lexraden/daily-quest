@@ -115,10 +115,10 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
               </div>
 
               {/* Quest/Note Details */}
-              <div className="space-y-2 mb-3">
+              <div className="space-y-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{aiResponse.emoji}</span>
-                  <span className={`font-medium ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                  <span className="text-3xl">{aiResponse.emoji}</span>
+                  <span className={`font-bold text-lg ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
                     {aiResponse.name}
                   </span>
                 </div>
@@ -127,6 +127,34 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
                     {aiResponse.description}
                   </p>
                 )}
+                
+                {/* Category and XP Info */}
+                <div className="flex items-center gap-3 pt-2">
+                  <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                    aiResponse.category === 'health' ? 'bg-green-500/20 text-green-400' :
+                    aiResponse.category === 'mind' ? 'bg-purple-500/20 text-purple-400' :
+                    aiResponse.category === 'work' ? 'bg-yellow-500/20 text-yellow-400' :
+                    aiResponse.category === 'money' ? 'bg-cyan-500/20 text-cyan-400' :
+                    aiResponse.category === 'love' ? 'bg-red-500/20 text-red-400' :
+                    'bg-pink-500/20 text-pink-400'
+                  }`}>
+                    {aiResponse.category === 'health' ? '💪 Health' :
+                     aiResponse.category === 'mind' ? '🧠 Mind' :
+                     aiResponse.category === 'work' ? '💼 Work' :
+                     aiResponse.category === 'money' ? '💰 Money' :
+                     aiResponse.category === 'love' ? '❤️ Love' :
+                     '👥 Friends'}
+                  </div>
+                  {aiResponse.intent === 'COMPLETED_QUEST' && (
+                    <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                      theme === 'light' 
+                        ? 'bg-gradient-to-r from-purple-100 to-cyan-100 text-purple-700' 
+                        : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 text-purple-300'
+                    }`}>
+                      +1 XP
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* AI Message */}

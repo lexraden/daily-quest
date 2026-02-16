@@ -64,36 +64,37 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
         }
       } else {
         setIsRecording(false);
-        if (accumulatedText.trim()) {
-          setShowConfirm(true);
-        } else {
-          toast.error('Ничего не записано');
-        }
       }
     };
 
     recognition.start();
   };
 
-  const stopRecording = () => {
+  const stopRecording = async () => {
     if (recognitionRef.current && isRecording) {
       isStoppingRef.current = true;
       recognitionRef.current.stop();
+      
+      // Небольшая задержка чтобы получить финальный текст
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const finalText = transcript.trim();
+      if (!finalText) {
+        toast.error('Ничего не записано');
+        return;
+      }
+
+      // Сразу отправляем в AI
+      await processVoiceInput(finalText);
     }
   };
 
-  const handleCancel = () => {
-    setShowConfirm(false);
-    setTranscript('');
-  };
-
-  const handleSend = async () => {
-    setShowConfirm(false);
+  const processVoiceInput = async (text) => {
     toast.info('AI анализирует...', { duration: 2000 });
 
     try {
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Ты - ассистент для трекера задач и достижений. Пользователь сказал: "${transcript.trim()}"
+        prompt: `Ты - ассистент для трекера задач и достижений. Пользователь сказал: "${text}"
 
 Определи, что именно хочет пользователь:
 1. COMPLETED_QUEST - сообщает о выполнении какого-то квеста/задачи (например: "я сегодня пробежал 5 км", "закончил проект", "помедитировал")
@@ -135,10 +136,10 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       console.log('AI Response:', result);
       onQuestSuggestion({
         ...result,
-        userInput: transcript.trim()
+        userInput: text
       });
       setTranscript('');
-      toast.success('AI обработал сообщение! 🎯');
+      toast.dismiss();
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
@@ -148,43 +149,6 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       toast.error(`Ошибка: ${error.message || 'Не удалось обработать'}`);
     }
   };
-
-  if (showConfirm) {
-    return (
-      <div className="px-5 mb-4 space-y-3">
-        <div className={`p-4 rounded-xl border ${
-          theme === 'light'
-            ? 'bg-white border-gray-200'
-            : 'bg-[#1e2836] border-white/10'
-        }`}>
-          <p className={`text-sm ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
-            {transcript.trim()}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={handleCancel}
-            variant="outline"
-            className={`rounded-xl ${
-              theme === 'light'
-                ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                : 'border-white/10 text-gray-300 hover:bg-white/5'
-            }`}
-          >
-            <X className="w-4 h-4 mr-2" />
-            Отмена
-          </Button>
-          <Button
-            onClick={handleSend}
-            className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 rounded-xl"
-          >
-            <Send className="w-4 h-4 mr-2" />
-            Отправить
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="px-5 mb-4">
