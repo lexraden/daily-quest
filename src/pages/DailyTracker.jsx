@@ -172,19 +172,28 @@ export default function DailyTracker() {
     setTheme(savedTheme);
 
     // Load authenticated user and save name on first login
-    base44.auth.me().then(authUser => {
-      if (authUser) {
-        setUser(authUser);
-        
-        // Auto-save user name on first login if not set
-        if (!authUser.full_name) {
-          const name = tgUser?.first_name || authUser.email?.split('@')[0] || 'Пользователь';
-          base44.auth.updateMe({ full_name: name }).catch(err => {
-            console.log('Failed to save user name:', err);
-          });
+    const loadUser = () => {
+      base44.auth.me().then(authUser => {
+        if (authUser) {
+          setUser(authUser);
+          
+          // Auto-save user name on first login if not set
+          if (!authUser.full_name) {
+            const name = tgUser?.first_name || authUser.email?.split('@')[0] || 'Пользователь';
+            base44.auth.updateMe({ full_name: name }).catch(err => {
+              console.log('Failed to save user name:', err);
+            });
+          }
         }
-      }
-    }).catch(() => {});
+      }).catch(() => {});
+    };
+
+    loadUser();
+
+    // Reload user on focus to get updated name
+    const handleFocus = () => loadUser();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
 
     // Check if onboarding completed
     const onboardingCompleted = localStorage.getItem('dailyQuestsOnboardingCompleted');

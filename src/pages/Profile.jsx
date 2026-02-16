@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 
 const CATEGORIES = {
   health: { 
@@ -164,8 +165,10 @@ export default function Profile() {
       await base44.auth.updateMe({ full_name: editedName.trim() });
       setUser(prev => ({ ...prev, full_name: editedName.trim() }));
       setIsEditingName(false);
+      toast.success('Имя успешно сохранено! ✓');
     } catch (error) {
       console.error('Failed to update name:', error);
+      toast.error('Не удалось сохранить имя');
     }
   };
 
