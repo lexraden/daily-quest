@@ -154,6 +154,7 @@ export default function DailyTracker() {
   const [theme, setTheme] = useState('light');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [questSuggestion, setQuestSuggestion] = useState(null);
+  const [journalEntries, setJournalEntries] = useState([]);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -193,7 +194,49 @@ export default function DailyTracker() {
   };
 
   const handleQuestSuggestion = (suggestion) => {
-    setQuestSuggestion(suggestion);
+    const { intent, category, emoji, name, description, action } = suggestion;
+
+    if (intent === 'COMPLETED_QUEST') {
+      // Отметить квест как выполненный
+      const currentQuest = getCurrentQuest(category);
+      toggleQuest(category, currentQuest.level);
+      
+      // Добавить в журнал
+      const today = getTodayKey();
+      const newEntry = {
+        id: Date.now(),
+        date: today,
+        category,
+        emoji,
+        text: description || name,
+        type: 'quest_completed',
+        timestamp: new Date().toISOString()
+      };
+      setJournalEntries(prev => [newEntry, ...prev]);
+      
+      toast.success(suggestion.message || 'Квест выполнен! 🎉');
+    } else if (intent === 'ADD_QUEST') {
+      // Добавить новый квест
+      setQuestSuggestion(suggestion);
+    } else if (intent === 'JOURNAL') {
+      // Добавить заметку в журнал
+      const today = getTodayKey();
+      const newEntry = {
+        id: Date.now(),
+        date: today,
+        category,
+        emoji,
+        text: description || name,
+        type: 'journal',
+        timestamp: new Date().toISOString()
+      };
+      setJournalEntries(prev => [newEntry, ...prev]);
+      
+      // Начислить небольшой XP за журналинг
+      setTotalCompleted(prev => prev + 1);
+      
+      toast.success(suggestion.message || 'Заметка добавлена! 📝');
+    }
   };
 
   const handleAcceptSuggestion = (suggestion) => {
@@ -232,6 +275,11 @@ export default function DailyTracker() {
       // Загрузка кастомных квестов
       if (data.questData) {
         setQuestData(data.questData);
+      }
+
+      // Загрузка заметок
+      if (data.journalEntries) {
+        setJournalEntries(data.journalEntries);
       }
       
       // Инициализация уровней категорий
@@ -314,6 +362,7 @@ export default function DailyTracker() {
       completedToday,
       completionHistory,
       streakFreezes,
+      journalEntries,
       lastVisitDate: getTodayKey()
     };
     localStorage.setItem('dailyQuestsData', JSON.stringify(data));

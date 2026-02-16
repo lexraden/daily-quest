@@ -77,6 +77,7 @@ export default function Profile() {
     categoryLevels: {},
     currentLevel: LEVELS[0]
   });
+  const [journalEntries, setJournalEntries] = useState([]);
 
   useEffect(() => {
     // Load theme
@@ -108,6 +109,11 @@ export default function Profile() {
         categoryLevels: data.categoryLevels || {},
         currentLevel: currentLevel
       });
+
+      // Load journal entries
+      if (data.journalEntries) {
+        setJournalEntries(data.journalEntries);
+      }
     }
   }, []);
 
@@ -312,6 +318,52 @@ export default function Profile() {
             </div>
           </div>
         </div>
+
+        {/* Journal Entries */}
+        {journalEntries.length > 0 && (
+          <div className={`rounded-2xl p-5 border ${
+            theme === 'light' 
+              ? 'bg-white border-gray-200' 
+              : 'bg-[#1e2836] border-white/10'
+          }`}>
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className={`w-5 h-5 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
+              <h3 className={`text-base font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                Журнал
+              </h3>
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {journalEntries.slice(0, 10).map((entry) => {
+                const categoryInfo = CATEGORIES[entry.category];
+                return (
+                  <div 
+                    key={entry.id}
+                    className={`p-3 rounded-xl transition-all ${
+                      theme === 'light' ? 'bg-gray-50' : 'bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg">{entry.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
+                          {entry.text}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs ${categoryInfo?.textColor || 'text-gray-500'}`}>
+                            {categoryInfo?.name || entry.category}
+                          </span>
+                          <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            • {new Date(entry.timestamp).toLocaleDateString('ru-RU')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Category Levels */}
         <div className={`rounded-2xl p-5 border ${

@@ -58,36 +58,45 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 
       toast.info('Анализирую задачу...', { duration: 3000 });
 
-      // Use LLM to transcribe and generate quest
+      // Use LLM to transcribe and analyze intent
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Пользователь записал голосовое сообщение о новом квесте или задаче, которую он хочет добавить в свой ежедневный трекер.
-        
-Проанализируй аудио и определи:
-1. Что именно пользователь хочет сделать (добавить новый квест, изменить существующий, заменить)
-2. О какой сфере жизни идет речь: здоровье (health), разум/обучение (mind), работа (work), финансы (money), любовь/семья (love), друзья (friends)
-3. Придумай краткое название квеста (максимум 25 символов)
-4. Подбери подходящий эмодзи
-5. Напиши дружелюбное сообщение пользователю о том, что ты понял
+        prompt: `Ты - ассистент для трекера задач и достижений. Пользователь записал голосовое сообщение.
+
+Определи, что именно хочет пользователь:
+1. COMPLETED_QUEST - сообщает о выполнении какого-то квеста/задачи (например: "я сегодня пробежал 5 км", "закончил проект", "помедитировал")
+2. ADD_QUEST - хочет добавить новый квест в трекер (например: "добавь квест пробежать 5 км", "хочу добавить медитацию")
+3. JOURNAL - просто делится заметкой/мыслями о дне (например: "сегодня был хороший день", "устал на работе")
+
+Для каждого типа действия определи:
+- Категория: health (здоровье/спорт), mind (обучение/медитация), work (работа/проекты), money (финансы/инвестиции), love (семья/отношения), friends (друзья/общение)
+- Краткое описание (до 30 символов для квеста)
+- Подходящий эмодзи
+- Дружелюбное сообщение для пользователя
 
 Верни результат в JSON формате.`,
         file_urls: [uploadResult.file_url],
         response_json_schema: {
           type: "object",
           properties: {
+            intent: {
+              type: "string",
+              enum: ["COMPLETED_QUEST", "ADD_QUEST", "JOURNAL"]
+            },
             category: {
               type: "string",
               enum: ["health", "mind", "work", "money", "love", "friends"]
             },
             emoji: { type: "string" },
             name: { type: "string" },
+            description: { type: "string" },
             level: { type: "number" },
             action: { 
               type: "string",
-              enum: ["add", "replace", "edit"]
+              enum: ["add", "replace", "edit", "complete", "journal"]
             },
             message: { type: "string" }
           },
-          required: ["category", "emoji", "name", "action", "message"]
+          required: ["intent", "category", "emoji", "name", "action", "message"]
         }
       });
 
