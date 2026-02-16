@@ -50,16 +50,16 @@
 import DailyTracker from './pages/DailyTracker';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
-import TelegramCode from './pages/TelegramCode';
 import Statistics from './pages/Statistics';
+import TelegramCode from './pages/TelegramCode';
 
 
 export const PAGES = {
     "DailyTracker": DailyTracker,
     "Home": Home,
     "Profile": Profile,
-    "TelegramCode": TelegramCode,
     "Statistics": Statistics,
+    "TelegramCode": TelegramCode,
 }
 
 export const pagesConfig = {

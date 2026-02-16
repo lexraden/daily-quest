@@ -191,18 +191,12 @@ export default function DailyTracker() {
 
     loadUser();
 
-    // Reload user on focus to get updated name
-    const handleFocus = () => loadUser();
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+      // Reload user on focus to get updated name
+      const handleFocus = () => loadUser();
+      window.addEventListener('focus', handleFocus);
+      return () => window.removeEventListener('focus', handleFocus);
 
-    // Check if onboarding completed
-    const onboardingCompleted = localStorage.getItem('dailyQuestsOnboardingCompleted');
-    if (!onboardingCompleted) {
-      setShowOnboarding(true);
-    }
-    
-    if (window.Telegram?.WebApp) {
+      if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
       tg.expand();
@@ -592,6 +586,14 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             setCompletedToday(todayCompleted);
           }
         } else {
+          // Новый пользователь - показать онбординг
+          const onboardingCompleted = localStorage.getItem('dailyQuestsOnboardingCompleted');
+          if (!onboardingCompleted) {
+            setShowOnboarding(true);
+            setIsLoaded(true);
+            return; // Не создаем запись до завершения онбординга
+          }
+
           // Инициализация для новых пользователей
           const levels = {};
           const totals = {};
@@ -601,7 +603,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           });
           setCategoryLevels(levels);
           setCategoryTotalCompleted(totals);
-          
+
           // Создать новую запись в БД
           const newUserData = await base44.entities.UserQuestData.create({
             quest_data: DEFAULT_QUEST_DATA,
@@ -615,12 +617,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             last_visit_date: today
           });
           setUserDataId(newUserData.id);
-        }
-        
-        // Проверка онбординга
-        const onboardingCompleted = localStorage.getItem('dailyQuestsOnboardingCompleted');
-        if (!onboardingCompleted) {
-          setShowOnboarding(true);
         }
       } catch (error) {
         console.error('Error loading user data:', error);
