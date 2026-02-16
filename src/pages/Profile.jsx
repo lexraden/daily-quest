@@ -198,7 +198,7 @@ export default function Profile() {
       </div>
 
       {/* Content */}
-      <div className="px-5 py-6 space-y-4 max-w-2xl mx-auto pb-20">
+      <div className="px-5 py-4 space-y-3 max-w-2xl mx-auto pb-6">
         {/* User Header Card */}
         <div className={`rounded-3xl overflow-hidden border ${
           theme === 'light' 
@@ -206,7 +206,7 @@ export default function Profile() {
             : 'bg-[#1e2836] border-white/10'
         }`}>
           {/* Hero Banner with Pattern */}
-          <div className="h-32 bg-gradient-to-br from-purple-500 via-purple-600 to-cyan-500 relative overflow-hidden">
+          <div className="h-24 bg-gradient-to-br from-purple-500 via-purple-600 to-cyan-500 relative overflow-hidden">
             <div className="absolute inset-0 opacity-20">
               <div className="absolute inset-0" style={{
                 backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
@@ -217,10 +217,10 @@ export default function Profile() {
           </div>
           
           {/* Profile Info */}
-          <div className="px-6 pb-6">
+          <div className="px-5 pb-4">
             {/* Avatar */}
-            <div className="relative -mt-16 mb-4">
-              <div className={`w-28 h-28 rounded-full border-4 overflow-hidden ${
+            <div className="relative -mt-12 mb-3">
+              <div className={`w-20 h-20 rounded-full border-4 overflow-hidden ${
                 theme === 'light' ? 'bg-white border-white shadow-xl' : 'bg-[#0f1419] border-[#1e2836] shadow-2xl'
               }`}>
                 {tgUser?.photo_url ? (
@@ -231,21 +231,21 @@ export default function Profile() {
                       ? 'bg-gradient-to-br from-purple-100 to-cyan-100'
                       : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20'
                   }`}>
-                    <User className={`w-14 h-14 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
+                    <User className={`w-10 h-10 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
                   </div>
                 )}
               </div>
             </div>
             
             {/* Name and Level Badge */}
-            <div className="mb-4">
+            <div className="mb-3">
               {isEditingName ? (
-                <div className="flex gap-2 mb-3">
+                <div className="space-y-2 mb-2">
                   <input
                     type="text"
                     value={editedName}
                     onChange={(e) => setEditedName(e.target.value)}
-                    className={`flex-1 px-4 py-2 rounded-xl text-lg font-bold ${
+                    className={`w-full px-3 py-2 rounded-lg text-base font-bold ${
                       theme === 'light'
                         ? 'bg-white border-2 border-purple-300 text-gray-900'
                         : 'bg-[#0f1419] border-2 border-purple-500/50 text-white'
@@ -253,31 +253,33 @@ export default function Profile() {
                     placeholder="Введите имя"
                     autoFocus
                   />
-                  <Button
-                    onClick={handleSaveName}
-                    className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
-                  >
-                    ✓
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setIsEditingName(false);
-                      setEditedName(user?.full_name || '');
-                    }}
-                    variant="outline"
-                    className={theme === 'light' ? 'border-gray-300' : 'border-white/10'}
-                  >
-                    ✕
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSaveName}
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+                    >
+                      ✓ Сохранить
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsEditingName(false);
+                        setEditedName(user?.full_name || '');
+                      }}
+                      variant="outline"
+                      className={theme === 'light' ? 'border-gray-300' : 'border-white/10'}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 mb-3">
-                  <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
                     {user?.full_name || tgUser?.first_name || 'Пользователь'}
                   </h2>
                   <button
                     onClick={() => setIsEditingName(true)}
-                    className={`p-1.5 rounded-lg transition-colors ${
+                    className={`p-1 rounded-lg transition-colors ${
                       theme === 'light'
                         ? 'hover:bg-black/5 text-gray-400 hover:text-gray-600'
                         : 'hover:bg-white/10 text-gray-500 hover:text-gray-300'
@@ -287,13 +289,13 @@ export default function Profile() {
                   </button>
                 </div>
               )}
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
                 theme === 'light'
                   ? 'bg-gradient-to-r from-purple-100 to-cyan-100 border border-purple-200'
                   : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30'
               }`}>
-                <span className="text-2xl">{stats.currentLevel.icon}</span>
-                <span className={`font-bold text-sm ${
+                <span className="text-lg">{stats.currentLevel.icon}</span>
+                <span className={`font-bold text-xs ${
                   theme === 'light' ? 'text-purple-900' : 'text-purple-300'
                 }`}>
                   {stats.currentLevel.name}
@@ -302,12 +304,12 @@ export default function Profile() {
             </div>
 
             {/* Level Progress */}
-            <div className={`p-4 rounded-xl ${
+            <div className={`p-3 rounded-xl ${
               theme === 'light' 
                 ? 'bg-gradient-to-br from-gray-50 to-purple-50/30' 
                 : 'bg-white/5'
             }`}>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <TrendingUp className={`w-4 h-4 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
                   <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
@@ -352,12 +354,12 @@ export default function Profile() {
 
         {/* Journal Entries */}
         {journalEntries.length > 0 && (
-          <div className={`rounded-2xl p-5 border ${
+          <div className={`rounded-2xl p-4 border ${
             theme === 'light' 
               ? 'bg-white border-gray-200' 
               : 'bg-[#1e2836] border-white/10'
           }`}>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Calendar className={`w-5 h-5 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
                 <h3 className={`text-base font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
@@ -372,7 +374,7 @@ export default function Profile() {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+            <div className="flex gap-2 mb-2 overflow-x-auto pb-2">
               <button
                 onClick={() => setFilterType('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
@@ -417,7 +419,7 @@ export default function Profile() {
               </button>
             </div>
 
-            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+            <div className="flex gap-2 mb-2 overflow-x-auto pb-2">
               <button
                 onClick={() => setFilterCategory('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
@@ -453,7 +455,7 @@ export default function Profile() {
               })}
             </div>
 
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-2 max-h-80 overflow-y-auto">
               {filteredJournal.length === 0 ? (
                 <div className={`text-center py-8 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
                   <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -467,7 +469,7 @@ export default function Profile() {
                   return (
                     <div 
                       key={entry.id}
-                      className={`p-4 rounded-xl transition-all border ${
+                      className={`p-3 rounded-xl transition-all border ${
                         isQuest
                           ? theme === 'light'
                             ? 'bg-gradient-to-br from-purple-50 to-cyan-50 border-purple-200'
@@ -518,12 +520,12 @@ export default function Profile() {
         )}
 
         {/* Category Levels */}
-        <div className={`rounded-2xl p-5 border ${
+        <div className={`rounded-2xl p-4 border ${
           theme === 'light' 
             ? 'bg-white border-gray-200' 
             : 'bg-[#1e2836] border-white/10'
         }`}>
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <Award className={`w-5 h-5 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
             <h3 className={`text-base font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
               Уровни категорий
@@ -537,7 +539,7 @@ export default function Profile() {
               return (
                 <div 
                   key={categoryKey}
-                  className={`flex items-center justify-between p-3 rounded-xl transition-all ${
+                  className={`flex items-center justify-between p-2.5 rounded-xl transition-all ${
                     theme === 'light' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white/5 hover:bg-white/10'
                   }`}
                 >
@@ -563,7 +565,7 @@ export default function Profile() {
         {/* Back Button */}
         <Link to={createPageUrl('DailyTracker')}>
           <Button
-            className="w-full h-12 text-base bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            className="w-full h-11 text-sm bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
           >
             Вернуться к квестам
           </Button>
