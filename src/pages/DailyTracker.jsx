@@ -1149,7 +1149,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         />
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes shimmer {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
