@@ -54,8 +54,6 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const [answers, setAnswers] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedText, setRecordedText] = useState('');
-  const [showApprove, setShowApprove] = useState(false);
   const recognitionRef = useRef(null);
   const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
@@ -102,8 +100,6 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
 
     recognition.onstart = () => {
       setIsRecording(true);
-      setRecordedText('');
-      setShowApprove(false);
       accumulatedTextRef.current = '';
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -114,7 +110,6 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     recognition.onresult = (event) => {
       const result = event.results[0][0].transcript;
       accumulatedTextRef.current = result;
-      setRecordedText(result);
     };
 
     recognition.onerror = (event) => {
@@ -136,7 +131,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
         setIsRecording(false);
         const finalText = accumulatedTextRef.current.trim();
         if (finalText) {
-          setShowApprove(true);
+          handleAnswer(finalText);
+          toast.success('Текст распознан!');
         }
       }
     };
@@ -149,20 +145,6 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
       isStoppingRef.current = true;
       recognitionRef.current.stop();
     }
-  };
-
-  const approveRecording = () => {
-    if (recordedText.trim()) {
-      handleAnswer(recordedText);
-      setRecordedText('');
-      setShowApprove(false);
-      toast.success('Ответ сохранён!');
-    }
-  };
-
-  const cancelRecording = () => {
-    setRecordedText('');
-    setShowApprove(false);
   };
 
   const canProceed = currentStep === -1 || answers[currentQuestion?.category]?.trim().length > 0;
@@ -327,48 +309,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
                 }`}
               >
                 <Mic className="w-5 h-5 mr-2" />
-                {isRecording ? 'Отпустите для остановки' : 'Удерживайте для записи'}
+                {isRecording ? 'Отпустите для остановки' : 'Запись голосом'}
               </Button>
-
-              {/* Recorded Text Preview */}
-              {recordedText && (
-                <div className={`mt-3 p-4 rounded-xl border ${
-                  theme === 'light' 
-                    ? 'bg-purple-50 border-purple-200' 
-                    : 'bg-purple-500/10 border-purple-500/30'
-                }`}>
-                  <p className={`text-sm mb-3 ${
-                    theme === 'light' ? 'text-gray-700' : 'text-gray-300'
-                  }`}>
-                    {recordedText}
-                  </p>
-                  
-                  {showApprove && (
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        onClick={cancelRecording}
-                        variant="outline"
-                        className={`flex-1 ${
-                          theme === 'light'
-                            ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                            : 'border-white/10 text-gray-300 hover:bg-white/5'
-                        }`}
-                      >
-                        Отмена
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={approveRecording}
-                        className="flex-1 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Подтвердить
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
