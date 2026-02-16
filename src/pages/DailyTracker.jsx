@@ -516,7 +516,10 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         // Загрузить данные пользователя из БД
         const userDataList = await base44.entities.UserQuestData.filter({ created_by: user?.email });
         
-        if (userDataList.length > 0) {
+        // Проверяем флаг ресета из localStorage
+        const shouldResetOnboarding = localStorage.getItem('dailyQuestsResetOnboarding');
+        
+        if (userDataList.length > 0 && !shouldResetOnboarding) {
           const data = userDataList[0];
           setUserDataId(data.id);
           
