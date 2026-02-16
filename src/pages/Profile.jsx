@@ -92,12 +92,21 @@ export default function Profile() {
     setTheme(savedTheme);
 
     // Load authenticated user
-    base44.auth.me().then(authUser => {
-      if (authUser) {
-        setUser(authUser);
-        setEditedName(authUser.full_name || '');
+    const loadUser = async () => {
+      try {
+        const authUser = await base44.auth.me();
+        if (authUser) {
+          setUser(authUser);
+          setEditedName(authUser.full_name || '');
+        } else {
+          await base44.auth.redirectToLogin(window.location.href);
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        await base44.auth.redirectToLogin(window.location.href);
       }
-    }).catch(() => {});
+    };
+    loadUser();
 
     // Load Telegram user
     if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
