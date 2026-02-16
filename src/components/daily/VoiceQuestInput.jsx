@@ -16,74 +16,70 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     if (!recognition) return;
 
     recognition.lang = 'ru-RU';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
     const handleStart = () => {
       setIsRecording(true);
       accumulatedTextRef.current = '';
-      toast.info('Говорите...', { duration: 1000 });
+      toast.info('Говорите...', { duration: 500 });
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
       }
     };
 
     const handleResult = (event) => {
-      const result = event.results[0][0].transcript;
-      accumulatedTextRef.current = result;
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      accumulatedTextRef.current += transcript;
     };
 
     const handleError = (event) => {
       console.error('Speech error:', event.error);
-      setIsRecording(false);
-      if (event.error !== 'aborted') {
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
         toast.error('Ошибка распознавания');
-      }
-    };
-
-    const handleEnd = () => {
-      setIsRecording(false);
-      const finalText = accumulatedTextRef.current.trim();
-      if (finalText && !isStoppingRef.current) {
-        processVoiceInput(finalText);
       }
     };
 
     recognition.onstart = handleStart;
     recognition.onresult = handleResult;
     recognition.onerror = handleError;
-    recognition.onend = handleEnd;
 
     return () => {
       recognition.onstart = null;
       recognition.onresult = null;
       recognition.onerror = null;
-      recognition.onend = null;
     };
   }, [recognition]);
 
-  const startRecording = () => {
+  const toggleRecording = () => {
     if (!recognition) {
       toast.error('Голосовой ввод не поддерживается');
       return;
     }
 
-    isStoppingRef.current = false;
-    accumulatedTextRef.current = '';
-
-    try {
-      recognition.start();
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-      toast.error('Ошибка при запуске микрофона');
-    }
-  };
-
-  const stopRecording = () => {
-    if (recognition && isRecording) {
+    if (isRecording) {
+      // Остановить запись и обработать
       isStoppingRef.current = true;
       recognition.stop();
+      setIsRecording(false);
+      const finalText = accumulatedTextRef.current.trim();
+      if (finalText) {
+        processVoiceInput(finalText);
+      }
+    } else {
+      // Начать запись
+      isStoppingRef.current = false;
+      accumulatedTextRef.current = '';
+      try {
+        recognition.start();
+      } catch (error) {
+        console.error('Failed to start recording:', error);
+        toast.error('Ошибка при запуске микрофона');
+      }
     }
   };
 
@@ -171,10 +167,8 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   return (
     <div className="px-5 mb-4">
       <Button
-        onMouseDown={startRecording}
-        onMouseUp={stopRecording}
-        onTouchStart={startRecording}
-        onTouchEnd={stopRecording}
+        onClick={toggleRecording}
+        disabled={isProcessing}
         className={`w-full h-12 rounded-2xl font-medium transition-all ${
           isRecording
             ? 'bg-red-500 hover:bg-red-600 animate-pulse'
@@ -183,8 +177,8 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       >
         {isRecording ? (
           <>
-            <Mic className="w-5 h-5 mr-2 animate-pulse" />
-            Говорите...
+            <Square className="w-5 h-5 mr-2" />
+            Остановить запись
           </>
         ) : (
           <>

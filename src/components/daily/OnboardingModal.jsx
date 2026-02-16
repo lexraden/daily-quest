@@ -181,8 +181,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     if (!recognition) return;
 
     recognition.lang = userLang === 'ru' ? 'ru-RU' : 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
     const handleStart = () => {
@@ -194,51 +194,30 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     };
 
     const handleResult = (event) => {
-      const result = event.results[0][0].transcript;
-      accumulatedTextRef.current = result;
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      accumulatedTextRef.current += transcript;
     };
 
     const handleError = (event) => {
-      if (event.error !== 'aborted') {
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
         console.error('Speech error:', event.error);
-        setIsRecording(false);
         toast.error('Ошибка распознавания');
-      }
-    };
-
-    const handleEnd = () => {
-      if (!isStoppingRef.current && isRecording) {
-        try {
-          recognition.start();
-        } catch (e) {
-          console.log('Restart failed');
-        }
-      } else {
-        setIsRecording(false);
-        const finalText = accumulatedTextRef.current.trim();
-        if (finalText && currentStepRef.current >= 0) {
-          const question = ONBOARDING_QUESTIONS[currentStepRef.current];
-          setAnswers(prev => ({
-            ...prev,
-            [question.category]: finalText
-          }));
-          toast.success(t.voice.success);
-        }
       }
     };
 
     recognition.onstart = handleStart;
     recognition.onresult = handleResult;
     recognition.onerror = handleError;
-    recognition.onend = handleEnd;
 
     return () => {
       recognition.onstart = null;
       recognition.onresult = null;
       recognition.onerror = null;
-      recognition.onend = null;
     };
-  }, [recognition, userLang, isRecording, t.voice.success]);
+  }, [recognition, userLang, t.voice.success]);
 
   const currentQuestion = currentStep >= 0 ? ONBOARDING_QUESTIONS[currentStep] : null;
   const progress = currentStep >= 0 ? ((currentStep + 1) / ONBOARDING_QUESTIONS.length) * 100 : 0;
@@ -492,10 +471,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             <div className="mt-4">
               <Button
                 type="button"
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
+                onClick={toggleRecording}
                 className={`w-full h-14 text-base transition-all ${
                   isRecording
                     ? 'bg-red-500 hover:bg-red-600 animate-pulse'
@@ -503,7 +479,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
                 }`}
               >
                 <Mic className="w-5 h-5 mr-2" />
-                {isRecording ? t.voice.recording : t.voice.record}
+                {isRecording ? 'Остановить запись' : t.voice.record}
               </Button>
             </div>
           </div>
