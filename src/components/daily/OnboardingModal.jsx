@@ -174,18 +174,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     currentStepRef.current = currentStep;
   }, [currentStep]);
 
-  // Request microphone permission once on mount
-  React.useEffect(() => {
-    const requestMicPermission = async () => {
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (error) {
-        console.log('Microphone permission denied:', error);
-      }
-    };
-    
-    requestMicPermission();
-  }, []);
+
 
   // Initialize speech recognition once on mount
   React.useEffect(() => {
