@@ -176,15 +176,9 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
 
 
 
-  // Initialize speech recognition once on mount
+  // Setup speech recognition callbacks
   React.useEffect(() => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
+    if (!recognition) return;
 
     recognition.lang = userLang === 'ru' ? 'ru-RU' : 'en-US';
     recognition.continuous = false;
@@ -216,7 +210,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     recognition.onend = () => {
       if (!isStoppingRef.current && isRecording) {
         try {
-          recognitionRef.current.start();
+          recognition.start();
         } catch (e) {
           console.log('Restart failed');
         }
@@ -233,15 +227,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
         }
       }
     };
-
-    return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {}
-      }
-    };
-  }, [userLang]);
+  }, [recognition, userLang, isRecording, t.voice.success]);
 
   const currentQuestion = currentStep >= 0 ? ONBOARDING_QUESTIONS[currentStep] : null;
   const progress = currentStep >= 0 ? ((currentStep + 1) / ONBOARDING_QUESTIONS.length) * 100 : 0;
