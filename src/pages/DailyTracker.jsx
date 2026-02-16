@@ -252,7 +252,7 @@ export default function DailyTracker() {
 
     if (intent === 'COMPLETED_QUEST') {
       // Найти подходящий квест в текущей категории
-      const categoryQuests = defaultQuests[category] || [];
+      const categoryQuests = questData[category] || [];
       const currentQuest = getCurrentQuest(category);
       const userInput = (aiResponse.userInput || '').toLowerCase();
       
