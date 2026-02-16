@@ -173,28 +173,36 @@ export default function DailyTracker() {
     setTheme(savedTheme);
 
     // Load authenticated user and save name on first login
-    const loadUser = () => {
-      base44.auth.me().then(authUser => {
+    const loadUser = async () => {
+      try {
+        const authUser = await base44.auth.me();
         if (authUser) {
           setUser(authUser);
           
           // Auto-save user name on first login if not set
           if (!authUser.full_name) {
             const name = tgUser?.first_name || authUser.email?.split('@')[0] || 'Пользователь';
-            base44.auth.updateMe({ full_name: name }).catch(err => {
+            await base44.auth.updateMe({ full_name: name }).catch(err => {
               console.log('Failed to save user name:', err);
             });
           }
+        } else {
+          // Нет аутентификации, редирект на логин
+          await base44.auth.redirectToLogin(window.location.href);
         }
-      }).catch(() => {});
+      } catch (error) {
+        console.error('Auth error:', error);
+        // Сессия истекла, редирект на логин
+        await base44.auth.redirectToLogin(window.location.href);
+      }
     };
 
     loadUser();
 
-      // Reload user on focus to get updated name
-      const handleFocus = () => loadUser();
-      window.addEventListener('focus', handleFocus);
-      return () => window.removeEventListener('focus', handleFocus);
+    // Reload user on focus to get updated name
+    const handleFocus = () => loadUser();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
 
       if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
