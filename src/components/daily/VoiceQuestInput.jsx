@@ -79,22 +79,11 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     };
 
     recognition.onend = () => {
-      if (!isStoppingRef.current && isRecording) {
-        // Автоперезапуск для продолжения записи
-        try {
-          recognitionRef.current.start();
-        } catch (e) {
-          console.log('Restart failed');
-        }
-      } else {
-        setIsRecording(false);
-        // Обработка после остановки
-        const finalText = accumulatedTextRef.current.trim();
-        if (finalText) {
-          processVoiceInput(finalText);
-        } else {
-          toast.error('Ничего не записано');
-        }
+      setIsRecording(false);
+      // Обработка после остановки
+      const finalText = accumulatedTextRef.current.trim();
+      if (finalText) {
+        processVoiceInput(finalText);
       }
     };
 
@@ -157,12 +146,12 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
         }
       });
 
-      setIsProcessing(false);
       onQuestSuggestion({
         ...result,
         userInput: text
       });
       setTranscript('');
+      setIsProcessing(false);
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
@@ -170,26 +159,41 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     } catch (error) {
       setIsProcessing(false);
       console.error('Error processing voice input:', error);
-      toast.error(`Ошибка: ${error.message || 'Не удалось обработать'}`);
+      toast.error('Ошибка обработки');
     }
   };
 
-  if (isProcessing) {
+  if (isRecording || transcript) {
     return (
-      <div className="px-5 mb-4">
-        <div className={`w-full h-12 rounded-2xl flex items-center justify-center gap-3 ${
-          theme === 'light'
-            ? 'bg-gradient-to-r from-purple-100 to-cyan-100'
-            : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20'
-        }`}>
-          <div className="flex gap-1">
-            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+      <div className="px-5 mb-4 space-y-2">
+        {transcript && (
+          <div className={`p-3 rounded-2xl text-sm ${
+            theme === 'light'
+              ? 'bg-purple-100 text-purple-900'
+              : 'bg-purple-500/20 text-purple-200'
+          }`}>
+            {transcript}
           </div>
-          <span className={`text-sm font-medium ${theme === 'light' ? 'text-purple-700' : 'text-purple-300'}`}>
-            Обрабатываю...
-          </span>
+        )}
+        <div className="flex gap-2">
+          <Button
+            onClick={stopRecording}
+            className="flex-1 h-12 bg-red-500 hover:bg-red-600"
+          >
+            <Square className="w-4 h-4 mr-2" />
+            {isProcessing ? 'Отправляю...' : 'Отправить'}
+          </Button>
+          <Button
+            onClick={() => {
+              setTranscript('');
+              setIsRecording(false);
+            }}
+            variant="outline"
+            className={`flex-1 h-12 ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}
+          >
+            <X className="w-4 h-4 mr-2" />
+            Отмена
+          </Button>
         </div>
       </div>
     );
@@ -198,24 +202,11 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   return (
     <div className="px-5 mb-4">
       <Button
-        onClick={isRecording ? stopRecording : startRecording}
-        className={`w-full h-12 rounded-2xl font-medium transition-all ${
-          isRecording
-            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-            : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
-        }`}
+        onClick={startRecording}
+        className="w-full h-12 rounded-2xl font-medium bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
       >
-        {isRecording ? (
-          <>
-            <Square className="w-5 h-5 mr-2" />
-            Отпустить для отправки
-          </>
-        ) : (
-          <>
-            <Mic className="w-5 h-5 mr-2" />
-            Голосовой ввод
-          </>
-        )}
+        <Mic className="w-5 h-5 mr-2" />
+        Голосовой ввод
       </Button>
     </div>
   );
