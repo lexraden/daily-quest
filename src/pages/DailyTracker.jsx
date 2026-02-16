@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, User, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon } from 'lucide-react';
+import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, User, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -183,6 +183,15 @@ export default function DailyTracker() {
       
       if (tg.initDataUnsafe?.user) {
         setTgUser(tg.initDataUnsafe.user);
+        
+        // Save telegram chat ID for notifications
+        const savedChatId = localStorage.getItem('telegram_chat_id');
+        if (!savedChatId && tg.initDataUnsafe.user.id) {
+          localStorage.setItem('telegram_chat_id', tg.initDataUnsafe.user.id);
+          base44.auth.updateMe({ telegram_chat_id: tg.initDataUnsafe.user.id }).catch(err => {
+            console.log('Failed to save telegram_chat_id:', err);
+          });
+        }
       }
     }
   }, []);
@@ -822,6 +831,15 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Daily Quests</h1>
           <div className="flex items-center gap-2">
+            <Link to={createPageUrl('Statistics')}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
+              >
+                <BarChart3 className="w-4 h-4" />
+              </Button>
+            </Link>
             <Link to={createPageUrl('Profile')}>
               <Button
                 variant="ghost"
