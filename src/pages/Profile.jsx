@@ -149,6 +149,9 @@ export default function Profile() {
         }
       } catch (error) {
         console.error('Error loading user data:', error);
+        if (error.message === 'User not authenticated') {
+          await base44.auth.redirectToLogin(window.location.href);
+        }
       }
     };
     
