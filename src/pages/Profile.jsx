@@ -3,6 +3,7 @@ import { X, User, Flame, Trophy, TrendingUp, Calendar, Award } from 'lucide-reac
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
 
 const CATEGORIES = {
   health: { 
@@ -71,6 +72,7 @@ const LEVELS = [
 export default function Profile() {
   const [theme, setTheme] = useState('light');
   const [tgUser, setTgUser] = useState(null);
+  const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
     streak: 0,
     totalCompleted: 0,
@@ -85,6 +87,13 @@ export default function Profile() {
     // Load theme
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
     setTheme(savedTheme);
+
+    // Load authenticated user
+    base44.auth.me().then(authUser => {
+      if (authUser) {
+        setUser(authUser);
+      }
+    }).catch(() => {});
 
     // Load Telegram user
     if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
@@ -217,7 +226,7 @@ export default function Profile() {
             {/* Name and Level Badge */}
             <div className="mb-4">
               <h2 className={`text-2xl font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                {tgUser?.first_name || 'Пользователь'}
+                {user?.full_name || tgUser?.first_name || 'Пользователь'}
               </h2>
               <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${
                 theme === 'light'
