@@ -93,7 +93,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
 
-      recognition.lang = 'ru-RU';
+      recognition.lang = userLang === 'ru' ? 'ru-RU' : 'en-US';
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
@@ -132,7 +132,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
           const finalText = accumulatedTextRef.current.trim();
           if (finalText) {
             handleAnswer(finalText);
-            toast.success('Текст распознан!');
+            toast.success(t.recording.recognized);
           }
         }
       };
