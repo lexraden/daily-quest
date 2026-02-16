@@ -592,12 +592,14 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             });
             setCompletedToday(todayCompleted);
           }
-        } else {
-          // Новый пользователь - показать онбординг
+          } else if (userDataList.length === 0 || shouldResetOnboarding) {
+          // Новый пользователь или ресет онбординга - показать онбординг
+          localStorage.removeItem('dailyQuestsResetOnboarding');
+          localStorage.removeItem('dailyQuestsOnboardingCompleted');
           setShowOnboarding(true);
           setIsLoaded(true);
           return; // Не создаем запись до завершения онбординга
-        }
+          }
       } catch (error) {
         console.error('Error loading user data:', error);
         toast.error('Ошибка загрузки данных');
