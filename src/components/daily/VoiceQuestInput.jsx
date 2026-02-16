@@ -9,6 +9,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [transcript, setTranscript] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const recognitionRef = useRef(null);
+  const fullTranscriptRef = useRef('');
 
   const startRecording = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -26,12 +27,10 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    let fullTranscript = '';
-
     recognition.onstart = () => {
       setIsRecording(true);
       setTranscript('');
-      fullTranscript = '';
+      fullTranscriptRef.current = '';
       toast.info('Слушаю...', { duration: 1000 });
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -45,13 +44,13 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          fullTranscript += transcript + ' ';
+          fullTranscriptRef.current += transcript + ' ';
         } else {
           interimTranscript += transcript;
         }
       }
       
-      setTranscript(fullTranscript + interimTranscript);
+      setTranscript(fullTranscriptRef.current + interimTranscript);
     };
 
     recognition.onerror = (event) => {
