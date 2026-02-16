@@ -313,14 +313,14 @@ export default function DailyTracker() {
   };
 
   const handleOnboardingComplete = async (answers) => {
-      try {
-        // Send welcome message to Telegram
-        const telegram_chat_id = localStorage.getItem('telegram_chat_id');
-        if (telegram_chat_id) {
-          try {
-            await base44.functions.invoke('sendDailyReminder', {
-              telegram_chat_id,
-              message: `
+    try {
+      // Send welcome message to Telegram
+      const telegram_chat_id = localStorage.getItem('telegram_chat_id');
+      if (telegram_chat_id) {
+        try {
+          await base44.functions.invoke('sendDailyReminder', {
+            telegram_chat_id,
+            message: `
   🎉 <b>Great job!</b>
 
   You now have your personalized daily quests to level up your life! 💪
@@ -330,15 +330,15 @@ export default function DailyTracker() {
   📈 Track your progress and grow
 
   Let's start your journey! 🚀
-              `.trim()
-            });
-          } catch (error) {
-            console.log('Failed to send Telegram message:', error);
-          }
+            `.trim()
+          });
+        } catch (error) {
+          console.log('Failed to send Telegram message:', error);
         }
+      }
 
-        // Generate personalized quests using AI
-        const result = await base44.integrations.Core.InvokeLLM({
+      // Generate personalized quests using AI
+      const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Ты - эксперт по персональному развитию. На основе ответов пользователя создай персонализированные ЕЖЕДНЕВНЫЕ квесты для daily tracker.
 
 Ответы пользователя:
