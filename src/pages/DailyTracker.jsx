@@ -458,22 +458,26 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       // Update quests with AI-generated ones
       setQuestData(result);
 
-      // Save to database
-      if (userDataId) {
-        await base44.entities.UserQuestData.update(userDataId, {
-          quest_data: result,
-          onboarding_answers: answers
-        });
-      }
-      
-      localStorage.setItem('dailyQuestsOnboardingCompleted', 'true');
+      // Create new user data record after onboarding
+      const newUserData = await base44.entities.UserQuestData.create({
+        quest_data: result,
+        onboarding_answers: answers,
+        category_levels: Object.keys(CATEGORIES).reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {}),
+        category_total_completed: Object.keys(CATEGORIES).reduce((acc, cat) => ({ ...acc, [cat]: 0 }), {}),
+        total_completed: 0,
+        streak: 0,
+        completion_history: {},
+        streak_freezes: 1,
+        journal_entries: [],
+        last_visit_date: getTodayKey()
+      });
+      setUserDataId(newUserData.id);
 
       setShowOnboarding(false);
       toast.success('Ваши персональные квесты готовы! 🎉');
     } catch (error) {
       console.error('Error generating quests:', error);
       toast.error('Ошибка при создании квестов. Используем стандартные.');
-      localStorage.setItem('dailyQuestsOnboardingCompleted', 'true');
       setShowOnboarding(false);
     }
   };
