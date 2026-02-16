@@ -26,9 +26,12 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     recognition.continuous = true;
     recognition.interimResults = true;
 
+    let fullTranscript = '';
+
     recognition.onstart = () => {
       setIsRecording(true);
       setTranscript('');
+      fullTranscript = '';
       toast.info('Слушаю...', { duration: 1000 });
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -37,32 +40,35 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     };
 
     recognition.onresult = (event) => {
-      let finalTranscript = '';
+      let interimTranscript = '';
       
       for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          fullTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
         }
       }
       
-      if (finalTranscript) {
-        setTranscript(prev => prev + ' ' + finalTranscript);
-      }
+      setTranscript(fullTranscript + interimTranscript);
     };
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
-      setIsRecording(false);
-      toast.error('Ошибка распознавания речи');
+      if (event.error !== 'aborted') {
+        setIsRecording(false);
+        toast.error('Ошибка распознавания речи');
+      }
     };
 
     recognition.onend = () => {
-      if (isRecording) {
-        setIsRecording(false);
-        if (transcript.trim()) {
-          setShowConfirm(true);
-        } else {
-          toast.error('Ничего не записано');
+      // Перезапуск если ещё записываем (автоматические паузы)
+      if (isRecording && recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+        } catch (e) {
+          // Игнорируем ошибки перезапуска
         }
       }
     };
@@ -72,7 +78,15 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 
   const stopRecording = () => {
     if (recognitionRef.current && isRecording) {
+      setIsRecording(false);
       recognitionRef.current.stop();
+      recognitionRef.current.onend = null; // Отключаем автоперезапуск
+      
+      if (transcript.trim()) {
+        setShowConfirm(true);
+      } else {
+        toast.error('Ничего не записано');
+      }
     }
   };
 
