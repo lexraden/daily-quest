@@ -157,6 +157,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const recognitionRef = useRef(null);
   const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
+  const currentStepRef = useRef(-1);
 
   // Detect user language
   const userLang = useMemo(() => {
@@ -166,6 +167,11 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
 
   const t = TRANSLATIONS[userLang];
   const ONBOARDING_QUESTIONS = t.questions;
+
+  // Keep currentStepRef in sync with currentStep
+  React.useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
 
   // Initialize speech recognition once on mount
   React.useEffect(() => {
@@ -214,8 +220,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
       } else {
         setIsRecording(false);
         const finalText = accumulatedTextRef.current.trim();
-        if (finalText && currentStep >= 0) {
-          const question = ONBOARDING_QUESTIONS[currentStep];
+        if (finalText && currentStepRef.current >= 0) {
+          const question = ONBOARDING_QUESTIONS[currentStepRef.current];
           setAnswers(prev => ({
             ...prev,
             [question.category]: finalText
