@@ -528,7 +528,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       
       try {
         // Загрузить данные пользователя из БД
-        const userDataList = await base44.entities.UserQuestData.filter({ created_by: user?.email });
+        if (!user?.email) {
+          throw new Error('User email not available');
+        }
+        
+        const userDataList = await base44.entities.UserQuestData.filter({ created_by: user.email });
         
         // Проверяем флаг ресета из localStorage
         const shouldResetOnboarding = localStorage.getItem('dailyQuestsResetOnboarding');
