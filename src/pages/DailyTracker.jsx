@@ -12,6 +12,7 @@ import QuestSuggestionModal from '@/components/daily/QuestSuggestionModal.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
 import AIResponseModal from '@/components/daily/AIResponseModal.jsx';
 import confetti from 'canvas-confetti';
+import { toast } from 'sonner';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
