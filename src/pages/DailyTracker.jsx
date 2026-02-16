@@ -595,31 +595,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           setIsLoaded(true);
           return; // Не создаем запись до завершения онбординга
         }
-
-          // Инициализация для новых пользователей
-          const levels = {};
-          const totals = {};
-          Object.keys(CATEGORIES).forEach(cat => {
-            levels[cat] = 1;
-            totals[cat] = 0;
-          });
-          setCategoryLevels(levels);
-          setCategoryTotalCompleted(totals);
-
-          // Создать новую запись в БД
-          const newUserData = await base44.entities.UserQuestData.create({
-            quest_data: DEFAULT_QUEST_DATA,
-            category_levels: levels,
-            category_total_completed: totals,
-            total_completed: 0,
-            streak: 0,
-            completion_history: {},
-            streak_freezes: 1,
-            journal_entries: [],
-            last_visit_date: today
-          });
-          setUserDataId(newUserData.id);
-        }
       } catch (error) {
         console.error('Error loading user data:', error);
         toast.error('Ошибка загрузки данных');
