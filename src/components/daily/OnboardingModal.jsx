@@ -242,52 +242,40 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     await onComplete(answers);
   };
 
-  const permissionAskedRef = useRef(false);
-
-  const requestMicrophonePermission = async () => {
-    try {
-      const cachedPermission = localStorage.getItem('voicePermissionGranted');
-      if (cachedPermission === 'true') {
-        return true;
-      }
-
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      localStorage.setItem('voicePermissionGranted', 'true');
-      permissionAskedRef.current = true;
-      return true;
-    } catch (error) {
-      console.log('Microphone permission denied:', error);
-      toast.error('Доступ к микрофону запрещен. Проверьте настройки браузера.');
-      return false;
-    }
-  };
-
-  const startRecording = async () => {
+  const toggleRecording = () => {
     if (!recognition) {
       toast.error('Голосовой ввод не поддерживается');
       return;
     }
 
-    // Запрашиваем разрешение один раз
-    if (!permissionAskedRef.current) {
-      const granted = await requestMicrophonePermission();
-      if (!granted) return;
-    }
-
-    isStoppingRef.current = false;
-    accumulatedTextRef.current = '';
-
-    try {
-      recognition.start();
-    } catch (e) {
-      console.error('Failed to start recording:', e);
-    }
-  };
-
-  const stopRecording = () => {
-    if (recognition && isRecording) {
+    if (isRecording) {
+      // Остановить запись и сохранить ответ
       isStoppingRef.current = true;
       recognition.stop();
+      setIsRecording(false);
+      const finalText = accumulatedTextRef.current.trim();
+      if (finalText && currentStepRef.current >= 0) {
+        const question = ONBOARDING_QUESTIONS[currentStepRef.current];
+        setAnswers(prev => ({
+          ...prev,
+          [question.category]: finalText
+        }));
+        toast.success(t.voice.success);
+      }
+    } else {
+      // Начать запись
+      isStoppingRef.current = false;
+      accumulatedTextRef.current = '';
+      try {
+        recognition.start();
+        localStorage.setItem('voicePermissionGranted', 'true');
+      } catch (error) {
+        console.error('Failed to start recording:', error);
+        if (error.message.includes('NotAllowedError') || error.message.includes('permission')) {
+          localStorage.setItem('voicePermissionGranted', 'false');
+          toast.error('Разрешение на микрофон запрещено');
+        }
+      }
     }
   };
 
