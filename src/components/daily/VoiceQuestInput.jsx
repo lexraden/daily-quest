@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef(null);
   const isStoppingRef = useRef(false);
@@ -23,11 +24,11 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     isStoppingRef.current = false;
     accumulatedTextRef.current = '';
 
-    // Автоопределение языка
-    const userLang = navigator.language || navigator.userLanguage;
-    recognition.lang = userLang.startsWith('ru') ? 'ru-RU' : 'en-US';
+    // Настройки для русского языка
+    recognition.lang = 'ru-RU';
     recognition.continuous = false;
     recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       setIsRecording(true);
@@ -85,7 +86,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   };
 
   const processVoiceInput = async (text) => {
-    toast.info('AI анализирует...', { duration: 2000 });
+    setIsProcessing(true);
 
     try {
       const result = await base44.integrations.Core.InvokeLLM({
@@ -128,22 +129,43 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
         }
       });
 
-      console.log('AI Response:', result);
+      setIsProcessing(false);
       onQuestSuggestion({
         ...result,
         userInput: text
       });
       setTranscript('');
-      toast.dismiss();
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
       }
     } catch (error) {
+      setIsProcessing(false);
       console.error('Error processing voice input:', error);
       toast.error(`Ошибка: ${error.message || 'Не удалось обработать'}`);
     }
   };
+
+  if (isProcessing) {
+    return (
+      <div className="px-5 mb-4">
+        <div className={`w-full h-12 rounded-2xl flex items-center justify-center gap-3 ${
+          theme === 'light'
+            ? 'bg-gradient-to-r from-purple-100 to-cyan-100'
+            : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20'
+        }`}>
+          <div className="flex gap-1">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+          <span className={`text-sm font-medium ${theme === 'light' ? 'text-purple-700' : 'text-purple-300'}`}>
+            AI думает...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-5 mb-4">

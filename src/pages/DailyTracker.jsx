@@ -249,6 +249,10 @@ export default function DailyTracker() {
     setAiResponse(null);
   };
 
+  const handleRejectAiResponse = () => {
+    setAiResponse(null);
+  };
+
   const handleAcceptSuggestion = (suggestion) => {
     const { category, emoji, name, level, action } = suggestion;
 
@@ -829,15 +833,9 @@ export default function DailyTracker() {
         <AIResponseModal
           userInput={aiResponse.userInput}
           aiResponse={aiResponse}
-          onClose={() => {
-            if (aiResponse.intent !== 'ADD_QUEST') {
-              handleAcceptAiResponse();
-            } else {
-              setAiResponse(null);
-            }
-          }}
+          onClose={handleRejectAiResponse}
           onAccept={handleAcceptAiResponse}
-          onReject={() => setAiResponse(null)}
+          onReject={handleRejectAiResponse}
           theme={theme}
         />
       )}
