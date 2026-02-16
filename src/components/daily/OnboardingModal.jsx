@@ -7,10 +7,12 @@ import { toast } from 'sonner';
 const TRANSLATIONS = {
   ru: {
     welcome: {
-      title: 'Welcome to',
-      subtitle: 'Daily Quests',
-      description: 'Мы создадим персональные задания, которые помогут тебе прокачивать все аспекты жизни каждый день',
-      button: 'Start Leveling Up Today'
+      title: 'Прокачай свою жизнь',
+      subtitle: 'с Daily Quests ⚡',
+      description: 'Персональные ежедневные задания для здоровья, работы, отношений и финансов',
+      features: ['🎯 AI создаёт твои квесты', '📈 Отслеживай прогресс', '🔥 Строй серии побед'],
+      button: '🚀 Начать прямо сейчас',
+      time: 'Всего 2 минуты настройки'
     },
     header: {
       title: 'Знакомство',
@@ -76,10 +78,12 @@ const TRANSLATIONS = {
   },
   en: {
     welcome: {
-      title: 'Welcome to',
-      subtitle: 'Daily Quests',
-      description: "We'll create personalized quests to help you level up all aspects of your life every day",
-      button: 'Start Leveling Up Today'
+      title: 'Level Up Your Life',
+      subtitle: 'with Daily Quests ⚡',
+      description: 'Personalized daily quests for health, work, relationships, and finances',
+      features: ['🎯 AI creates your quests', '📈 Track your progress', '🔥 Build win streaks'],
+      button: '🚀 Start Now',
+      time: 'Just 2 minutes to set up'
     },
     header: {
       title: 'Getting Started',
@@ -313,43 +317,83 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
           ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50'
           : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
       }`}>
-        <div className="flex-1 flex items-center justify-center px-5">
-          <div className="max-w-md text-center">
-            {/* Icon */}
-            <div className="mb-6">
-              <div className={`inline-flex p-6 rounded-3xl ${
-                theme === 'light'
-                  ? 'bg-gradient-to-br from-purple-100 to-cyan-100'
-                  : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20'
-              }`}>
-                <Sparkles className={`w-16 h-16 ${
-                  theme === 'light' ? 'text-purple-600' : 'text-purple-400'
+        <div className="flex-1 flex items-center justify-center px-5 py-8">
+          <div className="max-w-md w-full">
+            {/* Hero Icon with Animation */}
+            <div className="mb-8 text-center relative">
+              <div className="inline-block relative">
+                <div className={`absolute inset-0 blur-3xl opacity-50 rounded-full ${
+                  theme === 'light'
+                    ? 'bg-gradient-to-r from-purple-300 to-cyan-300'
+                    : 'bg-gradient-to-r from-purple-500 to-cyan-500'
                 }`} />
+                <div className={`relative inline-flex p-8 rounded-3xl border-2 ${
+                  theme === 'light'
+                    ? 'bg-gradient-to-br from-white to-purple-50 border-purple-200'
+                    : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border-purple-500/30'
+                }`}>
+                  <Sparkles className={`w-20 h-20 ${
+                    theme === 'light' ? 'text-purple-600' : 'text-purple-400'
+                  } animate-pulse`} />
+                </div>
               </div>
             </div>
 
             {/* Title */}
-            <h1 className={`text-4xl font-bold mb-4 ${
-              theme === 'light' ? 'text-gray-900' : 'text-white'
+            <h1 className={`text-5xl font-black mb-4 text-center leading-tight ${
+              theme === 'light' 
+                ? 'bg-gradient-to-r from-gray-900 via-purple-900 to-cyan-900 bg-clip-text text-transparent' 
+                : 'bg-gradient-to-r from-white via-purple-200 to-cyan-200 bg-clip-text text-transparent'
             }`}>
-              {t.welcome.title}<br />{t.welcome.subtitle}
+              {t.welcome.title}
+              <br />
+              <span className="text-4xl">{t.welcome.subtitle}</span>
             </h1>
 
             {/* Description */}
-            <p className={`text-lg mb-8 ${
-              theme === 'light' ? 'text-gray-600' : 'text-gray-400'
+            <p className={`text-lg mb-8 text-center ${
+              theme === 'light' ? 'text-gray-700' : 'text-gray-300'
             }`}>
               {t.welcome.description}
             </p>
 
+            {/* Features */}
+            <div className="space-y-3 mb-8">
+              {t.welcome.features.map((feature, idx) => (
+                <div 
+                  key={idx}
+                  className={`flex items-center gap-3 p-4 rounded-2xl transition-all hover:scale-105 ${
+                    theme === 'light'
+                      ? 'bg-white border border-gray-200 hover:border-purple-300 shadow-sm'
+                      : 'bg-white/5 border border-white/10 hover:border-purple-500/50'
+                  }`}
+                >
+                  <span className="text-2xl">{feature.split(' ')[0]}</span>
+                  <span className={`text-base font-medium ${
+                    theme === 'light' ? 'text-gray-800' : 'text-gray-200'
+                  }`}>
+                    {feature.substring(feature.indexOf(' ') + 1)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
             {/* CTA */}
             <Button
               onClick={() => setCurrentStep(0)}
-              className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+              className="w-full h-16 text-xl font-bold bg-gradient-to-r from-purple-600 via-purple-500 to-cyan-600 hover:from-purple-700 hover:via-purple-600 hover:to-cyan-700 shadow-xl hover:shadow-2xl transition-all hover:scale-105 relative overflow-hidden group"
             >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               {t.welcome.button}
-              <ChevronRight className="w-6 h-6 ml-2" />
+              <ChevronRight className="w-7 h-7 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
+
+            {/* Time indicator */}
+            <p className={`text-center mt-4 text-sm ${
+              theme === 'light' ? 'text-gray-500' : 'text-gray-500'
+            }`}>
+              ⏱️ {t.welcome.time}
+            </p>
           </div>
         </div>
       </div>
