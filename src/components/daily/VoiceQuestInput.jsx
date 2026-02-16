@@ -3,6 +3,7 @@ import { Mic, Square, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 
 export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
