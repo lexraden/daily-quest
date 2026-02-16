@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, TrendingUp, Calendar, Trophy, Target, Flame } from 'lucide-react';
+import { X, TrendingUp, Calendar, Trophy, Target, Flame } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
@@ -145,27 +145,20 @@ export default function Statistics() {
       }`}>
         <div className="px-5 py-4">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Link to={createPageUrl('DailyTracker')}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-10 w-10 rounded-full ${
-                    theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
-                  }`}
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div>
-                <h1 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                  Статистика
-                </h1>
-                <p className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Твой прогресс и достижения
-                </p>
-              </div>
-            </div>
+            <h1 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+              Статистика
+            </h1>
+            <Link to={createPageUrl('DailyTracker')}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-9 w-9 rounded-full ${
+                  theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </Link>
           </div>
 
           {/* View Mode Tabs */}
