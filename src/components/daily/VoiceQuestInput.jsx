@@ -9,28 +9,30 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [transcript, setTranscript] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const recognitionRef = useRef(null);
-  const fullTranscriptRef = useRef('');
+  const isStoppingRef = useRef(false);
 
   const startRecording = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.error('Голосовой ввод не поддерживается в этом браузере');
+      toast.error('Голосовой ввод не поддерживается');
       return;
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-    
-    // Поддержка русского и английского
+    isStoppingRef.current = false;
+
+    // Автоопределение языка
     const userLang = navigator.language || navigator.userLanguage;
     recognition.lang = userLang.startsWith('ru') ? 'ru-RU' : 'en-US';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = false;
+
+    let accumulatedText = '';
 
     recognition.onstart = () => {
       setIsRecording(true);
       setTranscript('');
-      fullTranscriptRef.current = '';
       toast.info('Говорите...', { duration: 1000 });
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -39,25 +41,35 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     };
 
     recognition.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          const newText = event.results[i][0].transcript;
-          fullTranscriptRef.current += newText + ' ';
-          setTranscript(fullTranscriptRef.current.trim());
-        }
-      }
+      const result = event.results[0][0].transcript;
+      accumulatedText = result;
+      setTranscript(result);
     };
 
     recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+      if (event.error !== 'aborted') {
+        console.error('Speech error:', event.error);
         setIsRecording(false);
         toast.error('Ошибка распознавания');
       }
     };
 
     recognition.onend = () => {
-      setIsRecording(false);
+      if (!isStoppingRef.current && isRecording) {
+        // Автоперезапуск для продолжения записи
+        try {
+          recognitionRef.current.start();
+        } catch (e) {
+          console.log('Restart failed');
+        }
+      } else {
+        setIsRecording(false);
+        if (accumulatedText.trim()) {
+          setShowConfirm(true);
+        } else {
+          toast.error('Ничего не записано');
+        }
+      }
     };
 
     recognition.start();
@@ -65,16 +77,8 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 
   const stopRecording = () => {
     if (recognitionRef.current && isRecording) {
-      setIsRecording(false);
+      isStoppingRef.current = true;
       recognitionRef.current.stop();
-      
-      const finalText = fullTranscriptRef.current.trim();
-      if (finalText) {
-        setTranscript(finalText);
-        setShowConfirm(true);
-      } else {
-        toast.error('Ничего не записано');
-      }
     }
   };
 
