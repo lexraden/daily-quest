@@ -87,57 +87,65 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
+    // Reuse existing recognition instance if available
+    if (!recognitionRef.current) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+
+      recognition.lang = 'ru-RU';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+        accumulatedTextRef.current = '';
+        
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+          window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+        }
+      };
+
+      recognition.onresult = (event) => {
+        const result = event.results[0][0].transcript;
+        accumulatedTextRef.current = result;
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error !== 'aborted') {
+          console.error('Speech error:', event.error);
+          setIsRecording(false);
+          toast.error('Ошибка распознавания');
+        }
+      };
+
+      recognition.onend = () => {
+        if (!isStoppingRef.current && isRecording) {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            console.log('Restart failed');
+          }
+        } else {
+          setIsRecording(false);
+          const finalText = accumulatedTextRef.current.trim();
+          if (finalText) {
+            handleAnswer(finalText);
+            toast.success('Текст распознан!');
+          }
+        }
+      };
+    }
+
     isStoppingRef.current = false;
     accumulatedTextRef.current = '';
 
-    recognition.lang = 'ru-RU';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      setIsRecording(true);
-      accumulatedTextRef.current = '';
-      
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-      }
-    };
-
-    recognition.onresult = (event) => {
-      const result = event.results[0][0].transcript;
-      accumulatedTextRef.current = result;
-    };
-
-    recognition.onerror = (event) => {
-      if (event.error !== 'aborted') {
-        console.error('Speech error:', event.error);
-        setIsRecording(false);
-        toast.error('Ошибка распознавания');
-      }
-    };
-
-    recognition.onend = () => {
-      if (!isStoppingRef.current && isRecording) {
-        try {
-          recognitionRef.current.start();
-        } catch (e) {
-          console.log('Restart failed');
-        }
-      } else {
-        setIsRecording(false);
-        const finalText = accumulatedTextRef.current.trim();
-        if (finalText) {
-          handleAnswer(finalText);
-          toast.success('Текст распознан!');
-        }
-      }
-    };
-
-    recognition.start();
+    try {
+      recognitionRef.current.start();
+    } catch (e) {
+      console.error('Failed to start recording:', e);
+    }
   };
 
   const stopRecording = () => {
@@ -277,7 +285,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
               <h2 className={`text-2xl font-bold mb-2 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
                 {currentQuestion.title}
               </h2>
-              <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+              <p className={`text-base font-semibold ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
                 {currentQuestion.question}
               </p>
             </div>
@@ -314,23 +322,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             </div>
           </div>
 
-          {/* Dots indicator */}
-          <div className="flex items-center justify-center gap-2 mb-6">
-            {ONBOARDING_QUESTIONS.map((_, idx) => (
-              <div
-                key={idx}
-                className={`h-2 rounded-full transition-all ${
-                  idx === currentStep 
-                    ? 'w-8 bg-gradient-to-r from-purple-600 to-cyan-600' 
-                    : idx < currentStep
-                      ? 'w-2 bg-purple-500'
-                      : theme === 'light' 
-                        ? 'w-2 bg-gray-300' 
-                        : 'w-2 bg-white/20'
-                }`}
-              />
-            ))}
-          </div>
+
         </div>
       </div>
 
