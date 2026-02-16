@@ -587,12 +587,10 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           }
         } else {
           // Новый пользователь - показать онбординг
-          const onboardingCompleted = localStorage.getItem('dailyQuestsOnboardingCompleted');
-          if (!onboardingCompleted) {
-            setShowOnboarding(true);
-            setIsLoaded(true);
-            return; // Не создаем запись до завершения онбординга
-          }
+          setShowOnboarding(true);
+          setIsLoaded(true);
+          return; // Не создаем запись до завершения онбординга
+        }
 
           // Инициализация для новых пользователей
           const levels = {};
