@@ -87,9 +87,9 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   };
 
   const stopRecording = () => {
-    if (recognitionRef.current && isRecording) {
+    if (recognition && isRecording) {
       isStoppingRef.current = true;
-      recognitionRef.current.stop();
+      recognition.stop();
     }
   };
 
