@@ -8,7 +8,7 @@ const ONBOARDING_QUESTIONS = [
   {
     category: 'health',
     emoji: '💪',
-    title: 'Здоровье и спорт',
+    title: 'Здоровье',
     question: 'Какие ежедневные активности помогут вам быть здоровее?',
     placeholder: 'Например: хожу в зал, бегаю по утрам, делаю зарядку...'
   },
@@ -299,7 +299,6 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
                   ? 'bg-gray-50 border-gray-300 text-gray-900' 
                   : 'bg-white/5 border-white/10 text-white'
               }`}
-              autoFocus
             />
 
             {/* Voice Input */}
