@@ -9,7 +9,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const recognitionRef = useRef(null);
+  const { recognition, isSupported, permissionGranted } = useSpeechRecognition();
   const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
 
