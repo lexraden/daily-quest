@@ -605,26 +605,17 @@ export default function Profile() {
         </div>
 
         {/* Action Buttons */}
-        <div className="space-y-2">
-          <Button
-            onClick={() => {
-              localStorage.removeItem('dailyQuestsOnboardingCompleted');
-              localStorage.setItem('dailyQuestsResetOnboarding', 'true');
-              window.location.reload();
-            }}
-            className="w-full h-11 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Обновить квесты
-          </Button>
-          <Link to={createPageUrl('DailyTracker')}>
-            <Button
-              className="w-full h-11 text-sm bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
-            >
-              Вернуться к квестам
-            </Button>
-          </Link>
-        </div>
+        <Button
+          onClick={() => {
+            localStorage.removeItem('dailyQuestsOnboardingCompleted');
+            localStorage.setItem('dailyQuestsResetOnboarding', 'true');
+            window.location.reload();
+          }}
+          className="w-full h-11 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Обновить квесты
+        </Button>
         </div>
         </div>
         );
