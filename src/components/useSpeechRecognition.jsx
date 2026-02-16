@@ -1,62 +1,55 @@
 import { useRef, useEffect, useState } from 'react';
 
-// Глобальное кэширование для микрофона
 let globalSpeechRecognition = null;
-let microphoneInitialized = false;
-let microphonePermissionGranted = false;
+let isInitialized = false;
 
 export function useSpeechRecognition() {
-  const [isSupported, setIsSupported] = useState(true);
-  const recognitionRef = useRef(null);
+  const [recognition, setRecognition] = useState(null);
+  const [isSupported, setIsSupported] = useState(false);
 
-  // Инициализация микрофона один раз при монтировании приложения
   useEffect(() => {
-    const initMicrophone = async () => {
-      if (microphoneInitialized) {
-        recognitionRef.current = globalSpeechRecognition;
-        setIsSupported(!!globalSpeechRecognition);
-        return;
-      }
-
-      // Проверяем поддержку SpeechRecognition
-      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        setIsSupported(false);
-        microphoneInitialized = true;
-        return;
-      }
-
-      // Проверяем кэшированное разрешение
-      const cachedPermission = localStorage.getItem('microphonePermissionGranted');
-      if (cachedPermission === 'true') {
-        microphonePermissionGranted = true;
-      }
-
-      // Инициализируем SpeechRecognition один раз
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      globalSpeechRecognition = new SpeechRecognition();
-      recognitionRef.current = globalSpeechRecognition;
-
-      // Если разрешение уже было дано, не запрашиваем заново
-      if (!microphonePermissionGranted) {
-        try {
-          await navigator.mediaDevices.getUserMedia({ audio: true });
-          microphonePermissionGranted = true;
-          localStorage.setItem('microphonePermissionGranted', 'true');
-        } catch (error) {
-          console.log('Microphone permission denied:', error);
-        }
-      }
-
-      microphoneInitialized = true;
+    // Если уже инициализировано, используем кэш
+    if (isInitialized && globalSpeechRecognition) {
+      setRecognition(globalSpeechRecognition);
       setIsSupported(true);
+      return;
+    }
+
+    const initSpeechRecognition = async () => {
+      // Проверяем поддержку браузером
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (!SpeechRecognition) {
+        setIsSupported(false);
+        return;
+      }
+
+      setIsSupported(true);
+
+      try {
+        // Проверяем кэшированное разрешение
+        const cachedPermission = localStorage.getItem('speechRecognitionPermission');
+        
+        if (cachedPermission === 'granted') {
+          // Разрешение уже было дано, просто инициализируем
+          globalSpeechRecognition = new SpeechRecognition();
+        } else {
+          // Запрашиваем разрешение
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+          localStorage.setItem('speechRecognitionPermission', 'granted');
+          globalSpeechRecognition = new SpeechRecognition();
+        }
+        
+        setRecognition(globalSpeechRecognition);
+        isInitialized = true;
+      } catch (error) {
+        console.log('Microphone permission denied:', error);
+        localStorage.removeItem('speechRecognitionPermission');
+      }
     };
 
-    initMicrophone();
+    initSpeechRecognition();
   }, []);
 
-  return {
-    recognition: recognitionRef.current,
-    isSupported,
-    permissionGranted: microphonePermissionGranted
-  };
+  return { recognition, isSupported };
 }
