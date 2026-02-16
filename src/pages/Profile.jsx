@@ -282,51 +282,6 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className={`rounded-2xl p-5 border ${
-            theme === 'light' 
-              ? 'bg-gradient-to-br from-orange-50 to-white border-orange-200' 
-              : 'bg-gradient-to-br from-orange-900/20 to-transparent border-orange-500/30'
-          }`}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 rounded-lg bg-orange-500/10">
-                <Flame className="w-5 h-5 text-orange-400" />
-              </div>
-              <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Серия
-              </span>
-            </div>
-            <div className={`text-3xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-              {stats.streak}
-            </div>
-            <div className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
-              дней подряд
-            </div>
-          </div>
-
-          <div className={`rounded-2xl p-5 border ${
-            theme === 'light' 
-              ? 'bg-gradient-to-br from-purple-50 to-white border-purple-200' 
-              : 'bg-gradient-to-br from-purple-900/20 to-transparent border-purple-500/30'
-          }`}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Trophy className="w-5 h-5 text-purple-400" />
-              </div>
-              <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Всего
-              </span>
-            </div>
-            <div className={`text-3xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-              {stats.totalCompleted}
-            </div>
-            <div className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
-              квестов
-            </div>
-          </div>
-        </div>
-
         {/* Journal Entries */}
         {journalEntries.length > 0 && (
           <div className={`rounded-2xl p-5 border ${
