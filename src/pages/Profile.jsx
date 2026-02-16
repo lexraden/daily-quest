@@ -82,6 +82,8 @@ export default function Profile() {
   const [journalEntries, setJournalEntries] = useState([]);
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
 
   useEffect(() => {
     // Load theme
@@ -92,6 +94,7 @@ export default function Profile() {
     base44.auth.me().then(authUser => {
       if (authUser) {
         setUser(authUser);
+        setEditedName(authUser.full_name || '');
       }
     }).catch(() => {});
 
@@ -154,6 +157,17 @@ export default function Profile() {
     if (filterType !== 'all' && entry.type !== filterType) return false;
     return true;
   });
+
+  const handleSaveName = async () => {
+    if (!editedName.trim()) return;
+    try {
+      await base44.auth.updateMe({ full_name: editedName.trim() });
+      setUser(prev => ({ ...prev, full_name: editedName.trim() }));
+      setIsEditingName(false);
+    } catch (error) {
+      console.error('Failed to update name:', error);
+    }
+  };
 
   return (
     <div className={`min-h-screen ${bgClass}`}>
@@ -225,9 +239,54 @@ export default function Profile() {
             
             {/* Name and Level Badge */}
             <div className="mb-4">
-              <h2 className={`text-2xl font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                {user?.full_name || tgUser?.first_name || 'Пользователь'}
-              </h2>
+              {isEditingName ? (
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    className={`flex-1 px-4 py-2 rounded-xl text-lg font-bold ${
+                      theme === 'light'
+                        ? 'bg-white border-2 border-purple-300 text-gray-900'
+                        : 'bg-[#0f1419] border-2 border-purple-500/50 text-white'
+                    }`}
+                    placeholder="Введите имя"
+                    autoFocus
+                  />
+                  <Button
+                    onClick={handleSaveName}
+                    className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+                  >
+                    ✓
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsEditingName(false);
+                      setEditedName(user?.full_name || '');
+                    }}
+                    variant="outline"
+                    className={theme === 'light' ? 'border-gray-300' : 'border-white/10'}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                    {user?.full_name || tgUser?.first_name || 'Пользователь'}
+                  </h2>
+                  <button
+                    onClick={() => setIsEditingName(true)}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      theme === 'light'
+                        ? 'hover:bg-black/5 text-gray-400 hover:text-gray-600'
+                        : 'hover:bg-white/10 text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    ✏️
+                  </button>
+                </div>
+              )}
               <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${
                 theme === 'light'
                   ? 'bg-gradient-to-r from-purple-100 to-cyan-100 border border-purple-200'

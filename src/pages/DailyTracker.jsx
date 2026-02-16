@@ -161,6 +161,7 @@ export default function DailyTracker() {
   const [journalEntries, setJournalEntries] = useState([]);
   const [aiResponse, setAiResponse] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [user, setUser] = useState(null);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -169,6 +170,13 @@ export default function DailyTracker() {
     // Загрузка темы из localStorage (по умолчанию 'light')
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
     setTheme(savedTheme);
+
+    // Load authenticated user
+    base44.auth.me().then(authUser => {
+      if (authUser) {
+        setUser(authUser);
+      }
+    }).catch(() => {});
 
     // Check if onboarding completed
     const onboardingCompleted = localStorage.getItem('dailyQuestsOnboardingCompleted');
@@ -829,7 +837,14 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       {/* Compact Header */}
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Daily Quests</h1>
+          <div>
+            <h1 className="text-2xl font-bold">
+              {user?.full_name || tgUser?.first_name || 'Daily Quests'}
+            </h1>
+            <p className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
+              Твои ежедневные квесты
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <Link to={createPageUrl('Statistics')}>
               <Button
