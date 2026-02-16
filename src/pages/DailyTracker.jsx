@@ -929,9 +929,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             <h1 className="text-2xl font-bold">
               {user?.full_name || tgUser?.first_name || 'Daily Quests'}
             </h1>
-            <p className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
-              Твои ежедневные квесты
-            </p>
           </div>
           <div className="flex items-center gap-2">
             <Link to={createPageUrl('Statistics')}>
