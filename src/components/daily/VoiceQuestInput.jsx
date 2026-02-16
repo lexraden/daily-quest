@@ -24,9 +24,8 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     // Поддержка русского и английского
     const userLang = navigator.language || navigator.userLanguage;
     recognition.lang = userLang.startsWith('ru') ? 'ru-RU' : 'en-US';
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       setIsRecording(true);
@@ -40,21 +39,11 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     };
 
     recognition.onresult = (event) => {
-      const result = event.results[event.results.length - 1];
-      if (result.isFinal) {
-        const newText = result[0].transcript;
-        fullTranscriptRef.current += newText + ' ';
-        setTranscript(fullTranscriptRef.current.trim());
-        
-        // Автоматически перезапускаем для следующей фразы
-        if (recognitionRef.current && isRecording) {
-          setTimeout(() => {
-            try {
-              recognitionRef.current.start();
-            } catch (e) {
-              console.log('Recognition restart skipped');
-            }
-          }, 100);
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const newText = event.results[i][0].transcript;
+          fullTranscriptRef.current += newText + ' ';
+          setTranscript(fullTranscriptRef.current.trim());
         }
       }
     };
@@ -62,22 +51,13 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        setIsRecording(false);
         toast.error('Ошибка распознавания');
-      }
-      // Перезапуск при ошибке "no-speech"
-      if (event.error === 'no-speech' && isRecording && recognitionRef.current) {
-        setTimeout(() => {
-          try {
-            recognitionRef.current.start();
-          } catch (e) {
-            console.log('Recognition restart after no-speech skipped');
-          }
-        }, 100);
       }
     };
 
     recognition.onend = () => {
-      // Ничего не делаем - перезапуск в onresult
+      setIsRecording(false);
     };
 
     recognition.start();
@@ -86,22 +66,15 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const stopRecording = () => {
     if (recognitionRef.current && isRecording) {
       setIsRecording(false);
-      try {
-        recognitionRef.current.stop();
-        recognitionRef.current.abort();
-      } catch (e) {
-        console.log('Stop error:', e);
-      }
+      recognitionRef.current.stop();
       
-      setTimeout(() => {
-        const finalText = fullTranscriptRef.current.trim();
-        if (finalText) {
-          setTranscript(finalText);
-          setShowConfirm(true);
-        } else {
-          toast.error('Ничего не записано');
-        }
-      }, 200);
+      const finalText = fullTranscriptRef.current.trim();
+      if (finalText) {
+        setTranscript(finalText);
+        setShowConfirm(true);
+      } else {
+        toast.error('Ничего не записано');
+      }
     }
   };
 
