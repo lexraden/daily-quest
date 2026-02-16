@@ -7,9 +7,9 @@ import { toast } from 'sonner';
 export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [showConfirm, setShowConfirm] = useState(false);
   const recognitionRef = useRef(null);
   const isStoppingRef = useRef(false);
+  const accumulatedTextRef = useRef('');
 
   const startRecording = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -21,6 +21,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     isStoppingRef.current = false;
+    accumulatedTextRef.current = '';
 
     // Автоопределение языка
     const userLang = navigator.language || navigator.userLanguage;
@@ -28,11 +29,10 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     recognition.continuous = false;
     recognition.interimResults = false;
 
-    let accumulatedText = '';
-
     recognition.onstart = () => {
       setIsRecording(true);
       setTranscript('');
+      accumulatedTextRef.current = '';
       toast.info('Говорите...', { duration: 1000 });
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -42,7 +42,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 
     recognition.onresult = (event) => {
       const result = event.results[0][0].transcript;
-      accumulatedText = result;
+      accumulatedTextRef.current = result;
       setTranscript(result);
     };
 
@@ -64,28 +64,23 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
         }
       } else {
         setIsRecording(false);
+        // Обработка после остановки
+        const finalText = accumulatedTextRef.current.trim();
+        if (finalText) {
+          processVoiceInput(finalText);
+        } else {
+          toast.error('Ничего не записано');
+        }
       }
     };
 
     recognition.start();
   };
 
-  const stopRecording = async () => {
+  const stopRecording = () => {
     if (recognitionRef.current && isRecording) {
       isStoppingRef.current = true;
       recognitionRef.current.stop();
-      
-      // Небольшая задержка чтобы получить финальный текст
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const finalText = transcript.trim();
-      if (!finalText) {
-        toast.error('Ничего не записано');
-        return;
-      }
-
-      // Сразу отправляем в AI
-      await processVoiceInput(finalText);
     }
   };
 
