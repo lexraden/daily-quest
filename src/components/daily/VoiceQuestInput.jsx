@@ -21,17 +21,18 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     
-    // Определение языка браузера
+    // Поддержка русского и английского
     const userLang = navigator.language || navigator.userLanguage;
     recognition.lang = userLang.startsWith('ru') ? 'ru-RU' : 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       setIsRecording(true);
       setTranscript('');
       fullTranscriptRef.current = '';
-      toast.info('Слушаю...', { duration: 1000 });
+      toast.info('Говорите...', { duration: 1000 });
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
@@ -39,37 +40,44 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     };
 
     recognition.onresult = (event) => {
-      let interimTranscript = '';
-      
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          fullTranscriptRef.current += transcript + ' ';
-        } else {
-          interimTranscript += transcript;
+      const result = event.results[event.results.length - 1];
+      if (result.isFinal) {
+        const newText = result[0].transcript;
+        fullTranscriptRef.current += newText + ' ';
+        setTranscript(fullTranscriptRef.current.trim());
+        
+        // Автоматически перезапускаем для следующей фразы
+        if (recognitionRef.current && isRecording) {
+          setTimeout(() => {
+            try {
+              recognitionRef.current.start();
+            } catch (e) {
+              console.log('Recognition restart skipped');
+            }
+          }, 100);
         }
       }
-      
-      setTranscript(fullTranscriptRef.current + interimTranscript);
     };
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
-      if (event.error !== 'aborted') {
-        setIsRecording(false);
-        toast.error('Ошибка распознавания речи');
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        toast.error('Ошибка распознавания');
+      }
+      // Перезапуск при ошибке "no-speech"
+      if (event.error === 'no-speech' && isRecording && recognitionRef.current) {
+        setTimeout(() => {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            console.log('Recognition restart after no-speech skipped');
+          }
+        }, 100);
       }
     };
 
     recognition.onend = () => {
-      // Перезапуск если ещё записываем (автоматические паузы)
-      if (isRecording && recognitionRef.current) {
-        try {
-          recognitionRef.current.start();
-        } catch (e) {
-          // Игнорируем ошибки перезапуска
-        }
-      }
+      // Ничего не делаем - перезапуск в onresult
     };
 
     recognition.start();
@@ -78,14 +86,22 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const stopRecording = () => {
     if (recognitionRef.current && isRecording) {
       setIsRecording(false);
-      recognitionRef.current.stop();
-      recognitionRef.current.onend = null; // Отключаем автоперезапуск
-      
-      if (transcript.trim()) {
-        setShowConfirm(true);
-      } else {
-        toast.error('Ничего не записано');
+      try {
+        recognitionRef.current.stop();
+        recognitionRef.current.abort();
+      } catch (e) {
+        console.log('Stop error:', e);
       }
+      
+      setTimeout(() => {
+        const finalText = fullTranscriptRef.current.trim();
+        if (finalText) {
+          setTranscript(finalText);
+          setShowConfirm(true);
+        } else {
+          toast.error('Ничего не записано');
+        }
+      }, 200);
     }
   };
 
