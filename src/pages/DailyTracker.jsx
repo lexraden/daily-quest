@@ -490,9 +490,25 @@ export default function DailyTracker() {
       fireConfetti();
 
       // Звук
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS57OihUBELTKXh8bllHAU2jdXvzn0pBSl+zPLaizsIHGm98OmmUhELSqPf8blnHwU0i9Tv0IAqBSh6zPLcizsIHGa68OelUhEKSKLe8bhnHwU0i9Tvz38rBSh5zPLcizwIHGa68OelUhEKR6He8blnHwU0i9Tvz3wrBSh5y/PcizwIHGe78OalUhEKSKLe8bhnHwU0jNXvz38qBSh4y/PcizwIHGe78OalUhEKR6Hd8blnHwU1jdXvz38qBSh5zPLaizwIHGa68OelUhEKSKLe8bhoHwU0i9Tvz4AqBSh5zPLbizwIHGa68OelUhEKSKLe8bhoHwU0i9Tv0H8rBSh5y/LbizwIHGe78OalUhEKR6Hd8blnHwU1jdXvz38qBSh6zPLbizsIHGa58OelUhEKSKLe8bhnHwU0i9Tv0H8rBSh5y/LbizwIHGe78OalUhEKR6He8bln');
-      audio.volume = 0.3;
-      audio.play().catch(() => {});
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const celebrationSound = () => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+        oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+        oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+      };
+      try { celebrationSound(); } catch (e) {}
 
       // Вибрация
       if (window.Telegram?.WebApp?.HapticFeedback) {
