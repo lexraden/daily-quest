@@ -78,7 +78,12 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       }
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      toast.error('Ошибка при запуске микрофона');
+    }
   };
 
   const stopRecording = () => {
