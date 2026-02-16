@@ -11,8 +11,10 @@ import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
 import QuestSuggestionModal from '@/components/daily/QuestSuggestionModal.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
 import AIResponseModal from '@/components/daily/AIResponseModal.jsx';
+import OnboardingModal from '@/components/daily/OnboardingModal.jsx';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
+import { base44 } from '@/api/base44Client';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -158,6 +160,7 @@ export default function DailyTracker() {
   const [questSuggestion, setQuestSuggestion] = useState(null);
   const [journalEntries, setJournalEntries] = useState([]);
   const [aiResponse, setAiResponse] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -166,6 +169,12 @@ export default function DailyTracker() {
     // Загрузка темы из localStorage (по умолчанию 'light')
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
     setTheme(savedTheme);
+
+    // Check if onboarding completed
+    const onboardingCompleted = localStorage.getItem('dailyQuestsOnboardingCompleted');
+    if (!onboardingCompleted) {
+      setShowOnboarding(true);
+    }
     
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
@@ -283,12 +292,10 @@ export default function DailyTracker() {
 Ответы пользователя:
 ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')}
 
-Для каждой категории (health, mind, work, money, love, friends) создай 5 квестов разных уровней сложности:
+Для каждой категории (health, mind, work, money, love, friends) создай 3 квеста разных уровней сложности:
 - Level 1: самый простой, базовый
-- Level 2: чуть сложнее
-- Level 3: средний
-- Level 4: продвинутый
-- Level 5: самый сложный, амбициозный
+- Level 2: средний
+- Level 3: более сложный, амбициозный
 
 Квесты должны быть:
 - Конкретными и измеримыми
@@ -379,11 +386,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       });
 
       // Update quests with AI-generated ones
-      setDefaultQuests(result);
+      setQuestData(result);
 
       // Save to localStorage
       const savedData = JSON.parse(localStorage.getItem('dailyQuestsData') || '{}');
-      savedData.customQuests = result;
+      savedData.questData = result;
       savedData.onboardingAnswers = answers;
       localStorage.setItem('dailyQuestsData', JSON.stringify(savedData));
       localStorage.setItem('dailyQuestsOnboardingCompleted', 'true');
@@ -784,6 +791,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
   const bgClass = theme === 'light' 
     ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
     : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
+
+  // Show onboarding first
+  if (showOnboarding) {
+    return <OnboardingModal onComplete={handleOnboardingComplete} theme={theme} />;
+  }
 
   return (
     <div className={`min-h-screen ${bgClass} pb-8`}>
