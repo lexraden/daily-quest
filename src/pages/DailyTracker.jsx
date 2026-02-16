@@ -453,13 +453,19 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           },
           required: ["health", "mind", "work", "money", "love", "friends"]
         }
-      });
+        });
 
-      // Update quests with AI-generated ones
-      setQuestData(result);
+        // Update quests with AI-generated ones
+        setQuestData(result);
 
-      // Create new user data record after onboarding
-      const newUserData = await base44.entities.UserQuestData.create({
+        // Check if we need to delete old data (reset scenario)
+        const userDataList = await base44.entities.UserQuestData.filter({ created_by: user?.email });
+        if (userDataList.length > 0) {
+        await base44.asServiceRole.entities.UserQuestData.delete(userDataList[0].id);
+        }
+
+        // Create new user data record after onboarding
+        const newUserData = await base44.entities.UserQuestData.create({
         quest_data: result,
         onboarding_answers: answers,
         category_levels: Object.keys(CATEGORIES).reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {}),
@@ -470,17 +476,17 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         streak_freezes: 1,
         journal_entries: [],
         last_visit_date: getTodayKey()
-      });
-      setUserDataId(newUserData.id);
+        });
+        setUserDataId(newUserData.id);
 
-      setShowOnboarding(false);
-      toast.success('Ваши персональные квесты готовы! 🎉');
-    } catch (error) {
-      console.error('Error generating quests:', error);
-      toast.error('Ошибка при создании квестов. Используем стандартные.');
-      setShowOnboarding(false);
-    }
-  };
+        setShowOnboarding(false);
+        toast.success('Ваши персональные квесты готовы! 🎉');
+        } catch (error) {
+        console.error('Error generating quests:', error);
+        toast.error('Ошибка при создании квестов. Используем стандартные.');
+        setShowOnboarding(false);
+        }
+        };
 
   const handleAcceptSuggestion = (suggestion) => {
     const { category, emoji, name, level, action } = suggestion;
