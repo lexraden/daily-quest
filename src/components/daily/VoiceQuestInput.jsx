@@ -39,8 +39,12 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 
     const handleError = (event) => {
       console.error('Speech error:', event.error);
-      if (event.error !== 'aborted' && event.error !== 'no-speech') {
-        toast.error('Ошибка распознавания');
+      if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+        localStorage.setItem('voicePermissionGranted', 'false');
+        toast.error('Разрешение на микрофон запрещено');
+        setIsRecording(false);
+      } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        toast.error('Ошибка распознавания: ' + event.error);
       }
     };
 
@@ -74,11 +78,20 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       // Начать запись
       isStoppingRef.current = false;
       accumulatedTextRef.current = '';
+      
+      // Попытка запустить без явного запроса разрешения
       try {
         recognition.start();
+        // Отмечаем что разрешение было успешно использовано
+        localStorage.setItem('voicePermissionGranted', 'true');
       } catch (error) {
         console.error('Failed to start recording:', error);
-        toast.error('Ошибка при запуске микрофона');
+        if (error.message.includes('NotAllowedError') || error.message.includes('permission')) {
+          toast.error('Разрешение на микрофон запрещено в настройках браузера');
+          localStorage.setItem('voicePermissionGranted', 'false');
+        } else {
+          toast.error('Ошибка при запуске микрофона');
+        }
       }
     }
   };
