@@ -10,6 +10,7 @@ import CategoryProgressModal from '@/components/daily/CategoryProgressModal.jsx'
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
 import QuestSuggestionModal from '@/components/daily/QuestSuggestionModal.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
+import AIResponseModal from '@/components/daily/AIResponseModal.jsx';
 import confetti from 'canvas-confetti';
 
 /* ============================================
@@ -155,6 +156,7 @@ export default function DailyTracker() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [questSuggestion, setQuestSuggestion] = useState(null);
   const [journalEntries, setJournalEntries] = useState([]);
+  const [aiResponse, setAiResponse] = useState(null);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -194,7 +196,12 @@ export default function DailyTracker() {
   };
 
   const handleQuestSuggestion = (suggestion) => {
-    const { intent, category, emoji, name, description, action } = suggestion;
+    // Показать модал с AI ответом
+    setAiResponse(suggestion);
+  };
+
+  const handleAcceptAiResponse = () => {
+    const { intent, category, emoji, name, description, action } = aiResponse;
 
     if (intent === 'COMPLETED_QUEST') {
       // Отметить квест как выполненный
@@ -214,10 +221,10 @@ export default function DailyTracker() {
       };
       setJournalEntries(prev => [newEntry, ...prev]);
       
-      toast.success(suggestion.message || 'Квест выполнен! 🎉');
+      toast.success(aiResponse.message || 'Квест выполнен! 🎉');
     } else if (intent === 'ADD_QUEST') {
       // Добавить новый квест
-      setQuestSuggestion(suggestion);
+      setQuestSuggestion(aiResponse);
     } else if (intent === 'JOURNAL') {
       // Добавить заметку в журнал
       const today = getTodayKey();
@@ -235,8 +242,10 @@ export default function DailyTracker() {
       // Начислить небольшой XP за журналинг
       setTotalCompleted(prev => prev + 1);
       
-      toast.success(suggestion.message || 'Заметка добавлена! 📝');
+      toast.success(aiResponse.message || 'Заметка добавлена! 📝');
     }
+
+    setAiResponse(null);
   };
 
   const handleAcceptSuggestion = (suggestion) => {
@@ -810,6 +819,24 @@ export default function DailyTracker() {
           currentLevel={categoryLevels[selectedCategory] || 1}
           completionHistory={completionHistory}
           onClose={() => setSelectedCategory(null)}
+          theme={theme}
+        />
+      )}
+
+      {/* AI Response Modal */}
+      {aiResponse && (
+        <AIResponseModal
+          userInput={aiResponse.userInput}
+          aiResponse={aiResponse}
+          onClose={() => {
+            if (aiResponse.intent !== 'ADD_QUEST') {
+              handleAcceptAiResponse();
+            } else {
+              setAiResponse(null);
+            }
+          }}
+          onAccept={handleAcceptAiResponse}
+          onReject={() => setAiResponse(null)}
           theme={theme}
         />
       )}

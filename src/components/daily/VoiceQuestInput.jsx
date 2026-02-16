@@ -58,6 +58,12 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 
       toast.info('Анализирую задачу...', { duration: 3000 });
 
+      // First, transcribe the audio
+      const transcription = await base44.integrations.Core.InvokeLLM({
+        prompt: 'Транскрибируй это голосовое сообщение. Верни только текст того, что сказал пользователь, без дополнительных комментариев.',
+        file_urls: [uploadResult.file_url]
+      });
+
       // Use LLM to transcribe and analyze intent
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Ты - ассистент для трекера задач и достижений. Пользователь записал голосовое сообщение.
@@ -101,8 +107,11 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       });
 
       console.log('AI Response:', result);
-      onQuestSuggestion(result);
-      toast.success('Квест готов! 🎯');
+      onQuestSuggestion({
+        ...result,
+        userInput: transcription
+      });
+      toast.success('AI обработал сообщение! 🎯');
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
