@@ -274,6 +274,130 @@ export default function DailyTracker() {
     setAiResponse(null);
   };
 
+  const handleOnboardingComplete = async (answers) => {
+    try {
+      // Generate personalized quests using AI
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Ты - эксперт по персональному развитию. На основе ответов пользователя создай персонализированные квесты для ежедневного трекера.
+
+Ответы пользователя:
+${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')}
+
+Для каждой категории (health, mind, work, money, love, friends) создай 5 квестов разных уровней сложности:
+- Level 1: самый простой, базовый
+- Level 2: чуть сложнее
+- Level 3: средний
+- Level 4: продвинутый
+- Level 5: самый сложный, амбициозный
+
+Квесты должны быть:
+- Конкретными и измеримыми
+- Подходящими под ситуацию пользователя
+- Реалистичными
+- Мотивирующими
+- Короткими (до 30 символов)
+
+Подбери подходящие эмодзи для каждого квеста.`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            health: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  level: { type: "number" },
+                  emoji: { type: "string" },
+                  name: { type: "string" }
+                },
+                required: ["level", "emoji", "name"]
+              }
+            },
+            mind: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  level: { type: "number" },
+                  emoji: { type: "string" },
+                  name: { type: "string" }
+                },
+                required: ["level", "emoji", "name"]
+              }
+            },
+            work: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  level: { type: "number" },
+                  emoji: { type: "string" },
+                  name: { type: "string" }
+                },
+                required: ["level", "emoji", "name"]
+              }
+            },
+            money: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  level: { type: "number" },
+                  emoji: { type: "string" },
+                  name: { type: "string" }
+                },
+                required: ["level", "emoji", "name"]
+              }
+            },
+            love: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  level: { type: "number" },
+                  emoji: { type: "string" },
+                  name: { type: "string" }
+                },
+                required: ["level", "emoji", "name"]
+              }
+            },
+            friends: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  level: { type: "number" },
+                  emoji: { type: "string" },
+                  name: { type: "string" }
+                },
+                required: ["level", "emoji", "name"]
+              }
+            }
+          },
+          required: ["health", "mind", "work", "money", "love", "friends"]
+        }
+      });
+
+      // Update quests with AI-generated ones
+      setDefaultQuests(result);
+
+      // Save to localStorage
+      const savedData = JSON.parse(localStorage.getItem('dailyQuestsData') || '{}');
+      savedData.customQuests = result;
+      savedData.onboardingAnswers = answers;
+      localStorage.setItem('dailyQuestsData', JSON.stringify(savedData));
+      localStorage.setItem('dailyQuestsOnboardingCompleted', 'true');
+
+      setShowOnboarding(false);
+      toast.success('Ваши персональные квесты готовы! 🎉');
+    } catch (error) {
+      console.error('Error generating quests:', error);
+      toast.error('Ошибка при создании квестов. Используем стандартные.');
+      localStorage.setItem('dailyQuestsOnboardingCompleted', 'true');
+      setShowOnboarding(false);
+    }
+  };
+
   const handleAcceptSuggestion = (suggestion) => {
     const { category, emoji, name, level, action } = suggestion;
 
