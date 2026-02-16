@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Mic, Square, Send, X } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Mic, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -8,84 +8,69 @@ import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transcript, setTranscript] = useState('');
   const { recognition } = useSpeechRecognition();
   const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
-  const permissionAskedRef = useRef(false);
 
-  const requestMicrophonePermission = async () => {
-    try {
-      const cachedPermission = localStorage.getItem('voicePermissionGranted');
-      if (cachedPermission === 'true') {
-        return true;
-      }
+  useEffect(() => {
+    if (!recognition) return;
 
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      localStorage.setItem('voicePermissionGranted', 'true');
-      permissionAskedRef.current = true;
-      return true;
-    } catch (error) {
-      console.log('Microphone permission denied:', error);
-      toast.error('Доступ к микрофону запрещен. Проверьте настройки браузера.');
-      return false;
-    }
-  };
-
-  const startRecording = async () => {
-    if (!recognition) {
-      toast.error('Голосовой ввод не поддерживается');
-      return;
-    }
-
-    // Запрашиваем разрешение один раз
-    if (!permissionAskedRef.current) {
-      const granted = await requestMicrophonePermission();
-      if (!granted) return;
-    }
-
-    isStoppingRef.current = false;
-    accumulatedTextRef.current = '';
-
-    // Настройки для русского языка
     recognition.lang = 'ru-RU';
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
+    const handleStart = () => {
       setIsRecording(true);
-      setTranscript('');
       accumulatedTextRef.current = '';
       toast.info('Говорите...', { duration: 1000 });
-      
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
       }
     };
 
-    recognition.onresult = (event) => {
+    const handleResult = (event) => {
       const result = event.results[0][0].transcript;
       accumulatedTextRef.current = result;
-      setTranscript(result);
     };
 
-    recognition.onerror = (event) => {
+    const handleError = (event) => {
+      console.error('Speech error:', event.error);
+      setIsRecording(false);
       if (event.error !== 'aborted') {
-        console.error('Speech error:', event.error);
-        setIsRecording(false);
         toast.error('Ошибка распознавания');
       }
     };
 
-    recognition.onend = () => {
+    const handleEnd = () => {
       setIsRecording(false);
-      // Обработка после остановки
       const finalText = accumulatedTextRef.current.trim();
-      if (finalText) {
+      if (finalText && !isStoppingRef.current) {
         processVoiceInput(finalText);
       }
     };
+
+    recognition.onstart = handleStart;
+    recognition.onresult = handleResult;
+    recognition.onerror = handleError;
+    recognition.onend = handleEnd;
+
+    return () => {
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+    };
+  }, [recognition]);
+
+  const startRecording = () => {
+    if (!recognition) {
+      toast.error('Голосовой ввод не поддерживается');
+      return;
+    }
+
+    isStoppingRef.current = false;
+    accumulatedTextRef.current = '';
 
     try {
       recognition.start();
@@ -150,50 +135,34 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
         ...result,
         userInput: text
       });
-      setTranscript('');
-      setIsProcessing(false);
       
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
       }
     } catch (error) {
-      setIsProcessing(false);
       console.error('Error processing voice input:', error);
       toast.error('Ошибка обработки');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  if (isRecording || transcript) {
+  if (isProcessing) {
     return (
-      <div className="px-5 mb-4 space-y-2">
-        {transcript && (
-          <div className={`p-3 rounded-2xl text-sm ${
-            theme === 'light'
-              ? 'bg-purple-100 text-purple-900'
-              : 'bg-purple-500/20 text-purple-200'
-          }`}>
-            {transcript}
+      <div className="px-5 mb-4">
+        <div className={`w-full h-12 rounded-2xl flex items-center justify-center gap-3 ${
+          theme === 'light'
+            ? 'bg-gradient-to-r from-purple-100 to-cyan-100'
+            : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20'
+        }`}>
+          <div className="flex gap-1">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
-        )}
-        <div className="flex gap-2">
-          <Button
-            onClick={stopRecording}
-            className="flex-1 h-12 bg-red-500 hover:bg-red-600"
-          >
-            <Square className="w-4 h-4 mr-2" />
-            {isProcessing ? 'Отправляю...' : 'Отправить'}
-          </Button>
-          <Button
-            onClick={() => {
-              setTranscript('');
-              setIsRecording(false);
-            }}
-            variant="outline"
-            className={`flex-1 h-12 ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}
-          >
-            <X className="w-4 h-4 mr-2" />
-            Отмена
-          </Button>
+          <span className={`text-sm font-medium ${theme === 'light' ? 'text-purple-700' : 'text-purple-300'}`}>
+            Обрабатываю...
+          </span>
         </div>
       </div>
     );
@@ -202,11 +171,27 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   return (
     <div className="px-5 mb-4">
       <Button
-        onClick={startRecording}
-        className="w-full h-12 rounded-2xl font-medium bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+        onMouseDown={startRecording}
+        onMouseUp={stopRecording}
+        onTouchStart={startRecording}
+        onTouchEnd={stopRecording}
+        className={`w-full h-12 rounded-2xl font-medium transition-all ${
+          isRecording
+            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+            : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
+        }`}
       >
-        <Mic className="w-5 h-5 mr-2" />
-        Голосовой ввод
+        {isRecording ? (
+          <>
+            <Mic className="w-5 h-5 mr-2 animate-pulse" />
+            Говорите...
+          </>
+        ) : (
+          <>
+            <Mic className="w-5 h-5 mr-2" />
+            Голосовой ввод
+          </>
+        )}
       </Button>
     </div>
   );

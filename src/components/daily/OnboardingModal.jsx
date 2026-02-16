@@ -155,7 +155,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const [answers, setAnswers] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const { recognition, isSupported } = useSpeechRecognition();
+  const { recognition } = useSpeechRecognition();
   const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
   const currentStepRef = useRef(-1);
@@ -185,21 +185,20 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
+    const handleStart = () => {
       setIsRecording(true);
       accumulatedTextRef.current = '';
-      
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
       }
     };
 
-    recognition.onresult = (event) => {
+    const handleResult = (event) => {
       const result = event.results[0][0].transcript;
       accumulatedTextRef.current = result;
     };
 
-    recognition.onerror = (event) => {
+    const handleError = (event) => {
       if (event.error !== 'aborted') {
         console.error('Speech error:', event.error);
         setIsRecording(false);
@@ -207,7 +206,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
       }
     };
 
-    recognition.onend = () => {
+    const handleEnd = () => {
       if (!isStoppingRef.current && isRecording) {
         try {
           recognition.start();
@@ -226,6 +225,18 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
           toast.success(t.voice.success);
         }
       }
+    };
+
+    recognition.onstart = handleStart;
+    recognition.onresult = handleResult;
+    recognition.onerror = handleError;
+    recognition.onend = handleEnd;
+
+    return () => {
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
     };
   }, [recognition, userLang, isRecording, t.voice.success]);
 
