@@ -263,6 +263,20 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
       return;
     }
 
+    // Request permission if not cached
+    try {
+      const cachedPermission = localStorage.getItem('speechRecognitionPermission');
+      if (cachedPermission !== 'granted') {
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(() => {
+          localStorage.setItem('speechRecognitionPermission', 'granted');
+        }).catch(() => {
+          toast.error('Доступ к микрофону запрещен');
+        });
+      }
+    } catch (error) {
+      console.log('Permission check error:', error);
+    }
+
     isStoppingRef.current = false;
     accumulatedTextRef.current = '';
 

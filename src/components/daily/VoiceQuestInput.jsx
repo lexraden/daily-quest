@@ -24,6 +24,18 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       return;
     }
 
+    // Request permission if not cached
+    try {
+      const cachedPermission = localStorage.getItem('speechRecognitionPermission');
+      if (cachedPermission !== 'granted') {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        localStorage.setItem('speechRecognitionPermission', 'granted');
+      }
+    } catch (error) {
+      toast.error('Доступ к микрофону запрещен');
+      return;
+    }
+
     isStoppingRef.current = false;
     accumulatedTextRef.current = '';
 
