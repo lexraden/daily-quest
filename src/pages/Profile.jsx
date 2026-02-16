@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Flame, Trophy, TrendingUp, Calendar, Award } from 'lucide-react';
+import { X, User, Flame, Trophy, TrendingUp, Calendar, Award, LogOut, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
@@ -301,20 +301,34 @@ export default function Profile() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 mb-2">
-                  <h2 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                    {user?.full_name || tgUser?.first_name || 'Пользователь'}
-                  </h2>
-                  <button
-                    onClick={() => setIsEditingName(true)}
-                    className={`p-1 rounded-lg transition-colors ${
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <h2 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                      {user?.full_name || tgUser?.first_name || 'Пользователь'}
+                    </h2>
+                    <button
+                      onClick={() => setIsEditingName(true)}
+                      className={`p-1 rounded-lg transition-colors ${
+                        theme === 'light'
+                          ? 'hover:bg-black/5 text-gray-400 hover:text-gray-600'
+                          : 'hover:bg-white/10 text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      ✏️
+                    </button>
+                  </div>
+                  <Button
+                    onClick={() => base44.auth.logout()}
+                    variant="ghost"
+                    size="icon"
+                    className={`h-10 w-10 ${
                       theme === 'light'
                         ? 'hover:bg-black/5 text-gray-400 hover:text-gray-600'
                         : 'hover:bg-white/10 text-gray-500 hover:text-gray-300'
                     }`}
                   >
-                    ✏️
-                  </button>
+                    <LogOut className="w-5 h-5" />
+                  </Button>
                 </div>
               )}
               <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
@@ -590,27 +604,27 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Back Button */}
-        <Link to={createPageUrl('DailyTracker')}>
+        {/* Action Buttons */}
+        <div className="space-y-2">
           <Button
-            className="w-full h-11 text-sm bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            onClick={() => {
+              localStorage.removeItem('dailyQuestsOnboardingCompleted');
+              localStorage.setItem('dailyQuestsResetOnboarding', 'true');
+              window.location.reload();
+            }}
+            className="w-full h-11 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
           >
-            Вернуться к квестам
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Обновить квесты
           </Button>
-        </Link>
-
-        {/* Logout Button */}
-        <Button
-          onClick={() => base44.auth.logout()}
-          variant="outline"
-          className={`w-full h-11 text-sm ${
-            theme === 'light'
-              ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              : 'border-white/10 text-gray-300 hover:bg-white/5'
-          }`}
-        >
-          Выйти из аккаунта
-        </Button>
+          <Link to={createPageUrl('DailyTracker')}>
+            <Button
+              className="w-full h-11 text-sm bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            >
+              Вернуться к квестам
+            </Button>
+          </Link>
+        </div>
         </div>
         </div>
         );
