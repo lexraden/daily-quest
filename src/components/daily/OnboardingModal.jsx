@@ -1,53 +1,149 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { ChevronRight, Sparkles, Loader2, Mic, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
-const ONBOARDING_QUESTIONS = [
-  {
-    category: 'health',
-    emoji: '💪',
-    title: 'Здоровье',
-    question: 'Какие ежедневные активности помогут вам быть здоровее?',
-    placeholder: 'Например: хожу в зал, бегаю по утрам, делаю зарядку...'
+const TRANSLATIONS = {
+  ru: {
+    welcome: {
+      title: 'Welcome to',
+      subtitle: 'Daily Quests',
+      description: 'Мы создадим персональные задания, которые помогут тебе прокачивать все аспекты жизни каждый день',
+      button: 'Start Leveling Up Today'
+    },
+    header: {
+      title: 'Знакомство',
+      step: 'Шаг'
+    },
+    questions: [
+      {
+        category: 'health',
+        emoji: '💪',
+        title: 'Здоровье',
+        question: 'Какие ежедневные активности помогут вам быть здоровее?',
+        placeholder: 'Например: хожу в зал, бегаю по утрам, делаю зарядку...'
+      },
+      {
+        category: 'mind',
+        emoji: '🧠',
+        title: 'Разум',
+        question: 'Что вы делаете каждый день для саморазвития?',
+        placeholder: 'Например: читаю книги, учу языки, медитирую...'
+      },
+      {
+        category: 'work',
+        emoji: '💼',
+        title: 'Работа',
+        question: 'Кем работаете? Какие задачи выполняете ежедневно?',
+        placeholder: 'Например: разработчик, пишу код, провожу встречи...'
+      },
+      {
+        category: 'money',
+        emoji: '💰',
+        title: 'Финансы',
+        question: 'Какие финансовые привычки хотите развить?',
+        placeholder: 'Например: откладываю 10%, веду учет расходов...'
+      },
+      {
+        category: 'love',
+        emoji: '❤️',
+        title: 'Любовь',
+        question: 'Есть ли партнер? Что делаете для укрепления отношений?',
+        placeholder: 'Например: в отношениях, хочу больше времени с любимой...'
+      },
+      {
+        category: 'friends',
+        emoji: '👥',
+        title: 'Друзья',
+        question: 'Как часто общаетесь с друзьями? Хватает ли общения?',
+        placeholder: 'Например: встречаюсь с друзьями раз в неделю...'
+      }
+    ],
+    voice: {
+      recording: 'Отпустите для остановки',
+      record: 'Запись голосом',
+      success: 'Текст распознан!'
+    },
+    buttons: {
+      next: 'Далее',
+      complete: 'Создать мои квесты'
+    },
+    loading: {
+      title: 'AI создаёт ваши квесты',
+      subtitle: 'Персонализируем задания специально для вас...'
+    }
   },
-  {
-    category: 'mind',
-    emoji: '🧠',
-    title: 'Разум и обучение',
-    question: 'Что вы делаете каждый день для саморазвития?',
-    placeholder: 'Например: читаю книги, учу языки, медитирую...'
-  },
-  {
-    category: 'work',
-    emoji: '💼',
-    title: 'Работа и карьера',
-    question: 'Кем работаете? Какие задачи выполняете ежедневно?',
-    placeholder: 'Например: разработчик, пишу код, провожу встречи...'
-  },
-  {
-    category: 'money',
-    emoji: '💰',
-    title: 'Финансы',
-    question: 'Какие финансовые привычки хотите развить?',
-    placeholder: 'Например: откладываю 10%, веду учет расходов...'
-  },
-  {
-    category: 'love',
-    emoji: '❤️',
-    title: 'Любовь и отношения',
-    question: 'Есть ли партнер? Что делаете для укрепления отношений?',
-    placeholder: 'Например: в отношениях, хочу больше времени с любимой...'
-  },
-  {
-    category: 'friends',
-    emoji: '👥',
-    title: 'Друзья и социум',
-    question: 'Как часто общаетесь с друзьями? Хватает ли общения?',
-    placeholder: 'Например: встречаюсь с друзьями раз в неделю...'
+  en: {
+    welcome: {
+      title: 'Welcome to',
+      subtitle: 'Daily Quests',
+      description: "We'll create personalized quests to help you level up all aspects of your life every day",
+      button: 'Start Leveling Up Today'
+    },
+    header: {
+      title: 'Getting Started',
+      step: 'Step'
+    },
+    questions: [
+      {
+        category: 'health',
+        emoji: '💪',
+        title: 'Health',
+        question: 'What daily activities will help you be healthier?',
+        placeholder: 'Example: go to gym, run in the morning, do exercises...'
+      },
+      {
+        category: 'mind',
+        emoji: '🧠',
+        title: 'Mind',
+        question: 'What do you do every day for self-development?',
+        placeholder: 'Example: read books, learn languages, meditate...'
+      },
+      {
+        category: 'work',
+        emoji: '💼',
+        title: 'Work',
+        question: 'What do you do? What tasks do you complete daily?',
+        placeholder: 'Example: developer, write code, conduct meetings...'
+      },
+      {
+        category: 'money',
+        emoji: '💰',
+        title: 'Money',
+        question: 'What financial habits do you want to develop?',
+        placeholder: 'Example: save 10%, track expenses...'
+      },
+      {
+        category: 'love',
+        emoji: '❤️',
+        title: 'Love',
+        question: 'Do you have a partner? What do you do to strengthen relationships?',
+        placeholder: 'Example: in a relationship, want more time with loved one...'
+      },
+      {
+        category: 'friends',
+        emoji: '👥',
+        title: 'Friends',
+        question: 'How often do you communicate with friends? Is it enough?',
+        placeholder: 'Example: meet friends once a week...'
+      }
+    ],
+    voice: {
+      recording: 'Release to stop',
+      record: 'Voice recording',
+      success: 'Text recognized!'
+    },
+    buttons: {
+      next: 'Next',
+      complete: 'Create my quests'
+    },
+    loading: {
+      title: 'AI is creating your quests',
+      subtitle: 'Personalizing quests especially for you...'
+    }
   }
-];
+};
 
 export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const [currentStep, setCurrentStep] = useState(-1); // -1 = welcome screen
@@ -57,6 +153,15 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const recognitionRef = useRef(null);
   const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
+
+  // Detect user language
+  const userLang = useMemo(() => {
+    const lang = navigator.language || navigator.userLanguage || 'en';
+    return lang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  }, []);
+
+  const t = TRANSLATIONS[userLang];
+  const ONBOARDING_QUESTIONS = t.questions;
 
   const currentQuestion = currentStep >= 0 ? ONBOARDING_QUESTIONS[currentStep] : null;
   const progress = currentStep >= 0 ? ((currentStep + 1) / ONBOARDING_QUESTIONS.length) * 100 : 0;
@@ -132,7 +237,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
           const finalText = accumulatedTextRef.current.trim();
           if (finalText) {
             handleAnswer(finalText);
-            toast.success(t.recording.recognized);
+            toast.success(t.voice.success);
           }
         }
       };
@@ -169,10 +274,10 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             }`} />
           </div>
           <h2 className={`text-2xl font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-            AI создаёт ваши квесты
+            {t.loading.title}
           </h2>
           <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-            Персонализируем задания специально для вас...
+            {t.loading.subtitle}
           </p>
           <div className="mt-6 flex gap-2 justify-center">
             <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -211,14 +316,14 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             <h1 className={`text-4xl font-bold mb-4 ${
               theme === 'light' ? 'text-gray-900' : 'text-white'
             }`}>
-              Welcome to<br />Daily Quests
+              {t.welcome.title}<br />{t.welcome.subtitle}
             </h1>
 
             {/* Description */}
             <p className={`text-lg mb-8 ${
               theme === 'light' ? 'text-gray-600' : 'text-gray-400'
             }`}>
-              Мы создадим персональные задания, которые помогут тебе прокачивать все аспекты жизни каждый день
+              {t.welcome.description}
             </p>
 
             {/* CTA */}
@@ -226,7 +331,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
               onClick={() => setCurrentStep(0)}
               className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
             >
-              Start Leveling Up Today
+              {t.welcome.button}
               <ChevronRight className="w-6 h-6 ml-2" />
             </Button>
           </div>
@@ -252,10 +357,10 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             <Sparkles className={`w-6 h-6 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
             <div>
               <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                Знакомство
+                {t.header.title}
               </h1>
               <p className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Шаг {currentStep + 1} из {ONBOARDING_QUESTIONS.length}
+                {t.header.step} {currentStep + 1} {userLang === 'ru' ? 'из' : 'of'} {ONBOARDING_QUESTIONS.length}
               </p>
             </div>
           </div>
@@ -316,7 +421,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
                 }`}
               >
                 <Mic className="w-5 h-5 mr-2" />
-                {isRecording ? 'Отпустите для остановки' : 'Запись голосом'}
+                {isRecording ? t.voice.recording : t.voice.record}
               </Button>
             </div>
           </div>
@@ -340,11 +445,11 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             {currentStep === ONBOARDING_QUESTIONS.length - 1 ? (
               <>
                 <Sparkles className="w-5 h-5 mr-2" />
-                Создать мои квесты
+                {t.buttons.complete}
               </>
             ) : (
               <>
-                Далее
+                {t.buttons.next}
                 <ChevronRight className="w-5 h-5 ml-2" />
               </>
             )}
