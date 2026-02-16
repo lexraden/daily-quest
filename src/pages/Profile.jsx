@@ -117,8 +117,10 @@ export default function Profile() {
     const loadUserData = async () => {
       try {
         const authUser = await base44.auth.me();
-        if (authUser?.email) {
-          const userDataList = await base44.entities.UserQuestData.filter({ created_by: authUser.email });
+        if (!authUser?.email) {
+          throw new Error('User not authenticated');
+        }
+        const userDataList = await base44.entities.UserQuestData.filter({ created_by: authUser.email });
           
           if (userDataList.length > 0) {
             const data = userDataList[0];
