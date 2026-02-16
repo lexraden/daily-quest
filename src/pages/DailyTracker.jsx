@@ -205,9 +205,32 @@ export default function DailyTracker() {
     const { intent, category, emoji, name, description, action } = aiResponse;
 
     if (intent === 'COMPLETED_QUEST') {
-      // Отметить квест как выполненный
+      // Найти подходящий квест в текущей категории
+      const categoryQuests = defaultQuests[category] || [];
       const currentQuest = getCurrentQuest(category);
-      toggleQuest(category, currentQuest.level);
+      const userInput = (aiResponse.userInput || '').toLowerCase();
+      
+      // Попробовать найти квест по тексту пользователя
+      let foundQuest = null;
+      for (const quest of categoryQuests) {
+        const questKey = `${category}_${quest.level}`;
+        const questName = quest.name.toLowerCase();
+        const isCompleted = completedToday[questKey];
+        
+        // Проверяем совпадение с пользовательским вводом и что квест еще не выполнен
+        if (!isCompleted && (
+          userInput.includes(questName) || 
+          questName.includes(userInput) ||
+          quest.level === currentQuest.level
+        )) {
+          foundQuest = quest;
+          break;
+        }
+      }
+      
+      // Отметить найденный квест или текущий
+      const questToComplete = foundQuest || currentQuest;
+      toggleQuest(category, questToComplete.level);
       
       // Добавить в журнал
       const today = getTodayKey();
@@ -218,6 +241,7 @@ export default function DailyTracker() {
         emoji,
         text: description || name,
         type: 'quest_completed',
+        questLevel: questToComplete.level,
         timestamp: new Date().toISOString()
       };
       setJournalEntries(prev => [newEntry, ...prev]);
@@ -239,9 +263,6 @@ export default function DailyTracker() {
         timestamp: new Date().toISOString()
       };
       setJournalEntries(prev => [newEntry, ...prev]);
-      
-      // Начислить небольшой XP за журналинг
-      setTotalCompleted(prev => prev + 1);
       
       toast.success(aiResponse.message || 'Заметка добавлена! 📝');
     }

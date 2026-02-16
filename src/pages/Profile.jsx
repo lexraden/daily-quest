@@ -78,6 +78,8 @@ export default function Profile() {
     currentLevel: LEVELS[0]
   });
   const [journalEntries, setJournalEntries] = useState([]);
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
     // Load theme
@@ -137,6 +139,12 @@ export default function Profile() {
   };
 
   const levelProgress = getNextLevelProgress();
+
+  const filteredJournal = journalEntries.filter(entry => {
+    if (filterCategory !== 'all' && entry.category !== filterCategory) return false;
+    if (filterType !== 'all' && entry.type !== filterType) return false;
+    return true;
+  });
 
   return (
     <div className={`min-h-screen ${bgClass}`}>
@@ -326,41 +334,162 @@ export default function Profile() {
               ? 'bg-white border-gray-200' 
               : 'bg-[#1e2836] border-white/10'
           }`}>
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className={`w-5 h-5 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
-              <h3 className={`text-base font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                Журнал
-              </h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar className={`w-5 h-5 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
+                <h3 className={`text-base font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                  Журнал
+                </h3>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                theme === 'light' ? 'bg-gray-100 text-gray-600' : 'bg-white/5 text-gray-400'
+              }`}>
+                {filteredJournal.length}
+              </span>
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {journalEntries.slice(0, 10).map((entry) => {
-                const categoryInfo = CATEGORIES[entry.category];
+
+            {/* Filters */}
+            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+              <button
+                onClick={() => setFilterType('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                  filterType === 'all'
+                    ? theme === 'light'
+                      ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white'
+                      : 'bg-gradient-to-r from-purple-500/30 to-cyan-500/30 text-white border border-purple-500/50'
+                    : theme === 'light'
+                      ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Все
+              </button>
+              <button
+                onClick={() => setFilterType('quest_completed')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                  filterType === 'quest_completed'
+                    ? theme === 'light'
+                      ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white'
+                      : 'bg-gradient-to-r from-purple-500/30 to-cyan-500/30 text-white border border-purple-500/50'
+                    : theme === 'light'
+                      ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                🎯 Квесты
+              </button>
+              <button
+                onClick={() => setFilterType('journal')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                  filterType === 'journal'
+                    ? theme === 'light'
+                      ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white'
+                      : 'bg-gradient-to-r from-purple-500/30 to-cyan-500/30 text-white border border-purple-500/50'
+                    : theme === 'light'
+                      ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                📝 Заметки
+              </button>
+            </div>
+
+            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+              <button
+                onClick={() => setFilterCategory('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                  filterCategory === 'all'
+                    ? theme === 'light'
+                      ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white'
+                      : 'bg-gradient-to-r from-purple-500/30 to-cyan-500/30 text-white border border-purple-500/50'
+                    : theme === 'light'
+                      ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Все категории
+              </button>
+              {Object.entries(CATEGORIES).map(([key, info]) => {
+                const Icon = info.icon;
                 return (
-                  <div 
-                    key={entry.id}
-                    className={`p-3 rounded-xl transition-all ${
-                      theme === 'light' ? 'bg-gray-50' : 'bg-white/5'
+                  <button
+                    key={key}
+                    onClick={() => setFilterCategory(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      filterCategory === key
+                        ? `${info.bgColor} ${info.textColor} border ${info.borderColor}`
+                        : theme === 'light'
+                          ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-white/5 text-gray-400 hover:bg-white/10'
                     }`}
                   >
-                    <div className="flex items-start gap-2">
-                      <span className="text-lg">{entry.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
-                          {entry.text}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-xs ${categoryInfo?.textColor || 'text-gray-500'}`}>
-                            {categoryInfo?.name || entry.category}
-                          </span>
-                          <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            • {new Date(entry.timestamp).toLocaleDateString('ru-RU')}
-                          </span>
+                    <Icon />
+                    {info.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredJournal.length === 0 ? (
+                <div className={`text-center py-8 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
+                  <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Нет записей</p>
+                </div>
+              ) : (
+                filteredJournal.slice(0, 50).map((entry) => {
+                  const categoryInfo = CATEGORIES[entry.category];
+                  const isQuest = entry.type === 'quest_completed';
+                  
+                  return (
+                    <div 
+                      key={entry.id}
+                      className={`p-4 rounded-xl transition-all border ${
+                        isQuest
+                          ? theme === 'light'
+                            ? 'bg-gradient-to-br from-purple-50 to-cyan-50 border-purple-200'
+                            : 'bg-gradient-to-br from-purple-500/10 to-cyan-500/10 border-purple-500/30'
+                          : theme === 'light' 
+                            ? 'bg-gray-50 border-gray-200' 
+                            : 'bg-white/5 border-white/5'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl flex-shrink-0">{entry.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <p className={`text-sm font-medium ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                              {entry.text}
+                            </p>
+                            {isQuest && (
+                              <span className={`text-xs px-2 py-1 rounded-full font-bold flex-shrink-0 ${
+                                theme === 'light'
+                                  ? 'bg-gradient-to-r from-purple-100 to-cyan-100 text-purple-700'
+                                  : 'bg-gradient-to-r from-purple-500/20 to-cyan-500/20 text-purple-300'
+                              }`}>
+                                +1 XP
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${categoryInfo?.bgColor} ${categoryInfo?.textColor}`}>
+                              {categoryInfo?.name || entry.category}
+                            </span>
+                            <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {new Date(entry.timestamp).toLocaleString('ru-RU', { 
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         )}
