@@ -14,34 +14,16 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const accumulatedTextRef = useRef('');
 
   const startRecording = async () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (!isSupported) {
       toast.error('Голосовой ввод не поддерживается');
       return;
     }
 
-    // Проверяем есть ли уже разрешение на микрофон
-    try {
-      const result = await navigator.permissions.query({ name: 'microphone' });
-      
-      // Если разрешение еще не дано, запрашиваем его
-      if (result.state === 'prompt') {
-        try {
-          await navigator.mediaDevices.getUserMedia({ audio: true });
-        } catch (error) {
-          toast.error('Необходимо разрешить доступ к микрофону');
-          return;
-        }
-      } else if (result.state === 'denied') {
-        toast.error('Доступ к микрофону запрещен. Включите его в настройках');
-        return;
-      }
-    } catch (error) {
-      console.log('Permission query failed, continuing:', error);
+    if (!recognition) {
+      toast.error('Микрофон не инициализирован');
+      return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
     isStoppingRef.current = false;
     accumulatedTextRef.current = '';
 
