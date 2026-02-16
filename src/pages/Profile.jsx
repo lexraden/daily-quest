@@ -104,32 +104,44 @@ export default function Profile() {
       setTgUser(window.Telegram.WebApp.initDataUnsafe.user);
     }
 
-    // Load stats from localStorage
-    const savedData = localStorage.getItem('dailyQuestsData');
-    if (savedData) {
-      const data = JSON.parse(savedData);
-      
-      // Calculate current level
-      const totalCompleted = data.totalCompleted || 0;
-      let currentLevel = LEVELS[0];
-      for (const level of LEVELS) {
-        if (totalCompleted >= level.threshold) {
-          currentLevel = level;
+    // Load stats from database
+    const loadUserData = async () => {
+      try {
+        const authUser = await base44.auth.me();
+        if (authUser?.email) {
+          const userDataList = await base44.entities.UserQuestData.filter({ created_by: authUser.email });
+          
+          if (userDataList.length > 0) {
+            const data = userDataList[0];
+            
+            // Calculate current level
+            const totalCompleted = data.total_completed || 0;
+            let currentLevel = LEVELS[0];
+            for (const level of LEVELS) {
+              if (totalCompleted >= level.threshold) {
+                currentLevel = level;
+              }
+            }
+
+            setStats({
+              streak: data.streak || 0,
+              totalCompleted: totalCompleted,
+              categoryLevels: data.category_levels || {},
+              currentLevel: currentLevel
+            });
+
+            // Load journal entries
+            if (data.journal_entries) {
+              setJournalEntries(data.journal_entries);
+            }
+          }
         }
+      } catch (error) {
+        console.error('Error loading user data:', error);
       }
-
-      setStats({
-        streak: data.streak || 0,
-        totalCompleted: totalCompleted,
-        categoryLevels: data.categoryLevels || {},
-        currentLevel: currentLevel
-      });
-
-      // Load journal entries
-      if (data.journalEntries) {
-        setJournalEntries(data.journalEntries);
-      }
-    }
+    };
+    
+    loadUserData();
   }, []);
 
   const bgClass = theme === 'light' 

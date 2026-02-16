@@ -162,6 +162,7 @@ export default function DailyTracker() {
   const [aiResponse, setAiResponse] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [user, setUser] = useState(null);
+  const [userDataId, setUserDataId] = useState(null);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -440,11 +441,14 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       // Update quests with AI-generated ones
       setQuestData(result);
 
-      // Save to localStorage
-      const savedData = JSON.parse(localStorage.getItem('dailyQuestsData') || '{}');
-      savedData.questData = result;
-      savedData.onboardingAnswers = answers;
-      localStorage.setItem('dailyQuestsData', JSON.stringify(savedData));
+      // Save to database
+      if (userDataId) {
+        await base44.entities.UserQuestData.update(userDataId, {
+          quest_data: result,
+          onboarding_answers: answers
+        });
+      }
+      
       localStorage.setItem('dailyQuestsOnboardingCompleted', 'true');
 
       setShowOnboarding(false);
@@ -482,109 +486,157 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setQuestSuggestion(null);
   };
 
-  // Загрузка данных из localStorage
+  // Загрузка данных из базы данных
   useEffect(() => {
-    const savedData = localStorage.getItem('dailyQuestsData');
-    const today = getTodayKey();
-    
-    if (savedData) {
-      const data = JSON.parse(savedData);
+    const loadUserData = async () => {
+      const today = getTodayKey();
       
-      // Загрузка кастомных квестов
-      if (data.questData) {
-        setQuestData(data.questData);
-      }
-
-      // Загрузка заметок
-      if (data.journalEntries) {
-        setJournalEntries(data.journalEntries);
-      }
-      
-      // Инициализация уровней категорий
-      const levels = {};
-      const totals = {};
-      Object.keys(CATEGORIES).forEach(cat => {
-        levels[cat] = data.categoryLevels?.[cat] || 1;
-        totals[cat] = data.categoryTotalCompleted?.[cat] || 0;
-      });
-      setCategoryLevels(levels);
-      setCategoryTotalCompleted(totals);
-      
-      setTotalCompleted(data.totalCompleted || 0);
-      setCompletionHistory(data.completionHistory || {});
-      setStreakFreezes(data.streakFreezes ?? 1);
-      
-      // Проверка нового дня
-      if (data.lastVisitDate !== today) {
-        // Новый день начался!
-        const lastVisit = new Date(data.lastVisitDate);
-        const todayDate = new Date(today);
-        const diffDays = Math.floor((todayDate - lastVisit) / (1000 * 60 * 60 * 24));
+      try {
+        // Загрузить данные пользователя из БД
+        const userDataList = await base44.entities.UserQuestData.filter({ created_by: user?.email });
         
-        // Проверяем был ли прогресс вчера
-        const yesterdayKey = new Date(todayDate - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const hadProgressYesterday = data.completionHistory?.[yesterdayKey]?.length > 0;
-        
-        if (diffDays === 1 && hadProgressYesterday) {
-          // Продолжаем streak
-          setStreak(data.streak + 1);
-        } else if (diffDays === 1 && !hadProgressYesterday) {
-          // Пропустили день
-          if (data.streakFreezes > 0) {
-            // Используем freeze
-            setStreak(data.streak);
-            setStreakFreezes(data.streakFreezes - 1);
-          } else {
-            setStreak(0);
+        if (userDataList.length > 0) {
+          const data = userDataList[0];
+          setUserDataId(data.id);
+          
+          // Загрузка кастомных квестов
+          if (data.quest_data) {
+            setQuestData(data.quest_data);
           }
-        } else if (diffDays > 1) {
-          // Пропустили больше дня - сбрасываем
-          setStreak(0);
+
+          // Загрузка заметок
+          if (data.journal_entries) {
+            setJournalEntries(data.journal_entries);
+          }
+          
+          // Инициализация уровней категорий
+          const levels = {};
+          const totals = {};
+          Object.keys(CATEGORIES).forEach(cat => {
+            levels[cat] = data.category_levels?.[cat] || 1;
+            totals[cat] = data.category_total_completed?.[cat] || 0;
+          });
+          setCategoryLevels(levels);
+          setCategoryTotalCompleted(totals);
+          
+          setTotalCompleted(data.total_completed || 0);
+          setCompletionHistory(data.completion_history || {});
+          setStreakFreezes(data.streak_freezes ?? 1);
+          
+          // Проверка нового дня
+          if (data.last_visit_date !== today) {
+            // Новый день начался!
+            const lastVisit = new Date(data.last_visit_date);
+            const todayDate = new Date(today);
+            const diffDays = Math.floor((todayDate - lastVisit) / (1000 * 60 * 60 * 24));
+            
+            // Проверяем был ли прогресс вчера
+            const yesterdayKey = new Date(todayDate - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const hadProgressYesterday = data.completion_history?.[yesterdayKey]?.length > 0;
+            
+            if (diffDays === 1 && hadProgressYesterday) {
+              // Продолжаем streak
+              setStreak(data.streak + 1);
+            } else if (diffDays === 1 && !hadProgressYesterday) {
+              // Пропустили день
+              if (data.streak_freezes > 0) {
+                // Используем freeze
+                setStreak(data.streak);
+                setStreakFreezes(data.streak_freezes - 1);
+              } else {
+                setStreak(0);
+              }
+            } else if (diffDays > 1) {
+              // Пропустили больше дня - сбрасываем
+              setStreak(0);
+            } else {
+              setStreak(data.streak || 0);
+            }
+            
+            setLastCompletedDate(data.last_completed_date || null);
+            setCompletedToday({});
+          } else {
+            // Тот же день
+            setStreak(data.streak || 0);
+            setLastCompletedDate(data.last_completed_date || null);
+            
+            // Восстановить completedToday из истории сегодняшнего дня
+            const todayHistory = data.completion_history?.[today] || [];
+            const todayCompleted = {};
+            todayHistory.forEach(quest => {
+              todayCompleted[`${quest.category}_${quest.level}`] = true;
+            });
+            setCompletedToday(todayCompleted);
+          }
         } else {
-          setStreak(data.streak || 0);
+          // Инициализация для новых пользователей
+          const levels = {};
+          const totals = {};
+          Object.keys(CATEGORIES).forEach(cat => {
+            levels[cat] = 1;
+            totals[cat] = 0;
+          });
+          setCategoryLevels(levels);
+          setCategoryTotalCompleted(totals);
+          
+          // Создать новую запись в БД
+          const newUserData = await base44.entities.UserQuestData.create({
+            quest_data: DEFAULT_QUEST_DATA,
+            category_levels: levels,
+            category_total_completed: totals,
+            total_completed: 0,
+            streak: 0,
+            completion_history: {},
+            streak_freezes: 1,
+            journal_entries: [],
+            last_visit_date: today
+          });
+          setUserDataId(newUserData.id);
         }
         
-        setLastCompletedDate(data.lastCompletedDate || null);
-        setCompletedToday({});
-      } else {
-        // Тот же день
-        setStreak(data.streak || 0);
-        setLastCompletedDate(data.lastCompletedDate || null);
-        setCompletedToday(data.completedToday || {});
+        // Проверка онбординга
+        const onboardingCompleted = localStorage.getItem('dailyQuestsOnboardingCompleted');
+        if (!onboardingCompleted) {
+          setShowOnboarding(true);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        toast.error('Ошибка загрузки данных');
       }
-    } else {
-      // Инициализация для новых пользователей
-      const levels = {};
-      const totals = {};
-      Object.keys(CATEGORIES).forEach(cat => {
-        levels[cat] = 1;
-        totals[cat] = 0;
-      });
-      setCategoryLevels(levels);
-      setCategoryTotalCompleted(totals);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  // Сохранение данных
-  useEffect(() => {
-    if (!isLoaded) return;
-    
-    const data = {
-      questData,
-      categoryLevels,
-      categoryTotalCompleted,
-      totalCompleted,
-      streak,
-      lastCompletedDate,
-      completedToday,
-      completionHistory,
-      streakFreezes,
-      journalEntries,
-      lastVisitDate: getTodayKey()
+      
+      setIsLoaded(true);
     };
-    localStorage.setItem('dailyQuestsData', JSON.stringify(data));
-  }, [questData, categoryLevels, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, isLoaded]);
+    
+    if (user?.email) {
+      loadUserData();
+    }
+  }, [user]);
+
+  // Сохранение данных в БД
+  useEffect(() => {
+    if (!isLoaded || !userDataId) return;
+    
+    const saveData = async () => {
+      try {
+        await base44.entities.UserQuestData.update(userDataId, {
+          quest_data: questData,
+          category_levels: categoryLevels,
+          category_total_completed: categoryTotalCompleted,
+          total_completed: totalCompleted,
+          streak,
+          last_completed_date: lastCompletedDate,
+          completion_history: completionHistory,
+          streak_freezes: streakFreezes,
+          journal_entries: journalEntries,
+          last_visit_date: getTodayKey()
+        });
+      } catch (error) {
+        console.error('Error saving user data:', error);
+      }
+    };
+    
+    saveData();
+  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, isLoaded, userDataId]);
 
   // Экспорт данных
   const exportData = () => {
