@@ -35,7 +35,8 @@ Deno.serve(async (req) => {
     let failed = 0;
 
     for (const user of users) {
-      if (user.telegram_chat_id) {
+      const telegramChatId = user.data?.telegram_chat_id || user.telegram_chat_id;
+      if (telegramChatId) {
         try {
           // Загрузить данные пользователя для проверки невыполненных квестов
           const userDataList = await base44.asServiceRole.entities.UserQuestData.filter({ 
@@ -90,7 +91,7 @@ ${randomQuest.emoji} <b>Напоминание!</b>
 🎯 Продолжай прокачивать свою жизнь!
             `.trim();
 
-            await sendTelegramMessage(user.telegram_chat_id, message);
+            await sendTelegramMessage(telegramChatId, message);
             sent++;
           }
           
