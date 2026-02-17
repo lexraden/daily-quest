@@ -621,11 +621,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           }
       } catch (error) {
         console.error('Error loading user data:', error);
-        if (error.message === 'User email not available') {
-          // User not authenticated, redirect to login
-          await base44.auth.redirectToLogin(window.location.href);
-          return;
-        }
         toast.error('Ошибка загрузки данных');
       }
 
