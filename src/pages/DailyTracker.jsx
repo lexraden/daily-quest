@@ -15,6 +15,7 @@ import OnboardingModal from '@/components/daily/OnboardingModal.jsx';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
+import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser } from '@/components/UserDataCache';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
