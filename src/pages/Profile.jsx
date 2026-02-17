@@ -98,9 +98,6 @@ export default function Profile() {
     ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
     : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
 
-  const questEntries = journalEntries.filter(e => e.type === 'quest_completed');
-  const noteEntries = journalEntries.filter(e => e.type === 'journal');
-
   return (
     <div className={`min-h-screen ${bgClass}`}>
       {/* Header */}
@@ -121,52 +118,15 @@ export default function Profile() {
         {/* Profile header - compact */}
         <ProfileHeader user={user} tgUser={tgUser} stats={stats} levelProgress={levelProgress} theme={theme} />
 
-        {/* Tab navigation */}
-        <div className={`flex rounded-xl overflow-hidden border ${
-          theme === 'light' ? 'bg-gray-100 border-gray-200' : 'bg-white/5 border-white/10'
-        }`}>
-          {[
-            { key: 'stats', label: '📊 Статистика' },
-            { key: 'quests', label: `🎯 Квесты (${questEntries.length})` },
-            { key: 'notes', label: `📝 Заметки (${noteEntries.length})` }
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`flex-1 px-3 py-2.5 text-xs font-medium transition-all ${
-                activeTab === key
-                  ? theme === 'light'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'bg-white/10 text-white'
-                  : theme === 'light'
-                    ? 'text-gray-500 hover:text-gray-700'
-                    : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab content */}
-        {activeTab === 'stats' && (
-          <StatsSection
-            completionHistory={stats.completionHistory}
-            categoryTotalCompleted={stats.categoryTotalCompleted}
-            totalCompleted={stats.totalCompleted}
-            streak={stats.streak}
-            categoryLevels={stats.categoryLevels}
-            theme={theme}
-          />
-        )}
-
-        {activeTab === 'quests' && (
-          <JournalSection entries={journalEntries} type="quest_completed" theme={theme} />
-        )}
-
-        {activeTab === 'notes' && (
-          <JournalSection entries={journalEntries} type="journal" theme={theme} />
-        )}
+        {/* Stats */}
+        <StatsSection
+          completionHistory={stats.completionHistory}
+          categoryTotalCompleted={stats.categoryTotalCompleted}
+          totalCompleted={stats.totalCompleted}
+          streak={stats.streak}
+          categoryLevels={stats.categoryLevels}
+          theme={theme}
+        />
 
         {/* Update quests button */}
         <Button
