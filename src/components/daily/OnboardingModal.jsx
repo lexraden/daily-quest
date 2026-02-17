@@ -155,6 +155,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const [answers, setAnswers] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const { recognition } = useSpeechRecognition();
   const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
@@ -244,39 +245,76 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     await onComplete(answers);
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (!recognition) {
       toast.error('Голосовой ввод не поддерживается');
       return;
     }
 
     if (isRecording) {
-      // Остановить запись и сохранить ответ
+      // Остановить запись и обработать через AI
       isStoppingRef.current = true;
       recognition.stop();
       setIsRecording(false);
-      const finalText = accumulatedTextRef.current.trim();
-      if (finalText && currentStepRef.current >= 0) {
+      const rawText = accumulatedTextRef.current.trim();
+      
+      if (rawText && currentStepRef.current >= 0) {
         const question = ONBOARDING_QUESTIONS[currentStepRef.current];
-        setAnswers(prev => ({
-          ...prev,
-          [question.category]: finalText
-        }));
-        toast.success(t.voice.success);
+        setIsProcessingVoice(true);
+        
+        try {
+          // Обработка через AI для очистки и улучшения текста
+          const result = await base44.integrations.Core.InvokeLLM({
+            prompt: `Пользователь ответил голосом на вопрос: "${question.question}"
+
+Его голосовой ответ (может содержать ошибки распознавания, повторы, лишние слова):
+"${rawText}"
+
+Твоя задача:
+1. Убрать повторяющиеся слова и фразы
+2. Исправить очевидные ошибки распознавания речи
+3. Сделать текст более связным и понятным
+4. Сохранить смысл и намерение пользователя
+5. Написать коротко и по делу (1-2 предложения максимум)
+
+Верни только исправленный текст, без дополнительных пояснений.`,
+            response_json_schema: {
+              type: "object",
+              properties: {
+                cleaned_text: { type: "string" }
+              },
+              required: ["cleaned_text"]
+            }
+          });
+
+          const cleanedText = result.cleaned_text || rawText;
+          
+          setAnswers(prev => ({
+            ...prev,
+            [question.category]: cleanedText
+          }));
+          toast.success(t.voice.success);
+        } catch (error) {
+          console.error('Error processing voice:', error);
+          // Если ошибка - используем сырой текст
+          setAnswers(prev => ({
+            ...prev,
+            [question.category]: rawText
+          }));
+          toast.success(t.voice.success);
+        } finally {
+          setIsProcessingVoice(false);
+        }
       }
     } else {
-      // Начать запись (recognition.start() сам запросит разрешение при первом вызове)
+      // Начать запись (браузер сам запросит разрешение)
       isStoppingRef.current = false;
       accumulatedTextRef.current = '';
       try {
         recognition.start();
       } catch (error) {
         console.error('Failed to start recording:', error);
-        if (error.message && (error.message.includes('not-allowed') || error.message.includes('permission'))) {
-          toast.error('Разрешение на микрофон запрещено');
-        } else {
-          toast.error('Ошибка при запуске микрофона');
-        }
+        toast.error('Ошибка при запуске микрофона');
       }
     }
   };
@@ -462,14 +500,26 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
               <Button
                 type="button"
                 onClick={toggleRecording}
+                disabled={isProcessingVoice}
                 className={`w-full h-14 text-base transition-all ${
-                  isRecording
+                  isProcessingVoice
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : isRecording
                     ? 'bg-red-500 hover:bg-red-600 animate-pulse'
                     : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
                 }`}
               >
-                <Mic className="w-5 h-5 mr-2" />
-                {isRecording ? 'Остановить запись' : t.voice.record}
+                {isProcessingVoice ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Обработка...
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-5 h-5 mr-2" />
+                    {isRecording ? 'Остановить запись' : t.voice.record}
+                  </>
+                )}
               </Button>
             </div>
           </div>
