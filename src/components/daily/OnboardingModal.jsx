@@ -497,12 +497,12 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
               <Button
                 type="button"
                 onClick={startRecording}
-                disabled={isProcessingVoice || isRecording}
+                disabled={isProcessingVoice}
                 className={`w-full h-14 text-base transition-all ${
                   isProcessingVoice
                     ? 'bg-gray-400 cursor-not-allowed'
                     : isRecording
-                    ? 'bg-red-500 animate-pulse cursor-default'
+                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
                     : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
                 }`}
               >

@@ -169,10 +169,10 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     <div className="px-5 mb-4">
       <Button
         onClick={startRecording}
-        disabled={isProcessing || isRecording}
+        disabled={isProcessing}
         className={`w-full h-12 rounded-2xl font-medium transition-all ${
           isRecording
-            ? 'bg-red-500 animate-pulse cursor-default'
+            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
             : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
         }`}
       >
