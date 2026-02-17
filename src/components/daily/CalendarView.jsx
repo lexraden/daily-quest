@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export default function CalendarView({ completionHistory, onClose, categories, theme = 'dark' }) {
+export default function CalendarView({ completionHistory, onClose, categories, theme = 'dark', journalEntries = [] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('day'); // 'day', 'week', 'month'
 
