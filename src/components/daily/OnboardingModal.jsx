@@ -493,6 +493,31 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
               </p>
             </div>
 
+            {/* Goal examples as chips */}
+            {currentQuestion.examples && (
+              <div className="flex flex-wrap gap-2 mb-4 justify-center">
+                {currentQuestion.examples.map((example, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      const label = example.substring(example.indexOf(' ') + 1);
+                      const current = answers[currentQuestion.category] || '';
+                      const newVal = current ? `${current}, ${label.toLowerCase()}` : label;
+                      handleAnswer(newVal);
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95 ${
+                      theme === 'light'
+                        ? 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'
+                        : 'bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20'
+                    }`}
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <Textarea
               value={answers[currentQuestion.category] || ''}
               onChange={(e) => handleAnswer(e.target.value)}
