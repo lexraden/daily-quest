@@ -256,24 +256,36 @@ export default function DailyTracker() {
     const { intent, category, emoji, name, description, action, level } = aiResponse;
 
     if (intent === 'DELETE_QUEST') {
-          // Найти квест по имени или уровню
+          // Найти квест по имени
           const categoryQuests = questData[category] || [];
-          const questName = (name || '').toLowerCase();
+          const questName = (name || '').toLowerCase().trim();
 
-          // Ищем по имени сначала
-          let questToDelete = categoryQuests.find(q => 
-            q.name.toLowerCase().includes(questName) || questName.includes(q.name.toLowerCase())
+          // Ищем по точному совпадению имени сначала
+          let questIndex = categoryQuests.findIndex(q => 
+            q.name.toLowerCase().trim() === questName
           );
 
-          // Если не нашли по имени — по уровню
-          if (!questToDelete && level) {
-            questToDelete = categoryQuests.find(q => q.level === level);
+          // Если не нашли точно — ищем по частичному совпадению (но только один)
+          if (questIndex === -1 && questName) {
+            const matches = categoryQuests
+              .map((q, i) => ({ q, i }))
+              .filter(({ q }) => 
+                q.name.toLowerCase().includes(questName) || questName.includes(q.name.toLowerCase())
+              );
+            if (matches.length === 1) {
+              questIndex = matches[0].i;
+            }
           }
 
-          if (questToDelete) {
+          // Если не нашли по имени — по уровню
+          if (questIndex === -1 && level) {
+            questIndex = categoryQuests.findIndex(q => q.level === level);
+          }
+
+          if (questIndex !== -1) {
             setQuestData(prev => ({
               ...prev,
-              [category]: prev[category].filter(q => q.level !== questToDelete.level)
+              [category]: prev[category].filter((_, i) => i !== questIndex)
             }));
             toast.success(aiResponse.message || 'Квест удалён! 🗑️');
           } else {
