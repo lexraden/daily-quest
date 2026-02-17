@@ -976,15 +976,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Link to={createPageUrl('Statistics')}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
-              >
-                <BarChart3 className="w-4 h-4" />
-              </Button>
-            </Link>
             <Link to={createPageUrl('Profile')}>
               <Button
                 variant="ghost"
