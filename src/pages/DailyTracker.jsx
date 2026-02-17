@@ -252,15 +252,30 @@ export default function DailyTracker() {
     const { intent, category, emoji, name, description, action, level } = aiResponse;
 
     if (intent === 'DELETE_QUEST') {
-      // Удалить квест из категории
-      const targetLevel = level || categoryLevels[category] || 1;
-      setQuestData(prev => ({
-        ...prev,
-        [category]: prev[category].filter(q => q.level !== targetLevel)
-      }));
+          // Найти квест по имени или уровню
+          const categoryQuests = questData[category] || [];
+          const questName = (name || '').toLowerCase();
 
-      toast.success(aiResponse.message || 'Квест удалён! 🗑️');
-    } else if (intent === 'COMPLETED_QUEST') {
+          // Ищем по имени сначала
+          let questToDelete = categoryQuests.find(q => 
+            q.name.toLowerCase().includes(questName) || questName.includes(q.name.toLowerCase())
+          );
+
+          // Если не нашли по имени — по уровню
+          if (!questToDelete && level) {
+            questToDelete = categoryQuests.find(q => q.level === level);
+          }
+
+          if (questToDelete) {
+            setQuestData(prev => ({
+              ...prev,
+              [category]: prev[category].filter(q => q.level !== questToDelete.level)
+            }));
+            toast.success(aiResponse.message || 'Квест удалён! 🗑️');
+          } else {
+            toast.error('Квест не найден');
+          }
+        } else if (intent === 'COMPLETED_QUEST') {
       // Найти подходящий квест в текущей категории
       const categoryQuests = questData[category] || [];
       const currentQuest = getCurrentQuest(category);
