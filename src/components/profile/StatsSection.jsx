@@ -110,13 +110,31 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
     return data;
   }, [mergedHistory, viewMode]);
 
+  // Compute actual total counts from mergedHistory (includes voice quests)
+  const mergedCategoryCounts = useMemo(() => {
+    const counts = {};
+    Object.keys(CATEGORIES).forEach(cat => { counts[cat] = 0; });
+    Object.values(mergedHistory).forEach(dayData => {
+      dayData.forEach(q => {
+        if (q.category && counts.hasOwnProperty(q.category)) {
+          counts[q.category]++;
+        }
+      });
+    });
+    return counts;
+  }, [mergedHistory]);
+
+  const mergedTotalCompleted = useMemo(() => {
+    return Object.values(mergedCategoryCounts).reduce((sum, c) => sum + c, 0);
+  }, [mergedCategoryCounts]);
+
   const radarData = useMemo(() => {
     return Object.entries(CATEGORIES).map(([key, info]) => ({
       category: info.name,
-      value: categoryTotalCompleted[key] || 0,
-      fullMark: Math.max(...Object.values(categoryTotalCompleted || {}), 10)
+      value: mergedCategoryCounts[key] || 0,
+      fullMark: Math.max(...Object.values(mergedCategoryCounts), 10)
     }));
-  }, [categoryTotalCompleted]);
+  }, [mergedCategoryCounts]);
 
   const tooltipStyle = {
     backgroundColor: theme === 'light' ? '#fff' : '#1e2836',
