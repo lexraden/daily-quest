@@ -541,9 +541,12 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     const { category, emoji, name, level, action } = suggestion;
 
     if (action === 'add' || action === 'replace') {
-      // Find the highest level and add new quest
-      const highestLevel = Math.max(...questData[category].map(q => q.level));
-      const newLevel = level || highestLevel + 1;
+      // Generate a unique level that doesn't conflict with existing quests
+      const existingLevels = questData[category].map(q => q.level);
+      let newLevel = level || (Math.max(...existingLevels, 0) + 1);
+      while (existingLevels.includes(newLevel)) {
+        newLevel++;
+      }
 
       setQuestData(prev => ({
         ...prev,
