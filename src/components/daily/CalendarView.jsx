@@ -314,6 +314,7 @@ export default function CalendarView({ completionHistory, onClose, categories, t
       <div className="space-y-3">
         {weekDays.map((date, idx) => {
           const quests = getQuestsForDate(date);
+          const journal = getJournalForDate(date);
           const today = isToday(date);
 
           return (
