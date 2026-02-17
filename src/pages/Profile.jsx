@@ -7,7 +7,6 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
-import JournalSection from '@/components/profile/JournalSection';
 import StatsSection from '@/components/profile/StatsSection';
 import { getCachedUser, getCachedUserData, invalidateCache } from '@/components/UserDataCache';
 
@@ -39,7 +38,6 @@ export default function Profile() {
     currentLevel: LEVELS[0]
   });
   const [journalEntries, setJournalEntries] = useState([]);
-  const [activeTab, setActiveTab] = useState('stats');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -77,7 +75,7 @@ export default function Profile() {
             currentLevel
           });
 
-          if (data.journal_entries) setJournalEntries(data.journal_entries);
+          // journal entries removed from profile - now in History page
         }
       } catch (error) {
         console.error('Error loading data:', error);
