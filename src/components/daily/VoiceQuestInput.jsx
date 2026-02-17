@@ -16,20 +16,18 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     if (!recognition) return;
 
     recognition.lang = 'ru-RU';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = false;
 
     const handleStart = () => {
       setIsRecording(true);
       accumulatedTextRef.current = '';
-      toast.info('Говорите...', { duration: 500 });
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
       }
     };
 
     const handleResult = (event) => {
-      // Rebuild full transcript from all results (no +=, prevents duplication)
       let transcript = '';
       for (let i = 0; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript + ' ';
@@ -38,14 +36,11 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     };
 
     const handleEnd = () => {
-      // Recognition can auto-stop due to silence timeout
-      // If user didn't press stop - auto-restart to keep listening
-      if (!isStoppingRef.current) {
-        try {
-          recognition.start();
-        } catch (e) {
-          setIsRecording(false);
-        }
+      // continuous=false: browser auto-stops after silence pause
+      setIsRecording(false);
+      const finalText = accumulatedTextRef.current.trim();
+      if (finalText) {
+        processVoiceInput(finalText);
       }
     };
 
@@ -53,8 +48,11 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       if (event.error === 'not-allowed' || event.error === 'permission-denied') {
         toast.error('Разрешите доступ к микрофону');
         setIsRecording(false);
-      } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
+      } else if (event.error === 'no-speech') {
+        setIsRecording(false);
+      } else if (event.error !== 'aborted') {
         console.error('Speech error:', event.error);
+        setIsRecording(false);
       }
     };
 
@@ -71,32 +69,19 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     };
   }, [recognition]);
 
-  const toggleRecording = () => {
+  const startRecording = () => {
     if (!recognition) {
       toast.error('Голосовой ввод не поддерживается');
       return;
     }
+    if (isRecording || isProcessing) return;
 
-    if (isRecording) {
-      // Остановить запись и обработать
-      isStoppingRef.current = true;
-      recognition.stop();
-      setIsRecording(false);
-      const finalText = accumulatedTextRef.current.trim();
-      if (finalText) {
-        processVoiceInput(finalText);
-      }
-    } else {
-      // Начать запись
-      isStoppingRef.current = false;
-      accumulatedTextRef.current = '';
-      
-      try {
-        recognition.start();
-      } catch (error) {
-        console.error('Failed to start recording:', error);
-        toast.error('Не удалось запустить микрофон');
-      }
+    accumulatedTextRef.current = '';
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      toast.error('Не удалось запустить микрофон');
     }
   };
 
@@ -184,18 +169,18 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   return (
     <div className="px-5 mb-4">
       <Button
-        onClick={toggleRecording}
-        disabled={isProcessing}
+        onClick={startRecording}
+        disabled={isProcessing || isRecording}
         className={`w-full h-12 rounded-2xl font-medium transition-all ${
           isRecording
-            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+            ? 'bg-red-500 animate-pulse cursor-default'
             : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
         }`}
       >
         {isRecording ? (
           <>
-            <Square className="w-5 h-5 mr-2" />
-            Остановить запись
+            <Mic className="w-5 h-5 mr-2 animate-pulse" />
+            Слушаю...
           </>
         ) : (
           <>
