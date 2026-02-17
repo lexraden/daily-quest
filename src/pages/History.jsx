@@ -454,8 +454,8 @@ export default function History() {
           <div className="flex items-center justify-between mb-3">
             <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>История</h1>
             <Link to={createPageUrl('DailyTracker')}>
-              <Button variant="ghost" size="icon" className={`h-11 w-11 rounded-full ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
-                <X className="w-6 h-6" />
+              <Button variant="ghost" size="icon" className={`h-12 w-12 rounded-full ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
+                <X className="w-7 h-7" />
               </Button>
             </Link>
           </div>
