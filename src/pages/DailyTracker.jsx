@@ -869,7 +869,8 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             category,
             questName: currentQuest.name,
             level: currentQuest.level,
-            emoji: currentQuest.emoji
+            emoji: currentQuest.emoji,
+            timestamp: new Date().toISOString()
           }
         ]
       }));

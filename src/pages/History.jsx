@@ -97,7 +97,7 @@ export default function History() {
         emoji: quest.emoji,
         text: quest.questName,
         level: quest.level,
-        timestamp: `${dateKey}T12:00:00`
+        timestamp: quest.timestamp || `${dateKey}T12:00:00`
       });
     });
     journalEntries.forEach(entry => {
