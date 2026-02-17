@@ -195,17 +195,19 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     };
 
     const handleResult = (event) => {
-      // Собираем весь транскрипт с нуля каждый раз
-      let fullTranscript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        fullTranscript += event.results[i][0].transcript;
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
       }
-      // Заменяем полностью, а не добавляем
-      accumulatedTextRef.current = fullTranscript.trim();
+      accumulatedTextRef.current += transcript;
     };
 
     const handleError = (event) => {
-      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+      if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+        localStorage.setItem('voicePermissionGranted', 'false');
+        toast.error('Разрешение на микрофон запрещено');
+        setIsRecording(false);
+      } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
         console.error('Speech error:', event.error);
         toast.error('Ошибка распознавания');
       }
@@ -307,14 +309,23 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
         }
       }
     } else {
-      // Начать запись (браузер сам запросит разрешение)
+      // Начать запись
       isStoppingRef.current = false;
       accumulatedTextRef.current = '';
+      
+      // Попытка запустить без явного запроса разрешения
       try {
         recognition.start();
+        // Отмечаем что разрешение было успешно использовано
+        localStorage.setItem('voicePermissionGranted', 'true');
       } catch (error) {
         console.error('Failed to start recording:', error);
-        toast.error('Ошибка при запуске микрофона');
+        if (error.message.includes('NotAllowedError') || error.message.includes('permission')) {
+          toast.error('Разрешение на микрофон запрещено в настройках браузера');
+          localStorage.setItem('voicePermissionGranted', 'false');
+        } else {
+          toast.error('Ошибка при запуске микрофона');
+        }
       }
     }
   };
