@@ -10,12 +10,14 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { recognition } = useSpeechRecognition();
   const accumulatedTextRef = useRef('');
+  const silenceTimerRef = useRef(null);
+  const SILENCE_TIMEOUT = 2500; // 2.5 seconds of silence before sending
 
   useEffect(() => {
     if (!recognition) return;
 
     recognition.lang = 'ru-RU';
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = false;
 
     const handleStart = () => {
@@ -32,10 +34,20 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
         transcript += event.results[i][0].transcript + ' ';
       }
       accumulatedTextRef.current = transcript.trim();
+
+      // Reset silence timer on each new result
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        // 2.5s of silence — stop and send
+        try { recognition.stop(); } catch (e) {}
+      }, SILENCE_TIMEOUT);
     };
 
     const handleEnd = () => {
-      // continuous=false: browser auto-stops after silence pause
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
       setIsRecording(false);
       const finalText = accumulatedTextRef.current.trim();
       if (finalText) {
@@ -76,6 +88,10 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     if (isRecording || isProcessing) return;
 
     accumulatedTextRef.current = '';
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
     try {
       recognition.start();
     } catch (error) {
