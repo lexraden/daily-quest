@@ -683,7 +683,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     
     const saveData = async () => {
       try {
-        await base44.entities.UserQuestData.update(userDataId, {
+        const dataToSave = {
           quest_data: questData,
           category_levels: categoryLevels,
           category_total_completed: categoryTotalCompleted,
@@ -694,7 +694,9 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           streak_freezes: streakFreezes,
           journal_entries: journalEntries,
           last_visit_date: getTodayKey()
-        });
+        };
+        updateCachedUserData(userDataId, dataToSave);
+        await base44.entities.UserQuestData.update(userDataId, dataToSave);
       } catch (error) {
         console.error('Error saving user data:', error);
       }
