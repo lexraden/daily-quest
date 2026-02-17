@@ -37,7 +37,7 @@ export default function Profile() {
     completionHistory: {},
     currentLevel: LEVELS[0]
   });
-  // journal entries moved to History page
+  const [journalEntries, setJournalEntries] = useState([]);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -75,7 +75,7 @@ export default function Profile() {
             currentLevel
           });
 
-          // journal entries removed from profile - now in History page
+          setJournalEntries(data.journal_entries || []);
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -126,6 +126,7 @@ export default function Profile() {
           streak={stats.streak}
           categoryLevels={stats.categoryLevels}
           theme={theme}
+          journalEntries={journalEntries}
         />
 
         {/* Update quests button */}
