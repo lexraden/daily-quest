@@ -205,15 +205,32 @@ export default function DailyTracker() {
                 });
               }
 
-              // Save telegram chat ID for notifications
+              // Save telegram chat ID for notifications — sync to TelegramUser entity
               if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
                 const tgUserId = String(window.Telegram.WebApp.initDataUnsafe.user.id);
-                const savedChatId = authUser.telegram_chat_id;
-                if (!savedChatId || savedChatId !== tgUserId) {
-                  localStorage.setItem('telegram_chat_id', tgUserId);
-                  await base44.auth.updateMe({ telegram_chat_id: tgUserId }).catch(err => {
-                    console.log('Failed to save telegram_chat_id:', err);
-                  });
+                const tgUsername = window.Telegram.WebApp.initDataUnsafe.user.username || '';
+                const tgFirstName = window.Telegram.WebApp.initDataUnsafe.user.first_name || '';
+                localStorage.setItem('telegram_chat_id', tgUserId);
+
+                // Save/update TelegramUser record
+                try {
+                  const existing = await base44.entities.TelegramUser.filter({ telegram_chat_id: tgUserId });
+                  if (existing.length === 0) {
+                    await base44.entities.TelegramUser.create({
+                      telegram_chat_id: tgUserId,
+                      telegram_username: tgUsername,
+                      telegram_first_name: tgFirstName,
+                      user_email: authUser.email
+                    });
+                  } else if (existing[0].user_email !== authUser.email) {
+                    await base44.entities.TelegramUser.update(existing[0].id, {
+                      user_email: authUser.email,
+                      telegram_username: tgUsername,
+                      telegram_first_name: tgFirstName
+                    });
+                  }
+                } catch (err) {
+                  console.log('Failed to sync TelegramUser:', err);
                 }
               }
             }
