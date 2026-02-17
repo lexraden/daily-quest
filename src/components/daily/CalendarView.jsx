@@ -189,48 +189,106 @@ export default function CalendarView({ completionHistory, onClose, categories, t
   // Рендер деталей дня
   const renderDayDetails = () => {
     const quests = getQuestsForDate(currentDate);
+    const journal = getJournalForDate(currentDate);
+    const hasContent = quests.length > 0 || journal.length > 0;
 
     return (
       <div className="space-y-4">
-        {quests.length > 0 ? (
-          <div className="space-y-3">
-            {quests.map((quest, idx) => {
-              const categoryInfo = categories[quest.category];
-              const Icon = categoryInfo?.icon;
+        {/* Квесты */}
+        {quests.length > 0 && (
+          <div>
+            <h3 className={`text-sm font-semibold mb-2 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
+              🎯 Выполненные квесты
+            </h3>
+            <div className="space-y-3">
+              {quests.map((quest, idx) => {
+                const categoryInfo = categories[quest.category];
+                const Icon = categoryInfo?.icon;
 
-              return (
-                <div
-                  key={idx}
-                  className={`
-                    p-4 rounded-xl border
-                    ${categoryInfo?.bgColor || 'bg-white/5'}
-                    ${categoryInfo?.borderColor || 'border-white/10'}
-                  `}
-                >
-                  <div className="flex items-center gap-3">
-                    {Icon && (
-                      <div className={`p-2 rounded-lg ${categoryInfo.bgColor}`}>
-                        <Icon className={`w-5 h-5 ${categoryInfo.textColor}`} />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{quest.emoji}</span>
-                        <span className="font-medium">{quest.questName}</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-xs ${categoryInfo?.textColor || 'text-gray-400'}`}>
-                          {categoryInfo?.name || quest.category}
-                        </span>
-                        <span className="text-xs text-gray-500">• Lvl {quest.level}</span>
+                return (
+                  <div
+                    key={idx}
+                    className={`
+                      p-4 rounded-xl border
+                      ${categoryInfo?.bgColor || 'bg-white/5'}
+                      ${categoryInfo?.borderColor || 'border-white/10'}
+                    `}
+                  >
+                    <div className="flex items-center gap-3">
+                      {Icon && (
+                        <div className={`p-2 rounded-lg ${categoryInfo.bgColor}`}>
+                          <Icon className={`w-5 h-5 ${categoryInfo.textColor}`} />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{quest.emoji}</span>
+                          <span className="font-medium">{quest.questName}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs ${categoryInfo?.textColor || 'text-gray-400'}`}>
+                            {categoryInfo?.name || quest.category}
+                          </span>
+                          <span className="text-xs text-gray-500">• Lvl {quest.level}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        ) : (
+        )}
+
+        {/* Заметки журнала */}
+        {journal.length > 0 && (
+          <div>
+            <h3 className={`text-sm font-semibold mb-2 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
+              📝 Заметки
+            </h3>
+            <div className="space-y-3">
+              {journal.map((entry) => {
+                const categoryInfo = categories[entry.category];
+                return (
+                  <div
+                    key={entry.id}
+                    className={`p-4 rounded-xl border ${
+                      theme === 'light'
+                        ? 'bg-white border-gray-200 shadow-sm'
+                        : 'bg-white/5 border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl flex-shrink-0">{entry.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm leading-relaxed ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                          {entry.text}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {categoryInfo && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${categoryInfo.bgColor} ${categoryInfo.textColor}`}>
+                              {categoryInfo.name}
+                            </span>
+                          )}
+                          <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {entry.type === 'quest_completed' ? '🎯 Квест' : '📝 Заметка'}
+                          </span>
+                          {entry.timestamp && (
+                            <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`}>
+                              {new Date(entry.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!hasContent && (
           <div className="text-center py-12">
             <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
               theme === 'light' ? 'bg-gray-100' : 'bg-white/5'
@@ -238,7 +296,7 @@ export default function CalendarView({ completionHistory, onClose, categories, t
               <CalendarIcon className={`w-8 h-8 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
             </div>
             <p className={theme === 'light' ? 'text-gray-600' : 'text-gray-500'}>
-              В этот день квесты не выполнялись
+              В этот день нет записей
             </p>
           </div>
         )}
