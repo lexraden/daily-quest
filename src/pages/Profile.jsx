@@ -108,7 +108,7 @@ export default function Profile() {
           <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Профиль</h1>
           <Link to={createPageUrl('DailyTracker')}>
             <Button variant="ghost" size="icon" className={`h-[60px] w-[60px] rounded-full ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
-            <X style={{ width: 30, height: 30 }} />
+            <X style={{ width: 15, height: 15 }} />
             </Button>
           </Link>
         </div>
