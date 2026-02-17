@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, User, Sparkles, CheckCircle2, Plus, BookOpen, Trash2 } from 'lucide-react';
+import { X, User, Sparkles, CheckCircle2, Plus, BookOpen, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function AIResponseModal({ userInput, aiResponse, onClose, onAccept, onReject, theme = 'dark' }) {
@@ -13,6 +13,8 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
         return <Plus className="w-5 h-5 text-purple-400" />;
       case 'DELETE_QUEST':
         return <Trash2 className="w-5 h-5 text-red-400" />;
+      case 'EDIT_QUEST':
+        return <Pencil className="w-5 h-5 text-amber-400" />;
       case 'JOURNAL':
         return <BookOpen className="w-5 h-5 text-cyan-400" />;
       default:
@@ -28,6 +30,8 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
         return 'Новый квест';
       case 'DELETE_QUEST':
         return 'Удалить квест';
+      case 'EDIT_QUEST':
+        return 'Изменить квест';
       case 'JOURNAL':
         return 'Заметка';
       default:
@@ -192,6 +196,27 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Удалить
+              </Button>
+            </div>
+          ) : aiResponse.intent === 'EDIT_QUEST' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={onReject}
+                variant="outline"
+                className={
+                  theme === 'light'
+                    ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    : 'border-white/10 text-gray-300 hover:bg-white/5'
+                }
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={onAccept}
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Изменить
               </Button>
             </div>
           ) : aiResponse.intent === 'ADD_QUEST' ? (

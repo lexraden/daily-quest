@@ -111,7 +111,8 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       1. COMPLETED_QUEST - сообщает о выполнении какого-то квеста/задачи (например: "я сегодня пробежал 5 км", "закончил проект", "помедитировал")
       2. ADD_QUEST - хочет добавить новый квест в трекер (например: "добавь квест пробежать 5 км", "хочу добавить медитацию")
       3. DELETE_QUEST - хочет удалить существующий квест (например: "удали квест про бег", "убери медитацию", "удалить задачу про чтение")
-      4. JOURNAL - просто делится заметкой/мыслями о дне (например: "сегодня был хороший день", "устал на работе")
+      4. EDIT_QUEST - хочет изменить/переименовать существующий квест (например: "измени квест бег на плавание", "переименуй медитацию в йогу", "замени квест про чтение на изучение языка")
+      5. JOURNAL - просто делится заметкой/мыслями о дне (например: "сегодня был хороший день", "устал на работе")
 
       Для каждого типа действия определи:
       - Категория: health (здоровье/спорт), mind (обучение/медитация), work (работа/проекты), money (финансы/инвестиции), love (семья/отношения), friends (друзья/общение)
@@ -119,6 +120,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
       - Подходящий эмодзи
       - Дружелюбное сообщение для пользователя
       - Для DELETE_QUEST: определи, какой именно квест пользователь хочет удалить (уровень 1, 2 или 3)
+      - Для EDIT_QUEST: в поле "name" укажи НОВОЕ название квеста, в поле "old_name" укажи СТАРОЕ название квеста которое нужно заменить, в поле "level" укажи уровень квеста который нужно изменить
 
       Верни результат в JSON формате.`,
         response_json_schema: {
@@ -126,7 +128,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
           properties: {
             intent: {
               type: "string",
-              enum: ["COMPLETED_QUEST", "ADD_QUEST", "DELETE_QUEST", "JOURNAL"]
+              enum: ["COMPLETED_QUEST", "ADD_QUEST", "DELETE_QUEST", "EDIT_QUEST", "JOURNAL"]
             },
             category: {
               type: "string",
@@ -140,7 +142,8 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
               type: "string",
               enum: ["add", "replace", "edit", "complete", "journal"]
             },
-            message: { type: "string" }
+            message: { type: "string" },
+            old_name: { type: "string" }
           },
           required: ["intent", "category", "emoji", "name", "action", "message"]
         }

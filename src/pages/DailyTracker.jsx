@@ -257,7 +257,44 @@ export default function DailyTracker() {
   const handleAcceptAiResponse = () => {
     const { intent, category, emoji, name, description, action, level } = aiResponse;
 
-    if (intent === 'DELETE_QUEST') {
+    if (intent === 'EDIT_QUEST') {
+          const categoryQuests = questData[category] || [];
+          const oldName = (aiResponse.old_name || '').toLowerCase().trim();
+
+          // Find quest by old name
+          let questIndex = categoryQuests.findIndex(q => 
+            q.name.toLowerCase().trim() === oldName
+          );
+
+          // Partial match
+          if (questIndex === -1 && oldName) {
+            const matches = categoryQuests
+              .map((q, i) => ({ q, i }))
+              .filter(({ q }) => 
+                q.name.toLowerCase().includes(oldName) || oldName.includes(q.name.toLowerCase())
+              );
+            if (matches.length === 1) {
+              questIndex = matches[0].i;
+            }
+          }
+
+          // By level
+          if (questIndex === -1 && level) {
+            questIndex = categoryQuests.findIndex(q => q.level === level);
+          }
+
+          if (questIndex !== -1) {
+            setQuestData(prev => ({
+              ...prev,
+              [category]: prev[category].map((q, i) => 
+                i === questIndex ? { ...q, name: name, emoji: emoji } : q
+              )
+            }));
+            toast.success(aiResponse.message || 'Квест изменён! ✏️');
+          } else {
+            toast.error('Квест не найден');
+          }
+        } else if (intent === 'DELETE_QUEST') {
           // Найти квест по имени
           const categoryQuests = questData[category] || [];
           const questName = (name || '').toLowerCase().trim();
