@@ -656,7 +656,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             });
             setCompletedToday(todayCompleted);
           }
-          } else if (userDataList.length === 0 || shouldResetOnboarding) {
+          } else if (!cachedData || shouldResetOnboarding) {
           // Новый пользователь или ресет онбординга - показать онбординг
           localStorage.removeItem('dailyQuestsResetOnboarding');
           localStorage.removeItem('dailyQuestsOnboardingCompleted');
