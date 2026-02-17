@@ -3,7 +3,7 @@ import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, 
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import CalendarView from '@/components/daily/CalendarView.jsx';
+// CalendarView replaced by History page
 import PremiumModal from '@/components/daily/PremiumModal.jsx';
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import CategoryProgressModal from '@/components/daily/CategoryProgressModal.jsx';
@@ -953,17 +953,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     );
   }
 
-  if (showCalendar) {
-    return (
-      <CalendarView 
-        completionHistory={completionHistory}
-        onClose={() => setShowCalendar(false)}
-        categories={CATEGORIES}
-        theme={theme}
-        journalEntries={journalEntries}
-      />
-    );
-  }
+  // Calendar view removed - History page is used instead
 
   const bgClass = theme === 'light' 
     ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
@@ -994,14 +984,15 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
                 <User className="w-4 h-4" />
               </Button>
             </Link>
-            <Button
-              onClick={() => setShowCalendar(true)}
-              variant="ghost"
-              size="icon"
-              className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
-            >
-              <CalendarIcon className="w-4 h-4" />
-            </Button>
+            <Link to={createPageUrl('History')}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
+              >
+                <CalendarIcon className="w-4 h-4" />
+              </Button>
+            </Link>
             <Button
               onClick={toggleTheme}
               variant="ghost"
