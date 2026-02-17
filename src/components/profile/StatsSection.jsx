@@ -155,7 +155,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
             <Trophy className="w-4 h-4 text-purple-400" />
             <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>Всего</span>
           </div>
-          <div className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{totalCompleted}</div>
+          <div className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{mergedTotalCompleted}</div>
         </div>
         <div className={`rounded-2xl p-4 border ${
           theme === 'light' ? 'bg-gradient-to-br from-orange-50 to-white border-orange-200' : 'bg-gradient-to-br from-orange-900/20 to-transparent border-orange-500/30'
@@ -241,10 +241,10 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
         <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>🏆 Категории</h3>
         <div className="space-y-2">
           {Object.entries(CATEGORIES)
-            .sort((a, b) => (categoryTotalCompleted[b[0]] || 0) - (categoryTotalCompleted[a[0]] || 0))
+            .sort((a, b) => (mergedCategoryCounts[b[0]] || 0) - (mergedCategoryCounts[a[0]] || 0))
             .map(([key, info]) => {
-              const count = categoryTotalCompleted[key] || 0;
-              const maxCount = Math.max(...Object.values(categoryTotalCompleted || {}), 1);
+              const count = mergedCategoryCounts[key] || 0;
+              const maxCount = Math.max(...Object.values(mergedCategoryCounts), 1);
               const level = categoryLevels?.[key] || 1;
               return (
                 <div key={key} className="space-y-1">
