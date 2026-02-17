@@ -175,6 +175,11 @@ export default function DailyTracker() {
     // Load authenticated user and save name on first login
     const loadUser = async () => {
       try {
+        const isAuth = await base44.auth.isAuthenticated();
+        if (!isAuth) {
+          setIsLoaded(true);
+          return;
+        }
         const authUser = await base44.auth.me();
         if (authUser) {
           setUser(authUser);
@@ -186,14 +191,10 @@ export default function DailyTracker() {
               console.log('Failed to save user name:', err);
             });
           }
-        } else {
-          // Нет аутентификации, редирект на логин
-          await base44.auth.redirectToLogin(window.location.href);
         }
       } catch (error) {
         console.error('Auth error:', error);
-        // Сессия истекла, редирект на логин
-        await base44.auth.redirectToLogin(window.location.href);
+        setIsLoaded(true);
       }
     };
 
