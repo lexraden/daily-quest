@@ -37,7 +37,7 @@ export default function Profile() {
     completionHistory: {},
     currentLevel: LEVELS[0]
   });
-  const [journalEntries, setJournalEntries] = useState([]);
+  // journal entries moved to History page
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
