@@ -249,9 +249,18 @@ export default function DailyTracker() {
   };
 
   const handleAcceptAiResponse = () => {
-    const { intent, category, emoji, name, description, action } = aiResponse;
+    const { intent, category, emoji, name, description, action, level } = aiResponse;
 
-    if (intent === 'COMPLETED_QUEST') {
+    if (intent === 'DELETE_QUEST') {
+      // Удалить квест из категории
+      const targetLevel = level || categoryLevels[category] || 1;
+      setQuestData(prev => ({
+        ...prev,
+        [category]: prev[category].filter(q => q.level !== targetLevel)
+      }));
+
+      toast.success(aiResponse.message || 'Квест удалён! 🗑️');
+    } else if (intent === 'COMPLETED_QUEST') {
       // Найти подходящий квест в текущей категории
       const categoryQuests = questData[category] || [];
       const currentQuest = getCurrentQuest(category);
