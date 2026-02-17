@@ -329,6 +329,7 @@ export default function DailyTracker() {
         category,
         emoji,
         text: description || name,
+        rawText: aiResponse.userInput || '',
         type: 'quest_completed',
         questLevel: questToComplete.level,
         timestamp: new Date().toISOString()
@@ -348,6 +349,7 @@ export default function DailyTracker() {
         category,
         emoji,
         text: description || name,
+        rawText: aiResponse.userInput || '',
         type: 'journal',
         timestamp: new Date().toISOString()
       };
