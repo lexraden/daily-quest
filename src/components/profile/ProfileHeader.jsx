@@ -8,6 +8,13 @@ export default function ProfileHeader({ user, tgUser, stats, levelProgress, them
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user?.full_name || '');
 
+  // Keep editedName in sync when user data arrives
+  React.useEffect(() => {
+    if (user?.full_name && !isEditingName) {
+      setEditedName(user.full_name);
+    }
+  }, [user?.full_name]);
+
   const handleSaveName = async () => {
     if (!editedName.trim()) return;
     try {
