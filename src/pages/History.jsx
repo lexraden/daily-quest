@@ -249,11 +249,35 @@ export default function History() {
       weekDays.push(d);
     }
 
-    const hasAnyEntries = weekDays.some(d => getEntriesForDate(formatDateKey(d)).length > 0);
+    const allWeekEntries = weekDays.flatMap(d => getEntriesForDate(formatDateKey(d)));
+    const hasAnyEntries = allWeekEntries.length > 0;
     if (!hasAnyEntries) return renderEmpty();
+
+    const weekQuestCount = allWeekEntries.filter(e => e.type === 'quest_completed').length;
+    const weekNoteCount = allWeekEntries.filter(e => e.type === 'journal').length;
 
     return (
       <div className="space-y-2">
+        {/* Week summary */}
+        <div className={`flex items-center gap-3 p-3 rounded-xl ${
+          theme === 'light' ? 'bg-white border border-gray-200' : 'bg-white/5 border border-white/5'
+        }`}>
+          <div className="text-center flex-1">
+            <div className={`text-2xl font-bold ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`}>{weekQuestCount}</div>
+            <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>🎯 квестов</div>
+          </div>
+          <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
+          <div className="text-center flex-1">
+            <div className={`text-2xl font-bold ${theme === 'light' ? 'text-cyan-600' : 'text-cyan-400'}`}>{weekNoteCount}</div>
+            <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>📝 заметок</div>
+          </div>
+          <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
+          <div className="text-center flex-1">
+            <div className={`text-2xl font-bold ${theme === 'light' ? 'text-green-600' : 'text-green-400'}`}>{allWeekEntries.length}</div>
+            <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>всего</div>
+          </div>
+        </div>
+
         {weekDays.map((date) => {
           const dateKey = formatDateKey(date);
           const entries = getEntriesForDate(dateKey);
@@ -338,8 +362,40 @@ export default function History() {
     for (let i = 0; i < startPadding; i++) cells.push(null);
     for (let i = 1; i <= lastDay.getDate(); i++) cells.push(new Date(year, month, i));
 
+    // Collect all month entries for summary
+    const allMonthEntries = [];
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      const d = new Date(year, month, i);
+      const dk = formatDateKey(d);
+      allMonthEntries.push(...getEntriesForDate(dk));
+    }
+    const monthQuestCount = allMonthEntries.filter(e => e.type === 'quest_completed').length;
+    const monthNoteCount = allMonthEntries.filter(e => e.type === 'journal').length;
+
     return (
       <div className="space-y-3">
+        {/* Month summary */}
+        {allMonthEntries.length > 0 && (
+          <div className={`flex items-center gap-3 p-3 rounded-xl ${
+            theme === 'light' ? 'bg-white border border-gray-200' : 'bg-white/5 border border-white/5'
+          }`}>
+            <div className="text-center flex-1">
+              <div className={`text-2xl font-bold ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`}>{monthQuestCount}</div>
+              <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>🎯 квестов</div>
+            </div>
+            <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
+            <div className="text-center flex-1">
+              <div className={`text-2xl font-bold ${theme === 'light' ? 'text-cyan-600' : 'text-cyan-400'}`}>{monthNoteCount}</div>
+              <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>📝 заметок</div>
+            </div>
+            <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
+            <div className="text-center flex-1">
+              <div className={`text-2xl font-bold ${theme === 'light' ? 'text-green-600' : 'text-green-400'}`}>{allMonthEntries.length}</div>
+              <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>всего</div>
+            </div>
+          </div>
+        )}
+
         {/* Day names header */}
         <div className="grid grid-cols-7 gap-1">
           {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d => (
