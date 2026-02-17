@@ -25,43 +25,49 @@ const TRANSLATIONS = {
         category: 'health',
         emoji: '💪',
         title: 'Здоровье',
-        question: 'Что хотите делать каждый день для здоровья?',
-        placeholder: 'Например: ходить в спортзал, бегать по утрам, делать зарядку...'
+        question: 'Каких целей вы хотите достичь в здоровье?',
+        placeholder: 'Например: похудеть, набрать мышцы, улучшить сон, бегать 5 км, бросить курить...',
+        examples: ['🏃 Похудеть', '💪 Набрать форму', '😴 Хороший сон', '🥗 Здоровое питание']
       },
       {
         category: 'mind',
         emoji: '🧠',
         title: 'Разум',
-        question: 'Что хотите делать для саморазвития?',
-        placeholder: 'Например: читать книги, учить языки, медитировать...'
+        question: 'Каких целей вы хотите достичь в саморазвитии?',
+        placeholder: 'Например: выучить английский, читать 30 книг в год, снизить стресс...',
+        examples: ['📖 Читать больше', '🧘 Меньше стресса', '🎓 Выучить язык', '🧩 Новый навык']
       },
       {
         category: 'work',
         emoji: '💼',
         title: 'Работа',
-        question: 'Что хотите делать на работе каждый день?',
-        placeholder: 'Например: код писать, проекты завершать, встречи проводить...'
+        question: 'Каких целей вы хотите достичь в работе?',
+        placeholder: 'Например: получить повышение, запустить свой проект, стать продуктивнее...',
+        examples: ['📈 Повышение', '🚀 Свой проект', '⏰ Продуктивность', '🎯 Новая работа']
       },
       {
         category: 'money',
         emoji: '💰',
         title: 'Финансы',
-        question: 'Что хотите делать для финансов?',
-        placeholder: 'Например: откладывать деньги, вести бюджет, инвестировать...'
+        question: 'Каких финансовых целей вы хотите достичь?',
+        placeholder: 'Например: накопить подушку безопасности, начать инвестировать, закрыть долги...',
+        examples: ['🏦 Накопления', '📊 Инвестиции', '💳 Закрыть долги', '📋 Вести бюджет']
       },
       {
         category: 'love',
         emoji: '❤️',
         title: 'Любовь',
-        question: 'Что хотите делать в отношениях?',
-        placeholder: 'Например: проводить время с партнером, дарить подарки...'
+        question: 'Каких целей вы хотите достичь в отношениях?',
+        placeholder: 'Например: больше времени с партнёром, улучшить общение, найти пару...',
+        examples: ['💑 Больше времени вместе', '💬 Улучшить общение', '🌹 Романтика', '🔍 Найти пару']
       },
       {
         category: 'friends',
         emoji: '👥',
         title: 'Друзья',
-        question: 'Что хотите делать с друзьями?',
-        placeholder: 'Например: встречаться, звонить, организовывать вечеринки...'
+        question: 'Каких целей вы хотите достичь в дружбе?',
+        placeholder: 'Например: чаще видеться с друзьями, найти новых друзей, организовать встречу...',
+        examples: ['🤝 Видеться чаще', '🆕 Новые друзья', '🎉 Организовать встречу', '📞 Быть на связи']
       }
     ],
     voice: {
@@ -96,43 +102,49 @@ const TRANSLATIONS = {
         category: 'health',
         emoji: '💪',
         title: 'Health',
-        question: 'What daily activities will help you be healthier?',
-        placeholder: 'Example: go to gym, run in the morning, do exercises...'
+        question: 'What health goals do you want to achieve?',
+        placeholder: 'Example: lose weight, build muscle, sleep better, run 5K, quit smoking...',
+        examples: ['🏃 Lose weight', '💪 Get fit', '😴 Better sleep', '🥗 Eat healthy']
       },
       {
         category: 'mind',
         emoji: '🧠',
         title: 'Mind',
-        question: 'What do you do every day for self-development?',
-        placeholder: 'Example: read books, learn languages, meditate...'
+        question: 'What self-development goals do you want to achieve?',
+        placeholder: 'Example: learn a language, read 30 books a year, reduce stress...',
+        examples: ['📖 Read more', '🧘 Less stress', '🎓 Learn language', '🧩 New skill']
       },
       {
         category: 'work',
         emoji: '💼',
         title: 'Work',
-        question: 'What do you do? What tasks do you complete daily?',
-        placeholder: 'Example: developer, write code, conduct meetings...'
+        question: 'What career goals do you want to achieve?',
+        placeholder: 'Example: get promoted, launch a project, be more productive...',
+        examples: ['📈 Promotion', '🚀 Side project', '⏰ Productivity', '🎯 New job']
       },
       {
         category: 'money',
         emoji: '💰',
         title: 'Money',
-        question: 'What financial habits do you want to develop?',
-        placeholder: 'Example: save 10%, track expenses...'
+        question: 'What financial goals do you want to achieve?',
+        placeholder: 'Example: build savings, start investing, pay off debt...',
+        examples: ['🏦 Savings', '📊 Investing', '💳 Pay off debt', '📋 Budget']
       },
       {
         category: 'love',
         emoji: '❤️',
         title: 'Love',
-        question: 'Do you have a partner? What do you do to strengthen relationships?',
-        placeholder: 'Example: in a relationship, want more time with loved one...'
+        question: 'What relationship goals do you want to achieve?',
+        placeholder: 'Example: more quality time, better communication, find a partner...',
+        examples: ['💑 Quality time', '💬 Communication', '🌹 Romance', '🔍 Find partner']
       },
       {
         category: 'friends',
         emoji: '👥',
         title: 'Friends',
-        question: 'How often do you communicate with friends? Is it enough?',
-        placeholder: 'Example: meet friends once a week...'
+        question: 'What friendship goals do you want to achieve?',
+        placeholder: 'Example: see friends more often, make new friends, organize meetups...',
+        examples: ['🤝 Meet more often', '🆕 New friends', '🎉 Organize events', '📞 Stay in touch']
       }
     ],
     voice: {
