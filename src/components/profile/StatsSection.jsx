@@ -146,27 +146,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
 
   return (
     <div className="space-y-3">
-      {/* Summary row */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className={`rounded-2xl p-4 border ${
-          theme === 'light' ? 'bg-gradient-to-br from-purple-50 to-white border-purple-200' : 'bg-gradient-to-br from-purple-900/20 to-transparent border-purple-500/30'
-        }`}>
-          <div className="flex items-center gap-2 mb-1">
-            <Trophy className="w-4 h-4 text-purple-400" />
-            <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>Всего</span>
-          </div>
-          <div className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{mergedTotalCompleted}</div>
-        </div>
-        <div className={`rounded-2xl p-4 border ${
-          theme === 'light' ? 'bg-gradient-to-br from-orange-50 to-white border-orange-200' : 'bg-gradient-to-br from-orange-900/20 to-transparent border-orange-500/30'
-        }`}>
-          <div className="flex items-center gap-2 mb-1">
-            <Flame className="w-4 h-4 text-orange-400" />
-            <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>Серия</span>
-          </div>
-          <div className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{streak}</div>
-        </div>
-      </div>
+
 
       {/* Period tabs */}
       <div className="flex gap-2">
