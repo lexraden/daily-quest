@@ -18,18 +18,14 @@ export default function EntryDetailModal({ entry, onClose, theme }) {
   const isQuest = entry.type === 'quest_completed';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl overflow-hidden max-h-[85vh] flex flex-col ${
-          theme === 'light' ? 'bg-white' : 'bg-[#1e2836]'
+        className={`relative w-full max-w-sm rounded-2xl overflow-hidden max-h-[85vh] flex flex-col ${
+          theme === 'light' ? 'bg-white shadow-xl' : 'bg-[#1e2836]'
         }`}
       >
-        {/* Handle bar for mobile */}
-        <div className="flex justify-center pt-3 sm:hidden">
-          <div className={`w-10 h-1 rounded-full ${theme === 'light' ? 'bg-gray-300' : 'bg-white/20'}`} />
-        </div>
 
         {/* Header */}
         <div className={`px-5 pt-4 pb-3 flex items-start justify-between border-b ${
