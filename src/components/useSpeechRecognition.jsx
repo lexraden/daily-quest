@@ -1,9 +1,9 @@
-import { useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 let globalSpeechRecognition = null;
 
 export function useSpeechRecognition() {
-  const recognitionRef = useRef(null);
+  const [recognition, setRecognition] = useState(globalSpeechRecognition);
 
   useEffect(() => {
     if (!globalSpeechRecognition) {
@@ -12,8 +12,10 @@ export function useSpeechRecognition() {
         globalSpeechRecognition = new SpeechRecognition();
       }
     }
-    recognitionRef.current = globalSpeechRecognition;
+    if (globalSpeechRecognition && !recognition) {
+      setRecognition(globalSpeechRecognition);
+    }
   }, []);
 
-  return { recognition: recognitionRef.current };
+  return { recognition };
 }
