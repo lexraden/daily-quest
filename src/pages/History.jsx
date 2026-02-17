@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { getCachedUser, getCachedUserData } from '@/components/UserDataCache';
+import EntryDetailModal from '@/components/history/EntryDetailModal';
 
 const CATEGORIES = {
   health: { name: "Health", icon: "💪", bgColor: "bg-green-500/10", textColor: "text-green-400", borderColor: "border-green-500/30", color: "#00b894" },
@@ -43,7 +44,7 @@ export default function History() {
   const [journalEntries, setJournalEntries] = useState([]);
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState('all'); // 'all', 'quests', 'notes'
-  const [expandedEntry, setExpandedEntry] = useState(null);
+  const [selectedEntry, setSelectedEntry] = useState(null);
 
   useEffect(() => {
     setTheme(localStorage.getItem('dailyQuestsTheme') || 'light');
@@ -296,14 +297,12 @@ export default function History() {
                 {entries.map((entry) => {
                   const catInfo = CATEGORIES[entry.category];
                   const isQuest = entry.type === 'quest_completed';
-                  const isExpanded = expandedEntry === entry.id;
-                  const isLongText = entry.text && entry.text.length > 60;
 
                   return (
                     <div
                       key={entry.id}
-                      onClick={() => isLongText && setExpandedEntry(isExpanded ? null : entry.id)}
-                      className={`p-3 rounded-xl border transition-all ${
+                      onClick={() => setSelectedEntry(entry)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${
                         isQuest
                           ? theme === 'light'
                             ? 'bg-gradient-to-br from-purple-50 to-cyan-50 border-purple-200'
@@ -311,15 +310,13 @@ export default function History() {
                           : theme === 'light'
                             ? 'bg-white border-gray-200'
                             : 'bg-[#1e2836] border-white/10'
-                      } ${isLongText ? 'cursor-pointer' : ''}`}
+                      }`}
                     >
                       <div className="flex items-start gap-3">
                         <span className="text-xl flex-shrink-0">{entry.emoji}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm font-medium ${theme === 'light' ? 'text-gray-900' : 'text-white'} ${
-                              !isExpanded && isLongText ? 'line-clamp-2' : ''
-                            }`}>
+                            <p className={`text-sm font-medium line-clamp-2 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
                               {entry.text}
                             </p>
                             <div className="flex items-center gap-1 flex-shrink-0">
@@ -328,11 +325,7 @@ export default function History() {
                                   theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
                                 }`}>+1 XP</span>
                               )}
-                              {isLongText && (
-                                isExpanded
-                                  ? <ChevronUp className={`w-4 h-4 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
-                                  : <ChevronDown className={`w-4 h-4 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
-                              )}
+                              <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-300' : 'text-gray-600'}`} />
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-1.5">
@@ -342,11 +335,6 @@ export default function History() {
                             <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
                               {isQuest ? '🎯' : '📝'}
                             </span>
-                            {entry.level && (
-                              <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                Lvl {entry.level}
-                              </span>
-                            )}
                             {entry.timestamp && (
                               <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
                                 {new Date(entry.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
@@ -363,6 +351,15 @@ export default function History() {
           ))
         )}
       </div>
+
+      {/* Entry Detail Modal */}
+      {selectedEntry && (
+        <EntryDetailModal
+          entry={selectedEntry}
+          onClose={() => setSelectedEntry(null)}
+          theme={theme}
+        />
+      )}
     </div>
   );
 }
