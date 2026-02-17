@@ -158,7 +158,6 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const { recognition } = useSpeechRecognition();
-  const isStoppingRef = useRef(false);
   const accumulatedTextRef = useRef('');
   const currentStepRef = useRef(-1);
 
