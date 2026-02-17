@@ -124,7 +124,8 @@ export default function CalendarView({ completionHistory, onClose, categories, t
     }
 
     const quests = getQuestsForDate(date);
-    const hasQuests = quests.length > 0;
+    const journal = getJournalForDate(date);
+    const hasQuests = quests.length > 0 || journal.length > 0;
     const today = isToday(date);
 
     return (
