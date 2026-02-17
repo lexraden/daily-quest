@@ -107,8 +107,8 @@ export default function Profile() {
         <div className="px-5 py-3 flex items-center justify-between">
           <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Профиль</h1>
           <Link to={createPageUrl('DailyTracker')}>
-            <Button variant="ghost" size="icon" className={`h-9 w-9 rounded-full ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
-              <X className="w-5 h-5" />
+            <Button variant="ghost" size="icon" className={`h-11 w-11 rounded-full ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
+              <X className="w-6 h-6" />
             </Button>
           </Link>
         </div>
