@@ -9,6 +9,7 @@ import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import JournalSection from '@/components/profile/JournalSection';
 import StatsSection from '@/components/profile/StatsSection';
+import { getCachedUser, getCachedUserData, invalidateCache } from '@/components/UserDataCache';
 
 const CATEGORIES_KEYS = ['health', 'mind', 'work', 'money', 'love', 'friends'];
 
