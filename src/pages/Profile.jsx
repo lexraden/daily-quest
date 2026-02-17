@@ -801,8 +801,10 @@ export default function Profile() {
                 setShowOnboarding(false);
                 toast.success('Квесты успешно обновлены! 🎉');
 
-                // Reload page to show new quests
-                setTimeout(() => window.location.reload(), 500);
+                // Redirect to main page with new quests
+                setTimeout(() => {
+                  window.location.href = createPageUrl('DailyTracker');
+                }, 500);
               } catch (error) {
                 console.error('Error updating quests:', error);
                 toast.error('Ошибка при обновлении квестов');
