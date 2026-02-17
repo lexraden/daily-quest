@@ -110,6 +110,13 @@ export default function CalendarView({ completionHistory, onClose, categories, t
     return completionHistory[dateKey] || [];
   };
 
+  // Получить заметки для даты
+  const getJournalForDate = (date) => {
+    if (!date) return [];
+    const dateKey = formatDateKey(date);
+    return journalEntries.filter(entry => entry.date === dateKey);
+  };
+
   // Рендер дня в календаре
   const renderCalendarDay = (date) => {
     if (!date) {
