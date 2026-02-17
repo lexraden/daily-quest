@@ -192,8 +192,9 @@ export default function DailyTracker() {
               setIsLoaded(true);
               return;
             }
-            const authUser = await base44.auth.me();
+            const authUser = await getCachedUser();
             if (authUser) {
+              setCachedUser(authUser);
               setUser(authUser);
 
               // Auto-save user name on first login if not set
