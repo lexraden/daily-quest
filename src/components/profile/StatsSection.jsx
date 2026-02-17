@@ -1,0 +1,225 @@
+import React, { useState, useMemo } from 'react';
+import { Flame, Trophy, TrendingUp, Calendar, Target } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+
+const CATEGORIES = {
+  health: { name: "Health", icon: "💪", color: "#00b894" },
+  mind: { name: "Mind", icon: "🧠", color: "#a29bfe" },
+  money: { name: "Money", icon: "💰", color: "#00cec9" },
+  work: { name: "Work", icon: "💼", color: "#fdcb6e" },
+  love: { name: "Love", icon: "❤️", color: "#ff7675" },
+  friends: { name: "Friends", icon: "👥", color: "#fd79a8" }
+};
+
+export default function StatsSection({ completionHistory, categoryTotalCompleted, totalCompleted, streak, categoryLevels, theme }) {
+  const [viewMode, setViewMode] = useState('daily');
+
+  const chartData = useMemo(() => {
+    const today = new Date();
+    const data = [];
+
+    if (viewMode === 'daily') {
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateKey = date.toISOString().split('T')[0];
+        const dayData = completionHistory[dateKey] || [];
+        data.push({
+          date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+          quests: dayData.length,
+          ...Object.keys(CATEGORIES).reduce((acc, cat) => {
+            acc[cat] = dayData.filter(q => q.category === cat).length;
+            return acc;
+          }, {})
+        });
+      }
+    } else if (viewMode === 'weekly') {
+      for (let i = 3; i >= 0; i--) {
+        const weekStart = new Date(today);
+        weekStart.setDate(weekStart.getDate() - (i * 7) - today.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        let weekQuests = 0;
+        const weekCat = {};
+        for (let d = 0; d < 7; d++) {
+          const date = new Date(weekStart);
+          date.setDate(weekStart.getDate() + d);
+          const dateKey = date.toISOString().split('T')[0];
+          const dayData = completionHistory[dateKey] || [];
+          weekQuests += dayData.length;
+          Object.keys(CATEGORIES).forEach(cat => {
+            weekCat[cat] = (weekCat[cat] || 0) + dayData.filter(q => q.category === cat).length;
+          });
+        }
+        data.push({
+          date: `${weekStart.getDate()}-${weekEnd.getDate()} ${weekStart.toLocaleDateString('ru-RU', { month: 'short' })}`,
+          quests: weekQuests,
+          ...weekCat
+        });
+      }
+    } else {
+      for (let i = 5; i >= 0; i--) {
+        const month = new Date(today);
+        month.setMonth(month.getMonth() - i);
+        let monthQuests = 0;
+        const monthCat = {};
+        Object.entries(completionHistory).forEach(([dateKey, dayData]) => {
+          const date = new Date(dateKey);
+          if (date.getMonth() === month.getMonth() && date.getFullYear() === month.getFullYear()) {
+            monthQuests += dayData.length;
+            Object.keys(CATEGORIES).forEach(cat => {
+              monthCat[cat] = (monthCat[cat] || 0) + dayData.filter(q => q.category === cat).length;
+            });
+          }
+        });
+        data.push({
+          date: month.toLocaleDateString('ru-RU', { month: 'short' }),
+          quests: monthQuests,
+          ...monthCat
+        });
+      }
+    }
+    return data;
+  }, [completionHistory, viewMode]);
+
+  const radarData = useMemo(() => {
+    return Object.entries(CATEGORIES).map(([key, info]) => ({
+      category: info.name,
+      value: categoryTotalCompleted[key] || 0,
+      fullMark: Math.max(...Object.values(categoryTotalCompleted || {}), 10)
+    }));
+  }, [categoryTotalCompleted]);
+
+  const tooltipStyle = {
+    backgroundColor: theme === 'light' ? '#fff' : '#1e2836',
+    border: theme === 'light' ? '1px solid #e5e7eb' : '1px solid #374151',
+    borderRadius: '12px'
+  };
+  const axisColor = theme === 'light' ? '#6b7280' : '#9ca3af';
+  const gridColor = theme === 'light' ? '#e5e7eb' : '#374151';
+
+  return (
+    <div className="space-y-3">
+      {/* Summary row */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className={`rounded-2xl p-4 border ${
+          theme === 'light' ? 'bg-gradient-to-br from-purple-50 to-white border-purple-200' : 'bg-gradient-to-br from-purple-900/20 to-transparent border-purple-500/30'
+        }`}>
+          <div className="flex items-center gap-2 mb-1">
+            <Trophy className="w-4 h-4 text-purple-400" />
+            <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>Всего</span>
+          </div>
+          <div className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{totalCompleted}</div>
+        </div>
+        <div className={`rounded-2xl p-4 border ${
+          theme === 'light' ? 'bg-gradient-to-br from-orange-50 to-white border-orange-200' : 'bg-gradient-to-br from-orange-900/20 to-transparent border-orange-500/30'
+        }`}>
+          <div className="flex items-center gap-2 mb-1">
+            <Flame className="w-4 h-4 text-orange-400" />
+            <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>Серия</span>
+          </div>
+          <div className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{streak}</div>
+        </div>
+      </div>
+
+      {/* Period tabs */}
+      <div className="flex gap-2">
+        {[
+          { key: 'daily', label: 'День' },
+          { key: 'weekly', label: 'Неделя' },
+          { key: 'monthly', label: 'Месяц' }
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setViewMode(key)}
+            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+              viewMode === key
+                ? theme === 'light'
+                  ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white'
+                  : 'bg-gradient-to-r from-purple-500/30 to-cyan-500/30 text-white border border-purple-500/50'
+                : theme === 'light'
+                  ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Line chart */}
+      <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
+        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>📈 Динамика</h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <XAxis dataKey="date" stroke={axisColor} style={{ fontSize: '10px' }} />
+            <YAxis stroke={axisColor} style={{ fontSize: '10px' }} />
+            <Tooltip contentStyle={tooltipStyle} />
+            <Line type="monotone" dataKey="quests" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: '#8b5cf6', r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Bar chart */}
+      <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
+        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>📊 По категориям</h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <XAxis dataKey="date" stroke={axisColor} style={{ fontSize: '10px' }} />
+            <YAxis stroke={axisColor} style={{ fontSize: '10px' }} />
+            <Tooltip contentStyle={tooltipStyle} />
+            {Object.entries(CATEGORIES).map(([key, info]) => (
+              <Bar key={key} dataKey={key} name={info.name} fill={info.color} stackId="a" />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Radar */}
+      <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
+        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>🎯 Баланс</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <RadarChart data={radarData}>
+            <PolarGrid stroke={gridColor} />
+            <PolarAngleAxis dataKey="category" stroke={axisColor} style={{ fontSize: '10px' }} />
+            <Radar name="Квесты" dataKey="value" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.5} />
+            <Tooltip contentStyle={tooltipStyle} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Category levels */}
+      <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
+        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>🏆 Категории</h3>
+        <div className="space-y-2">
+          {Object.entries(CATEGORIES)
+            .sort((a, b) => (categoryTotalCompleted[b[0]] || 0) - (categoryTotalCompleted[a[0]] || 0))
+            .map(([key, info]) => {
+              const count = categoryTotalCompleted[key] || 0;
+              const maxCount = Math.max(...Object.values(categoryTotalCompleted || {}), 1);
+              const level = categoryLevels?.[key] || 1;
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span>{info.icon}</span>
+                      <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{info.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>LVL {level}</span>
+                      <span className={`text-xs font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{count}</span>
+                    </div>
+                  </div>
+                  <div className={`h-1.5 rounded-full overflow-hidden ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`}>
+                    <div className="h-full transition-all duration-500" style={{ width: `${(count / maxCount) * 100}%`, backgroundColor: info.color }} />
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </div>
+  );
+}
