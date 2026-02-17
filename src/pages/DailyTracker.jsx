@@ -173,57 +173,61 @@ export default function DailyTracker() {
     setTheme(savedTheme);
 
     // Load authenticated user and save name on first login
-    const loadUser = async () => {
-      try {
-        const isAuth = await base44.auth.isAuthenticated();
-        if (!isAuth) {
-          setIsLoaded(true);
-          return;
-        }
-        const authUser = await base44.auth.me();
-        if (authUser) {
-          setUser(authUser);
-          
-          // Auto-save user name on first login if not set
-          if (!authUser.full_name) {
-            const name = tgUser?.first_name || authUser.email?.split('@')[0] || 'Пользователь';
-            await base44.auth.updateMe({ full_name: name }).catch(err => {
-              console.log('Failed to save user name:', err);
-            });
+    // Initialize Telegram WebApp FIRST (before async code)
+        if (window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp;
+          tg.ready();
+          tg.expand();
+
+          if (tg.initDataUnsafe?.user) {
+            setTgUser(tg.initDataUnsafe.user);
           }
         }
-      } catch (error) {
-        console.error('Auth error:', error);
-        setIsLoaded(true);
-      }
-    };
 
-    loadUser();
+        const loadUser = async () => {
+          try {
+            const isAuth = await base44.auth.isAuthenticated();
+            if (!isAuth) {
+              setIsLoaded(true);
+              return;
+            }
+            const authUser = await base44.auth.me();
+            if (authUser) {
+              setUser(authUser);
 
-    // Reload user on focus to get updated name
-    const handleFocus = () => loadUser();
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+              // Auto-save user name on first login if not set
+              if (!authUser.full_name) {
+                const name = window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name || authUser.email?.split('@')[0] || 'Пользователь';
+                await base44.auth.updateMe({ full_name: name }).catch(err => {
+                  console.log('Failed to save user name:', err);
+                });
+              }
 
-      if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-      
-      if (tg.initDataUnsafe?.user) {
-        setTgUser(tg.initDataUnsafe.user);
-        
-        // Save telegram chat ID for notifications
-        const savedChatId = localStorage.getItem('telegram_chat_id');
-        if (!savedChatId && tg.initDataUnsafe.user.id) {
-          localStorage.setItem('telegram_chat_id', tg.initDataUnsafe.user.id);
-          base44.auth.updateMe({ telegram_chat_id: tg.initDataUnsafe.user.id }).catch(err => {
-            console.log('Failed to save telegram_chat_id:', err);
-          });
-        }
-      }
-    }
-  }, []);
+              // Save telegram chat ID for notifications
+              if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+                const tgUserId = String(window.Telegram.WebApp.initDataUnsafe.user.id);
+                const savedChatId = authUser.telegram_chat_id;
+                if (!savedChatId || savedChatId !== tgUserId) {
+                  localStorage.setItem('telegram_chat_id', tgUserId);
+                  await base44.auth.updateMe({ telegram_chat_id: tgUserId }).catch(err => {
+                    console.log('Failed to save telegram_chat_id:', err);
+                  });
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Auth error:', error);
+            setIsLoaded(true);
+          }
+        };
+
+        loadUser();
+
+        // Reload user on focus to get updated name
+        const handleFocus = () => loadUser();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+      }, []);
 
   // Сохранение темы
   useEffect(() => {
