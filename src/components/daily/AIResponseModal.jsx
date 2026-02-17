@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, User, Sparkles, CheckCircle2, Plus, BookOpen } from 'lucide-react';
+import { X, User, Sparkles, CheckCircle2, Plus, BookOpen, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function AIResponseModal({ userInput, aiResponse, onClose, onAccept, onReject, theme = 'dark' }) {
@@ -11,6 +11,8 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
         return <CheckCircle2 className="w-5 h-5 text-green-400" />;
       case 'ADD_QUEST':
         return <Plus className="w-5 h-5 text-purple-400" />;
+      case 'DELETE_QUEST':
+        return <Trash2 className="w-5 h-5 text-red-400" />;
       case 'JOURNAL':
         return <BookOpen className="w-5 h-5 text-cyan-400" />;
       default:
@@ -24,6 +26,8 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
         return 'Квест выполнен';
       case 'ADD_QUEST':
         return 'Новый квест';
+      case 'DELETE_QUEST':
+        return 'Удалить квест';
       case 'JOURNAL':
         return 'Заметка';
       default:
@@ -169,7 +173,28 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
         <div className={`p-5 border-t space-y-2 ${
           theme === 'light' ? 'border-gray-200' : 'border-white/10'
         }`}>
-          {aiResponse.intent === 'ADD_QUEST' ? (
+          {aiResponse.intent === 'DELETE_QUEST' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={onReject}
+                variant="outline"
+                className={
+                  theme === 'light'
+                    ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    : 'border-white/10 text-gray-300 hover:bg-white/5'
+                }
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={onAccept}
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Удалить
+              </Button>
+            </div>
+          ) : aiResponse.intent === 'ADD_QUEST' ? (
             <div className="grid grid-cols-2 gap-2">
               <Button
                 onClick={onReject}
