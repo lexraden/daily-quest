@@ -3,6 +3,7 @@ import { ChevronRight, Sparkles, Loader2, Mic, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { base44 } from '@/api/base44Client';
 import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 
 const TRANSLATIONS = {
@@ -183,8 +184,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
 
     recognition.lang = userLang === 'ru' ? 'ru-RU' : 'en-US';
     recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
+    recognition.interimResults = false;
 
     const handleStart = () => {
       setIsRecording(true);
@@ -195,34 +195,43 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     };
 
     const handleResult = (event) => {
+      // Rebuild full transcript from all results (no +=, prevents duplication)
       let transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript + ' ';
       }
-      accumulatedTextRef.current += transcript;
+      accumulatedTextRef.current = transcript.trim();
+    };
+
+    const handleEnd = () => {
+      // Recognition ended (timeout, silence, or manual stop)
+      if (!isStoppingRef.current) {
+        // Ended unexpectedly - update UI
+        setIsRecording(false);
+      }
     };
 
     const handleError = (event) => {
       if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-        localStorage.setItem('voicePermissionGranted', 'false');
-        toast.error('Разрешение на микрофон запрещено');
+        toast.error('Разрешите доступ к микрофону');
         setIsRecording(false);
       } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
         console.error('Speech error:', event.error);
-        toast.error('Ошибка распознавания');
       }
     };
 
     recognition.onstart = handleStart;
     recognition.onresult = handleResult;
+    recognition.onend = handleEnd;
     recognition.onerror = handleError;
 
     return () => {
       recognition.onstart = null;
       recognition.onresult = null;
+      recognition.onend = null;
       recognition.onerror = null;
     };
-  }, [recognition, userLang, t.voice.success]);
+  }, [recognition, userLang]);
 
   const currentQuestion = currentStep >= 0 ? ONBOARDING_QUESTIONS[currentStep] : null;
   const progress = currentStep >= 0 ? ((currentStep + 1) / ONBOARDING_QUESTIONS.length) * 100 : 0;
@@ -312,20 +321,11 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
       // Начать запись
       isStoppingRef.current = false;
       accumulatedTextRef.current = '';
-      
-      // Попытка запустить без явного запроса разрешения
       try {
         recognition.start();
-        // Отмечаем что разрешение было успешно использовано
-        localStorage.setItem('voicePermissionGranted', 'true');
       } catch (error) {
         console.error('Failed to start recording:', error);
-        if (error.message.includes('NotAllowedError') || error.message.includes('permission')) {
-          toast.error('Разрешение на микрофон запрещено в настройках браузера');
-          localStorage.setItem('voicePermissionGranted', 'false');
-        } else {
-          toast.error('Ошибка при запуске микрофона');
-        }
+        toast.error('Не удалось запустить микрофон');
       }
     }
   };
