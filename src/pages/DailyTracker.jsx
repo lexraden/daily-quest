@@ -153,7 +153,7 @@ export default function DailyTracker() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [tgUser, setTgUser] = useState(null);
   const [celebrationQuest, setCelebrationQuest] = useState(null);
-  const [showCalendar, setShowCalendar] = useState(false);
+  // showCalendar removed - using History page now
   const [streakFreezes, setStreakFreezes] = useState(1);
   const [showPremium, setShowPremium] = useState(false);
   const [theme, setTheme] = useState('light');
