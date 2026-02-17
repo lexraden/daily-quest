@@ -53,16 +53,15 @@ export default function Profile() {
 
     const loadData = async () => {
       try {
-        const authUser = await base44.auth.me();
+        const authUser = await getCachedUser();
         if (!authUser) {
           await base44.auth.redirectToLogin(window.location.href);
           return;
         }
         setUser(authUser);
 
-        const userDataList = await base44.entities.UserQuestData.filter({ created_by: authUser.email });
-        if (userDataList.length > 0) {
-          const data = userDataList[0];
+        const { data } = await getCachedUserData(authUser.email);
+        if (data) {
           const totalCompleted = data.total_completed || 0;
           let currentLevel = LEVELS[0];
           for (const level of LEVELS) {
