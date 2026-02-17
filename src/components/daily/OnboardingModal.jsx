@@ -194,16 +194,13 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     };
 
     const handleResult = (event) => {
-      // Берем только финальный результат, без промежуточных
-      let finalTranscript = '';
+      // Собираем весь транскрипт с нуля каждый раз
+      let fullTranscript = '';
       for (let i = 0; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        }
+        fullTranscript += event.results[i][0].transcript;
       }
-      if (finalTranscript) {
-        accumulatedTextRef.current = finalTranscript;
-      }
+      // Заменяем полностью, а не добавляем
+      accumulatedTextRef.current = fullTranscript.trim();
     };
 
     const handleError = (event) => {
@@ -247,32 +244,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     await onComplete(answers);
   };
 
-  const permissionRequestedRef = useRef(false);
-
-  const requestMicPermissionOnce = async () => {
-    // Запрашиваем разрешение только один раз за сессию
-    if (permissionRequestedRef.current) return true;
-    
-    const cached = localStorage.getItem('voicePermissionGranted');
-    if (cached === 'true') {
-      permissionRequestedRef.current = true;
-      return true;
-    }
-
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      localStorage.setItem('voicePermissionGranted', 'true');
-      permissionRequestedRef.current = true;
-      return true;
-    } catch (error) {
-      console.error('Microphone permission denied:', error);
-      localStorage.setItem('voicePermissionGranted', 'false');
-      toast.error('Разрешение на микрофон запрещено');
-      return false;
-    }
-  };
-
-  const toggleRecording = async () => {
+  const toggleRecording = () => {
     if (!recognition) {
       toast.error('Голосовой ввод не поддерживается');
       return;
@@ -293,18 +265,18 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
         toast.success(t.voice.success);
       }
     } else {
-      // Запросить разрешение один раз перед первой записью
-      const hasPermission = await requestMicPermissionOnce();
-      if (!hasPermission) return;
-
-      // Начать запись
+      // Начать запись (recognition.start() сам запросит разрешение при первом вызове)
       isStoppingRef.current = false;
       accumulatedTextRef.current = '';
       try {
         recognition.start();
       } catch (error) {
         console.error('Failed to start recording:', error);
-        toast.error('Ошибка при запуске микрофона');
+        if (error.message && (error.message.includes('not-allowed') || error.message.includes('permission'))) {
+          toast.error('Разрешение на микрофон запрещено');
+        } else {
+          toast.error('Ошибка при запуске микрофона');
+        }
       }
     }
   };
