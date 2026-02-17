@@ -94,11 +94,7 @@ export default function EntryDetailModal({ entry, onClose, theme }) {
             </div>
           )}
 
-          {entry.level && (
-            <div className={`mt-3 text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Уровень квеста: {entry.level}
-            </div>
-          )}
+
         </div>
       </div>
     </div>

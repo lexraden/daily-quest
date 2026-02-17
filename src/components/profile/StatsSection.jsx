@@ -117,7 +117,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
     Object.values(mergedHistory).forEach(dayData => {
       dayData.forEach(q => {
         if (q.category && counts.hasOwnProperty(q.category)) {
-          counts[q.category]++;
+          counts[q.category] += (q.level || 1);
         }
       });
     });

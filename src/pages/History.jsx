@@ -129,12 +129,15 @@ export default function History() {
     const isQuest = entry.type === 'quest_completed';
 
     if (compact) {
+      const isClickable = !isQuest;
       return (
         <div
-          onClick={() => setSelectedEntry(entry)}
-          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all active:scale-[0.97] ${
+          onClick={() => isClickable && setSelectedEntry(entry)}
+          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all ${
+            isClickable ? 'cursor-pointer active:scale-[0.97]' : ''
+          } ${
             isQuest
-              ? theme === 'light' ? 'bg-purple-50 hover:bg-purple-100' : 'bg-purple-500/10 hover:bg-purple-500/20'
+              ? theme === 'light' ? 'bg-purple-50' : 'bg-purple-500/10'
               : theme === 'light' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white/5 hover:bg-white/10'
           }`}
         >
@@ -149,10 +152,13 @@ export default function History() {
       );
     }
 
+    const isClickable = !isQuest;
     return (
       <div
-        onClick={() => setSelectedEntry(entry)}
-        className={`p-3 rounded-xl border transition-all cursor-pointer active:scale-[0.98] ${
+        onClick={() => isClickable && setSelectedEntry(entry)}
+        className={`p-3 rounded-xl border transition-all ${
+          isClickable ? 'cursor-pointer active:scale-[0.98]' : ''
+        } ${
           isQuest
             ? theme === 'light'
               ? 'bg-gradient-to-br from-purple-50 to-cyan-50 border-purple-200'
@@ -173,9 +179,9 @@ export default function History() {
                 {isQuest && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                     theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
-                  }`}>Lvl {entry.level || 1} · +{entry.level || 1} XP</span>
+                  }`}>+{entry.level || 1} XP</span>
                 )}
-                <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-300' : 'text-gray-600'}`} />
+                {!isQuest && <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-300' : 'text-gray-600'}`} />}
               </div>
             </div>
             <div className="flex items-center gap-2 mt-1.5">
