@@ -233,15 +233,24 @@ export default function SwipeableQuestCard({
                 ) : (
                   <div className="flex items-center gap-2.5">
                     <span className="text-2xl">{currentQuest.emoji}</span>
-                    <span className={`
-                      text-base font-medium transition-all duration-300 flex-1
-                      ${isCompleted 
-                        ? theme === 'light' ? 'text-gray-500 line-through' : 'text-gray-400 line-through'
-                        : theme === 'light' ? 'text-gray-900' : 'text-white'
-                      }
-                    `}>
-                      {currentQuest.name}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className={`
+                        text-base font-medium transition-all duration-300 block
+                        ${isCompleted 
+                          ? theme === 'light' ? 'text-gray-500 line-through' : 'text-gray-400 line-through'
+                          : theme === 'light' ? 'text-gray-900' : 'text-white'
+                        }
+                      `}>
+                        {currentQuest.name}
+                      </span>
+                      <span className={`text-xs ${
+                        isCompleted
+                          ? theme === 'light' ? 'text-gray-400' : 'text-gray-500'
+                          : theme === 'light' ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        Lvl {currentQuest.level} · +{currentQuest.level} XP
+                      </span>
+                    </div>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

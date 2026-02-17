@@ -48,20 +48,20 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import DailyTracker from './pages/DailyTracker';
+import History from './pages/History';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Statistics from './pages/Statistics';
 import TelegramCode from './pages/TelegramCode';
-import History from './pages/History';
 
 
 export const PAGES = {
     "DailyTracker": DailyTracker,
+    "History": History,
     "Home": Home,
     "Profile": Profile,
     "Statistics": Statistics,
     "TelegramCode": TelegramCode,
-    "History": History,
 }
 
 export const pagesConfig = {

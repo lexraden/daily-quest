@@ -103,7 +103,12 @@ export default function History() {
     journalEntries.forEach(entry => {
       if (entry.date === dateKey) items.push(entry);
     });
-    items.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+    // Sort by timestamp descending (newest first), use index as tiebreaker for same-time entries
+    items.sort((a, b) => {
+      const tsA = a.timestamp || `${a.date}T00:00:00`;
+      const tsB = b.timestamp || `${b.date}T00:00:00`;
+      return tsB.localeCompare(tsA);
+    });
     return items;
   };
 
@@ -138,7 +143,7 @@ export default function History() {
             {entry.text}
           </span>
           {isQuest && (
-            <span className={`text-[10px] font-bold flex-shrink-0 ${theme === 'light' ? 'text-purple-500' : 'text-purple-400'}`}>+1</span>
+            <span className={`text-[10px] font-bold flex-shrink-0 ${theme === 'light' ? 'text-purple-500' : 'text-purple-400'}`}>+{entry.level || 1} XP</span>
           )}
         </div>
       );
@@ -168,7 +173,7 @@ export default function History() {
                 {isQuest && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                     theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
-                  }`}>+1 XP</span>
+                  }`}>Lvl {entry.level || 1} · +{entry.level || 1} XP</span>
                 )}
                 <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-300' : 'text-gray-600'}`} />
               </div>
