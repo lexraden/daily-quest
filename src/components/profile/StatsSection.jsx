@@ -11,8 +11,36 @@ const CATEGORIES = {
   friends: { name: "Friends", icon: "👥", color: "#fd79a8" }
 };
 
-export default function StatsSection({ completionHistory, categoryTotalCompleted, totalCompleted, streak, categoryLevels, theme }) {
+export default function StatsSection({ completionHistory, categoryTotalCompleted, totalCompleted, streak, categoryLevels, theme, journalEntries = [] }) {
   const [viewMode, setViewMode] = useState('daily');
+
+  // Build a merged history: completionHistory + journal quest_completed entries
+  const mergedHistory = useMemo(() => {
+    const merged = {};
+    // Copy completionHistory
+    Object.entries(completionHistory).forEach(([dateKey, quests]) => {
+      merged[dateKey] = [...quests];
+    });
+    // Add journal entries of type quest_completed
+    journalEntries.forEach(entry => {
+      if (entry.type === 'quest_completed' && entry.date) {
+        if (!merged[entry.date]) merged[entry.date] = [];
+        // Avoid duplicates: check if already present by matching category+text
+        const isDuplicate = merged[entry.date].some(q =>
+          q.category === entry.category && (q.questName === entry.text || q.emoji === entry.emoji)
+        );
+        if (!isDuplicate) {
+          merged[entry.date].push({
+            category: entry.category,
+            questName: entry.text,
+            emoji: entry.emoji,
+            level: entry.level || entry.questLevel
+          });
+        }
+      }
+    });
+    return merged;
+  }, [completionHistory, journalEntries]);
 
   const chartData = useMemo(() => {
     const today = new Date();
@@ -23,7 +51,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateKey = date.toISOString().split('T')[0];
-        const dayData = completionHistory[dateKey] || [];
+        const dayData = mergedHistory[dateKey] || [];
         data.push({
           date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
           quests: dayData.length,
@@ -45,7 +73,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
           const date = new Date(weekStart);
           date.setDate(weekStart.getDate() + d);
           const dateKey = date.toISOString().split('T')[0];
-          const dayData = completionHistory[dateKey] || [];
+          const dayData = mergedHistory[dateKey] || [];
           weekQuests += dayData.length;
           Object.keys(CATEGORIES).forEach(cat => {
             weekCat[cat] = (weekCat[cat] || 0) + dayData.filter(q => q.category === cat).length;
@@ -63,7 +91,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
         month.setMonth(month.getMonth() - i);
         let monthQuests = 0;
         const monthCat = {};
-        Object.entries(completionHistory).forEach(([dateKey, dayData]) => {
+        Object.entries(mergedHistory).forEach(([dateKey, dayData]) => {
           const date = new Date(dateKey);
           if (date.getMonth() === month.getMonth() && date.getFullYear() === month.getFullYear()) {
             monthQuests += dayData.length;
@@ -80,7 +108,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
       }
     }
     return data;
-  }, [completionHistory, viewMode]);
+  }, [mergedHistory, viewMode]);
 
   const radarData = useMemo(() => {
     return Object.entries(CATEGORIES).map(([key, info]) => ({
