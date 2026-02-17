@@ -38,8 +38,14 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
     };
 
     const handleEnd = () => {
+      // Recognition can auto-stop due to silence timeout
+      // If user didn't press stop - auto-restart to keep listening
       if (!isStoppingRef.current) {
-        setIsRecording(false);
+        try {
+          recognition.start();
+        } catch (e) {
+          setIsRecording(false);
+        }
       }
     };
 

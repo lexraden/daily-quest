@@ -204,10 +204,15 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     };
 
     const handleEnd = () => {
-      // Recognition ended (timeout, silence, or manual stop)
+      // Recognition can auto-stop due to silence timeout
+      // If user didn't press stop - auto-restart to keep listening
       if (!isStoppingRef.current) {
-        // Ended unexpectedly - update UI
-        setIsRecording(false);
+        try {
+          recognition.start();
+        } catch (e) {
+          // Can't restart - update UI
+          setIsRecording(false);
+        }
       }
     };
 
