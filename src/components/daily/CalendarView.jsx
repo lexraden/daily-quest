@@ -350,7 +350,7 @@ export default function CalendarView({ completionHistory, onClose, categories, t
                   </span>
                 </div>
                 <span className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-500'}`}>
-                  {quests.length} квест{quests.length === 1 ? '' : quests.length < 5 ? 'а' : 'ов'}
+                  {quests.length + journal.length} запис{(quests.length + journal.length) === 1 ? 'ь' : (quests.length + journal.length) < 5 ? 'и' : 'ей'}
                 </span>
               </div>
 
@@ -373,6 +373,26 @@ export default function CalendarView({ completionHistory, onClose, categories, t
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {journal.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  {journal.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className={`px-3 py-2 rounded-lg text-sm ${
+                        theme === 'light' ? 'bg-gray-50 border border-gray-200' : 'bg-white/5 border border-white/5'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span>{entry.emoji}</span>
+                        <p className={`text-xs leading-relaxed ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
+                          {entry.text}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
