@@ -578,14 +578,14 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           throw new Error('User email not available');
         }
         
-        const userDataList = await base44.entities.UserQuestData.filter({ created_by: user.email });
+        const { data: cachedData, id: cachedId } = await getCachedUserData(user.email);
         
         // Проверяем флаг ресета из localStorage
         const shouldResetOnboarding = localStorage.getItem('dailyQuestsResetOnboarding');
         
-        if (userDataList.length > 0 && !shouldResetOnboarding) {
-          const data = userDataList[0];
-          setUserDataId(data.id);
+        if (cachedData && !shouldResetOnboarding) {
+          const data = cachedData;
+          setUserDataId(cachedId);
           
           // Загрузка кастомных квестов
           if (data.quest_data) {
