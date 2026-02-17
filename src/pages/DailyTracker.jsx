@@ -401,10 +401,12 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
 ❌ Неправильно: "Сбросить 5кг", "Получить повышение", "Купить квартиру"
 ✅ Правильно: "Пробежать 3км", "Выполнить задачу на работе", "Отложить 500₽"
 
-Для каждой категории создай 3 ЕЖЕДНЕВНЫХ квеста разных уровней сложности:
-- Level 1: самый простой, базовый (можно делать каждый день)
-- Level 2: средний (требует больше усилий, но выполнимо ежедневно)
-- Level 3: сложный (амбициозное ежедневное действие)
+Для каждой категории создай РОВНО 3 ЕЖЕДНЕВНЫХ квеста, СТРОГО отсортированных по уровню сложности:
+- Level 1 (самый лёгкий, +1 XP): простое базовое действие на каждый день
+- Level 2 (средний, +2 XP): требует больше усилий, но выполнимо ежедневно
+- Level 3 (самый сложный, +3 XP): амбициозное ежедневное действие
+
+ВАЖНО: Квесты ОБЯЗАТЕЛЬНО должны идти в порядке level=1, level=2, level=3 по возрастанию сложности!
 
 Категории:
 - health: физическая активность, спорт, здоровье
@@ -815,12 +817,13 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     
     if (wasCompleted) {
       // Отменить выполнение
+      const xpToRemove = currentQuest.level || 1;
       setCompletedToday(prev => {
         const newState = { ...prev };
         delete newState[questKey];
         return newState;
       });
-      setTotalCompleted(prev => Math.max(0, prev - 1));
+      setTotalCompleted(prev => Math.max(0, prev - xpToRemove));
       
       // Удалить из истории
       setCompletionHistory(prev => {
@@ -837,11 +840,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       // Понизить счетчик категории
       setCategoryTotalCompleted(prev => ({
         ...prev,
-        [category]: Math.max((prev[category] || 0) - 1, 0)
+        [category]: Math.max((prev[category] || 0) - xpToRemove, 0)
       }));
       
       // Пересчитать уровень категории
-      const newTotal = Math.max((categoryTotalCompleted[category] || 0) - 1, 0);
+      const newTotal = Math.max((categoryTotalCompleted[category] || 0) - xpToRemove, 0);
       const newLevel = Math.floor(newTotal / 10) + 1; // Каждые 10 квестов = +1 уровень
       setCategoryLevels(prev => ({
         ...prev,
@@ -854,7 +857,8 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         [questKey]: true
       }));
       
-      setTotalCompleted(prev => prev + 1);
+      const xpToAdd = currentQuest.level || 1;
+      setTotalCompleted(prev => prev + xpToAdd);
       
       // Добавить в историю
       setCompletionHistory(prev => ({
@@ -908,11 +912,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       // Повысить счетчик категории
       setCategoryTotalCompleted(prev => ({
         ...prev,
-        [category]: (prev[category] || 0) + 1
+        [category]: (prev[category] || 0) + xpToAdd
       }));
       
       // Пересчитать уровень категории
-      const newTotal = (categoryTotalCompleted[category] || 0) + 1;
+      const newTotal = (categoryTotalCompleted[category] || 0) + xpToAdd;
       const newLevel = Math.floor(newTotal / 10) + 1; // Каждые 10 квестов = +1 уровень
       setCategoryLevels(prev => ({
         ...prev,
