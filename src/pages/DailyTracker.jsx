@@ -912,6 +912,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         onClose={() => setShowCalendar(false)}
         categories={CATEGORIES}
         theme={theme}
+        journalEntries={journalEntries}
       />
     );
   }
