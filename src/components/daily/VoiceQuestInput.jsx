@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useSpeechRecognition } from '@/components/useSpeechRecognition';
+import CaloriePhotoInput from './CaloriePhotoInput';
 
-export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
+export default function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { recognition } = useSpeechRecognition();
@@ -188,27 +189,30 @@ export default function VoiceQuestInput({ onQuestSuggestion, theme = 'dark' }) {
 
   return (
     <div className="px-5 mb-4">
-      <Button
-        onClick={startRecording}
-        disabled={isProcessing}
-        className={`w-full h-12 rounded-2xl font-medium transition-all ${
-          isRecording
-            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-            : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
-        }`}
-      >
-        {isRecording ? (
-          <>
-            <Mic className="w-5 h-5 mr-2 animate-pulse" />
-            Слушаю...
-          </>
-        ) : (
-          <>
-            <Mic className="w-5 h-5 mr-2" />
-            Голосовой ввод
-          </>
-        )}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          onClick={startRecording}
+          disabled={isProcessing}
+          className={`h-12 rounded-2xl font-medium transition-all flex-1 ${
+            isRecording
+              ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+              : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
+          }`}
+        >
+          {isRecording ? (
+            <>
+              <Mic className="w-5 h-5 mr-2 animate-pulse" />
+              Слушаю...
+            </>
+          ) : (
+            <>
+              <Mic className="w-5 h-5 mr-2" />
+              Голос
+            </>
+          )}
+        </Button>
+        <CaloriePhotoInput onMealAnalyzed={onMealAnalyzed} theme={theme} />
+      </div>
     </div>
   );
 }
