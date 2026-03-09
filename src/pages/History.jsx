@@ -498,6 +498,9 @@ export default function History() {
                     {noteCount > 0 && (
                       <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                     )}
+                    {entries.some(e => e.type === 'meal') && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                    )}
                   </div>
                 )}
               </div>
