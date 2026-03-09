@@ -12,6 +12,8 @@ import QuestSuggestionModal from '@/components/daily/QuestSuggestionModal.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
 import AIResponseModal from '@/components/daily/AIResponseModal.jsx';
 import OnboardingModal from '@/components/daily/OnboardingModal.jsx';
+import StreakCelebrationModal, { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
+import StreakFreezeModal from '@/components/daily/StreakFreezeModal.jsx';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
