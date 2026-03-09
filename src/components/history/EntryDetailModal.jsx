@@ -16,6 +16,7 @@ export default function EntryDetailModal({ entry, onClose, theme }) {
 
   const catInfo = CATEGORIES[entry.category];
   const isQuest = entry.type === 'quest_completed';
+  const isMeal = entry.type === 'meal';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -26,24 +27,36 @@ export default function EntryDetailModal({ entry, onClose, theme }) {
           theme === 'light' ? 'bg-white shadow-xl' : 'bg-[#1e2836]'
         }`}
       >
+        {/* Meal photo */}
+        {isMeal && entry.photo_urls?.[0] && (
+          <div className="w-full h-48 overflow-hidden">
+            <img src={entry.photo_urls[0]} alt={entry.text} className="w-full h-full object-cover" />
+          </div>
+        )}
 
         {/* Header */}
         <div className={`px-5 pt-4 pb-3 flex items-start justify-between border-b ${
           theme === 'light' ? 'border-gray-100' : 'border-white/5'
         }`}>
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{entry.emoji}</span>
+            {!isMeal && <span className="text-3xl">{entry.emoji}</span>}
             <div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${catInfo?.bgColor} ${catInfo?.textColor}`}>
-                  {catInfo?.icon} {catInfo?.name}
-                </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {isMeal ? (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-orange-500/10 text-orange-500">
+                    🍽️ Еда
+                  </span>
+                ) : (
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${catInfo?.bgColor} ${catInfo?.textColor}`}>
+                    {catInfo?.icon} {catInfo?.name}
+                  </span>
+                )}
                 {isQuest && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                     theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
                   }`}>🎯 Квест</span>
                 )}
-                {!isQuest && (
+                {!isQuest && !isMeal && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                     theme === 'light' ? 'bg-blue-100 text-blue-700' : 'bg-blue-500/20 text-blue-300'
                   }`}>📝 Заметка</span>
@@ -71,12 +84,34 @@ export default function EntryDetailModal({ entry, onClose, theme }) {
             theme === 'light' ? 'bg-gray-50' : 'bg-white/5'
           }`}>
             <p className={`text-xs font-medium mb-1.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
-              {isQuest ? 'Выполненный квест' : 'Заметка'}
+              {isMeal ? 'Приём пищи' : isQuest ? 'Выполненный квест' : 'Заметка'}
             </p>
             <p className={`text-base font-medium leading-relaxed ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
               {entry.text}
             </p>
           </div>
+
+          {/* Meal nutrients */}
+          {isMeal && (
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="rounded-xl p-3 bg-orange-500/10">
+                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🔥 Калории</div>
+                <div className="text-lg font-bold text-orange-500">{Math.round(entry.calories)} <span className="text-xs font-normal">ккал</span></div>
+              </div>
+              <div className="rounded-xl p-3 bg-red-500/10">
+                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🥩 Белки</div>
+                <div className="text-lg font-bold text-red-500">{Math.round(entry.protein)} <span className="text-xs font-normal">г</span></div>
+              </div>
+              <div className="rounded-xl p-3 bg-yellow-500/10">
+                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>💧 Жиры</div>
+                <div className="text-lg font-bold text-yellow-500">{Math.round(entry.fat)} <span className="text-xs font-normal">г</span></div>
+              </div>
+              <div className="rounded-xl p-3 bg-green-500/10">
+                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🌾 Углеводы</div>
+                <div className="text-lg font-bold text-green-500">{Math.round(entry.carbs)} <span className="text-xs font-normal">г</span></div>
+              </div>
+            </div>
+          )}
 
           {/* Raw voice input */}
           {entry.rawText && (
@@ -93,8 +128,6 @@ export default function EntryDetailModal({ entry, onClose, theme }) {
               </p>
             </div>
           )}
-
-
         </div>
       </div>
     </div>
