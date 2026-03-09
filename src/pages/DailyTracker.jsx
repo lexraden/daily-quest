@@ -1277,6 +1277,26 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         />
       )}
 
+      {/* Streak Celebration Modal */}
+      {showStreakCelebration && (
+        <StreakCelebrationModal
+          streak={streak}
+          onClose={() => setShowStreakCelebration(false)}
+          theme={theme}
+        />
+      )}
+
+      {/* Streak Freeze Modal */}
+      {showStreakFreeze && pendingFreezeData && (
+        <StreakFreezeModal
+          streak={pendingFreezeData.streak}
+          freezesLeft={pendingFreezeData.freezes}
+          onUseFreeze={handleUseFreeze}
+          onLoseStreak={handleLoseStreak}
+          theme={theme}
+        />
+      )}
+
       <style>{`
         @keyframes shimmer {
           0% { transform: translateX(-100%); }
