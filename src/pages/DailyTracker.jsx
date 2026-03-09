@@ -14,6 +14,7 @@ import AIResponseModal from '@/components/daily/AIResponseModal.jsx';
 import OnboardingModal from '@/components/daily/OnboardingModal.jsx';
 import StreakCelebrationModal, { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
 import StreakFreezeModal from '@/components/daily/StreakFreezeModal.jsx';
+import MealReportModal from '@/components/daily/MealReportModal.jsx';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
@@ -169,6 +170,8 @@ export default function DailyTracker() {
   const [showStreakCelebration, setShowStreakCelebration] = useState(false);
   const [showStreakFreeze, setShowStreakFreeze] = useState(false);
   const [pendingFreezeData, setPendingFreezeData] = useState(null);
+  const [mealHistory, setMealHistory] = useState([]);
+  const [pendingMeal, setPendingMeal] = useState(null);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -643,6 +646,21 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setShowStreakFreeze(false);
     setPendingFreezeData(null);
     toast('Серия сброшена. Начинай заново! 💪');
+  };
+
+  const handleMealAnalyzed = (meal) => {
+    setPendingMeal(meal);
+  };
+
+  const handleSaveMeal = () => {
+    if (!pendingMeal) return;
+    setMealHistory(prev => [pendingMeal, ...prev]);
+    setPendingMeal(null);
+    toast.success('🍽️ Приём пищи сохранён!');
+  };
+
+  const handleDiscardMeal = () => {
+    setPendingMeal(null);
   };
 
   // Загрузка данных из базы данных
