@@ -1018,6 +1018,12 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       // Обновляем lastCompletedDate при первом выполнении за день
       if (lastCompletedDate !== today) {
         setLastCompletedDate(today);
+        // Увеличиваем streak при первом квесте за день
+        const newStreak = streak + 1;
+        setStreak(newStreak);
+        if (getStreakMilestone(newStreak)) {
+          setTimeout(() => setShowStreakCelebration(true), 1000);
+        }
       }
     }
   };
