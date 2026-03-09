@@ -693,6 +693,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             setJournalEntries(data.journal_entries);
           }
           
+          // Загрузка истории еды
+          if (data.meal_history) {
+            setMealHistory(data.meal_history);
+          }
+          
           // Инициализация уровней категорий
           const levels = {};
           const totals = {};
@@ -800,6 +805,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           completion_history: completionHistory,
           streak_freezes: streakFreezes,
           journal_entries: journalEntries,
+          meal_history: mealHistory,
           last_visit_date: getTodayKey()
         };
         updateCachedUserData(userDataId, dataToSave);
@@ -810,7 +816,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     };
     
     saveData();
-  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, isLoaded, userDataId]);
+  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, isLoaded, userDataId]);
 
   // Экспорт данных
   const exportData = () => {
