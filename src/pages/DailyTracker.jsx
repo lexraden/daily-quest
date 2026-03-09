@@ -630,6 +630,21 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setQuestSuggestion(null);
   };
 
+  const handleUseFreeze = () => {
+    // Сохраняем streak, тратим freeze
+    setStreakFreezes(prev => Math.max(prev - 1, 0));
+    setShowStreakFreeze(false);
+    setPendingFreezeData(null);
+    toast.success('❄️ Заморозка использована! Серия сохранена.');
+  };
+
+  const handleLoseStreak = () => {
+    setStreak(0);
+    setShowStreakFreeze(false);
+    setPendingFreezeData(null);
+    toast('Серия сброшена. Начинай заново! 💪');
+  };
+
   // Загрузка данных из базы данных
   useEffect(() => {
     const loadUserData = async () => {
