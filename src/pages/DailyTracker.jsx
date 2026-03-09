@@ -701,13 +701,8 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             const hadProgressLastVisit = data.completion_history?.[lastVisitKey]?.length > 0;
             
             if (diffDays === 1 && hadProgressLastVisit) {
-              // Вчера был прогресс — продолжаем streak
-              const newStreak = (data.streak || 0) + 1;
-              setStreak(newStreak);
-              // Проверяем milestone для поздравления
-              if (getStreakMilestone(newStreak)) {
-                setTimeout(() => setShowStreakCelebration(true), 500);
-              }
+              // Вчера был прогресс — streak продолжится когда выполнит квест сегодня
+              setStreak(data.streak || 0);
             } else if (diffDays === 2 && hadProgressLastVisit && data.streak > 0) {
               // Пропущен ровно 1 день — предлагаем freeze
               if ((data.streak_freezes ?? 0) > 0) {
