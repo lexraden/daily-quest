@@ -1017,7 +1017,10 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         const newStreak = streak + 1;
         setStreak(newStreak);
         if (getStreakMilestone(newStreak)) {
-          setTimeout(() => setShowStreakCelebration(true), 1000);
+          setTimeout(() => {
+            setShowStreakCelebration(true);
+            fireConfetti();
+          }, 1000);
         }
       }
     }
