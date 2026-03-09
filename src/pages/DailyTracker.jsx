@@ -677,29 +677,45 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           // Проверка нового дня
           if (data.last_visit_date !== today) {
             // Новый день начался!
-            const lastVisit = new Date(data.last_visit_date);
-            const todayDate = new Date(today);
-            const diffDays = Math.floor((todayDate - lastVisit) / (1000 * 60 * 60 * 24));
+            const lastVisit = new Date(data.last_visit_date + 'T12:00:00');
+            const todayDate = new Date(today + 'T12:00:00');
+            const diffDays = Math.round((todayDate - lastVisit) / (1000 * 60 * 60 * 24));
             
-            // Проверяем был ли прогресс вчера
-            const yesterdayKey = new Date(todayDate - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            const hadProgressYesterday = data.completion_history?.[yesterdayKey]?.length > 0;
+            // Проверяем был ли прогресс в последний день визита
+            const lastVisitKey = data.last_visit_date;
+            const hadProgressLastVisit = data.completion_history?.[lastVisitKey]?.length > 0;
             
-            if (diffDays === 1 && hadProgressYesterday) {
-              // Продолжаем streak
-              setStreak(data.streak + 1);
-            } else if (diffDays === 1 && !hadProgressYesterday) {
-              // Пропустили день
-              if (data.streak_freezes > 0) {
-                // Используем freeze
+            if (diffDays === 1 && hadProgressLastVisit) {
+              // Вчера был прогресс — продолжаем streak
+              const newStreak = (data.streak || 0) + 1;
+              setStreak(newStreak);
+              // Проверяем milestone для поздравления
+              if (getStreakMilestone(newStreak)) {
+                setTimeout(() => setShowStreakCelebration(true), 500);
+              }
+            } else if (diffDays === 2 && hadProgressLastVisit && data.streak > 0) {
+              // Пропущен ровно 1 день — предлагаем freeze
+              if ((data.streak_freezes ?? 0) > 0) {
+                setPendingFreezeData({ streak: data.streak, freezes: data.streak_freezes });
+                setShowStreakFreeze(true);
+                // Временно ставим streak как было, решение примет юзер
                 setStreak(data.streak);
-                setStreakFreezes(data.streak_freezes - 1);
+              } else {
+                // Нет freezes — сбрасываем
+                setStreak(0);
+              }
+            } else if (diffDays >= 2) {
+              // Пропустили больше 1 дня или не было прогресса — сбрасываем
+              setStreak(0);
+            } else if (diffDays === 1 && !hadProgressLastVisit) {
+              // Вчера заходил, но ничего не сделал
+              if ((data.streak_freezes ?? 0) > 0 && data.streak > 0) {
+                setPendingFreezeData({ streak: data.streak, freezes: data.streak_freezes });
+                setShowStreakFreeze(true);
+                setStreak(data.streak);
               } else {
                 setStreak(0);
               }
-            } else if (diffDays > 1) {
-              // Пропустили больше дня - сбрасываем
-              setStreak(0);
             } else {
               setStreak(data.streak || 0);
             }
