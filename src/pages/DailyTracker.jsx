@@ -166,6 +166,9 @@ export default function DailyTracker() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [user, setUser] = useState(null);
   const [userDataId, setUserDataId] = useState(null);
+  const [showStreakCelebration, setShowStreakCelebration] = useState(false);
+  const [showStreakFreeze, setShowStreakFreeze] = useState(false);
+  const [pendingFreezeData, setPendingFreezeData] = useState(null);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
