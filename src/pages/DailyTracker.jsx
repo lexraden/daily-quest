@@ -1200,9 +1200,10 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           theme={theme}
         />
 
-        {/* Voice Quest Input */}
+        {/* Voice Quest Input + Calorie Photo */}
         <VoiceQuestInput 
           onQuestSuggestion={handleQuestSuggestion}
+          onMealAnalyzed={handleMealAnalyzed}
           theme={theme}
         />
 
@@ -1310,6 +1311,16 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         <StreakCelebrationModal
           streak={streak}
           onClose={() => setShowStreakCelebration(false)}
+          theme={theme}
+        />
+      )}
+
+      {/* Meal Report Modal */}
+      {pendingMeal && (
+        <MealReportModal
+          meal={pendingMeal}
+          onSave={handleSaveMeal}
+          onDiscard={handleDiscardMeal}
           theme={theme}
         />
       )}
