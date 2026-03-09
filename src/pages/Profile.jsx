@@ -9,6 +9,7 @@ import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import StatsSection from '@/components/profile/StatsSection';
 import { getCachedUser, getCachedUserData, invalidateCache } from '@/components/UserDataCache';
+import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 
 const CATEGORIES_KEYS = ['health', 'mind', 'work', 'money', 'love', 'friends'];
 
@@ -38,6 +39,7 @@ export default function Profile() {
     currentLevel: LEVELS[0]
   });
   const [journalEntries, setJournalEntries] = useState([]);
+  const [mealHistory, setMealHistory] = useState([]);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -76,6 +78,7 @@ export default function Profile() {
           });
 
           setJournalEntries(data.journal_entries || []);
+          setMealHistory(data.meal_history || []);
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -117,6 +120,9 @@ export default function Profile() {
       <div className="px-5 py-3 space-y-3 max-w-2xl mx-auto pb-6">
         {/* Profile header - compact */}
         <ProfileHeader user={user} tgUser={tgUser} stats={stats} levelProgress={levelProgress} theme={theme} />
+
+        {/* Daily Calories */}
+        <DailyCaloriesCard mealHistory={mealHistory} theme={theme} />
 
         {/* Stats */}
         <StatsSection
