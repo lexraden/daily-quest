@@ -22,6 +22,7 @@ export default function History() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [completionHistory, setCompletionHistory] = useState({});
   const [journalEntries, setJournalEntries] = useState([]);
+  const [mealHistory, setMealHistory] = useState([]);
   const [selectedEntry, setSelectedEntry] = useState(null);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function History() {
       if (data) {
         setCompletionHistory(data.completion_history || {});
         setJournalEntries(data.journal_entries || []);
+        setMealHistory(data.meal_history || []);
       }
     };
     loadData();
@@ -102,6 +104,23 @@ export default function History() {
     });
     journalEntries.forEach(entry => {
       if (entry.date === dateKey) items.push(entry);
+    });
+    mealHistory.forEach((meal, idx) => {
+      if (meal.date === dateKey) {
+        items.push({
+          id: `meal_${dateKey}_${idx}`,
+          type: 'meal',
+          date: dateKey,
+          emoji: '🍽️',
+          text: `${meal.meal_name} — ${Math.round(meal.calories)} ккал`,
+          calories: meal.calories,
+          protein: meal.protein,
+          fat: meal.fat,
+          carbs: meal.carbs,
+          photo_urls: meal.photo_urls,
+          timestamp: meal.timestamp || `${dateKey}T12:00:00`
+        });
+      }
     });
     // Sort by timestamp descending (newest first), use index as tiebreaker for same-time entries
     items.sort((a, b) => {
