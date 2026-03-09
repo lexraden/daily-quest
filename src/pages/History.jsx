@@ -146,6 +146,7 @@ export default function History() {
   const EntryCard = ({ entry, compact = false }) => {
     const catInfo = CATEGORIES[entry.category];
     const isQuest = entry.type === 'quest_completed';
+    const isMeal = entry.type === 'meal';
 
     if (compact) {
       const isClickable = !isQuest;
@@ -155,9 +156,11 @@ export default function History() {
           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all ${
             isClickable ? 'cursor-pointer active:scale-[0.97]' : ''
           } ${
-            isQuest
-              ? theme === 'light' ? 'bg-purple-50' : 'bg-purple-500/10'
-              : theme === 'light' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white/5 hover:bg-white/10'
+            isMeal
+              ? theme === 'light' ? 'bg-orange-50' : 'bg-orange-500/10'
+              : isQuest
+                ? theme === 'light' ? 'bg-purple-50' : 'bg-purple-500/10'
+                : theme === 'light' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white/5 hover:bg-white/10'
           }`}
         >
           <span className="text-sm">{entry.emoji}</span>
@@ -167,28 +170,41 @@ export default function History() {
           {isQuest && (
             <span className={`text-[10px] font-bold flex-shrink-0 ${theme === 'light' ? 'text-purple-500' : 'text-purple-400'}`}>+{entry.level || 1} XP</span>
           )}
+          {isMeal && (
+            <span className={`text-[10px] font-bold flex-shrink-0 ${theme === 'light' ? 'text-orange-500' : 'text-orange-400'}`}>{Math.round(entry.calories)} ккал</span>
+          )}
         </div>
       );
     }
 
-    const isClickable = !isQuest;
+    const isClickable = isMeal || (!isQuest);
     return (
       <div
         onClick={() => isClickable && setSelectedEntry(entry)}
         className={`p-3 rounded-xl border transition-all ${
           isClickable ? 'cursor-pointer active:scale-[0.98]' : ''
         } ${
-          isQuest
+          isMeal
             ? theme === 'light'
-              ? 'bg-gradient-to-br from-purple-50 to-cyan-50 border-purple-200'
-              : 'bg-gradient-to-br from-purple-500/10 to-cyan-500/10 border-purple-500/30'
-            : theme === 'light'
-              ? 'bg-white border-gray-200'
-              : 'bg-[#1e2836] border-white/10'
+              ? 'bg-gradient-to-br from-orange-50 to-yellow-50 border-orange-200'
+              : 'bg-gradient-to-br from-orange-500/10 to-yellow-500/10 border-orange-500/30'
+            : isQuest
+              ? theme === 'light'
+                ? 'bg-gradient-to-br from-purple-50 to-cyan-50 border-purple-200'
+                : 'bg-gradient-to-br from-purple-500/10 to-cyan-500/10 border-purple-500/30'
+              : theme === 'light'
+                ? 'bg-white border-gray-200'
+                : 'bg-[#1e2836] border-white/10'
         }`}
       >
         <div className="flex items-start gap-3">
-          <span className="text-xl flex-shrink-0">{entry.emoji}</span>
+          {isMeal && entry.photo_urls?.[0] ? (
+            <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+              <img src={entry.photo_urls[0]} alt="" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <span className="text-xl flex-shrink-0">{entry.emoji}</span>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <p className={`text-sm font-medium line-clamp-2 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
@@ -200,19 +216,37 @@ export default function History() {
                     theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
                   }`}>+{entry.level || 1} XP</span>
                 )}
-                {!isQuest && <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-300' : 'text-gray-600'}`} />}
+                {isMeal && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                    theme === 'light' ? 'bg-orange-100 text-orange-700' : 'bg-orange-500/20 text-orange-300'
+                  }`}>{Math.round(entry.calories)} ккал</span>
+                )}
+                {!isQuest && !isMeal && <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-300' : 'text-gray-600'}`} />}
               </div>
             </div>
             <div className="flex items-center gap-2 mt-1.5">
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${catInfo?.bgColor} ${catInfo?.textColor}`}>
-                {catInfo?.icon} {catInfo?.name || entry.category}
-              </span>
+              {isMeal ? (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg bg-orange-500/10 text-orange-500`}>
+                  🍽️ Еда
+                </span>
+              ) : (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${catInfo?.bgColor} ${catInfo?.textColor}`}>
+                  {catInfo?.icon} {catInfo?.name || entry.category}
+                </span>
+              )}
               {entry.timestamp && (
                 <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
                   {new Date(entry.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
             </div>
+            {isMeal && (
+              <div className="flex gap-3 mt-1.5 text-[10px]">
+                <span className="text-red-500">Б: {Math.round(entry.protein)}г</span>
+                <span className="text-yellow-500">Ж: {Math.round(entry.fat)}г</span>
+                <span className="text-green-500">У: {Math.round(entry.carbs)}г</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
