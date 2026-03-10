@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createPageUrl } from '@/utils';
-import { getCachedUser, getCachedUserData } from '@/components/UserDataCache';
+import { getCachedUser, getCachedUserData, updateCachedUserData } from '@/components/UserDataCache';
+import { base44 } from '@/api/base44Client';
 import EntryDetailModal from '@/components/history/EntryDetailModal';
+import MealEditModal from '@/components/daily/MealEditModal';
 
 const CATEGORIES = {
   health: { name: "Health", icon: "💪", bgColor: "bg-green-500/10", textColor: "text-green-400", color: "#00b894" },
@@ -24,6 +26,8 @@ export default function History() {
   const [journalEntries, setJournalEntries] = useState([]);
   const [mealHistory, setMealHistory] = useState([]);
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const [editingMeal, setEditingMeal] = useState(null);
+  const [userDataId, setUserDataId] = useState(null);
 
   useEffect(() => {
     setTheme(localStorage.getItem('dailyQuestsTheme') || 'light');
@@ -35,6 +39,8 @@ export default function History() {
         setCompletionHistory(data.completion_history || {});
         setJournalEntries(data.journal_entries || []);
         setMealHistory(data.meal_history || []);
+        const { id } = await getCachedUserData(authUser.email);
+        setUserDataId(id);
       }
     };
     loadData();
@@ -629,6 +635,43 @@ export default function History() {
         <EntryDetailModal
           entry={selectedEntry}
           onClose={() => setSelectedEntry(null)}
+          onEditMeal={(entry) => {
+            // Find the actual index in mealHistory
+            const idx = mealHistory.findIndex(m =>
+              m.date === entry.date && m.meal_name === entry.text?.split(' — ')[0] && m.timestamp === entry.timestamp
+            );
+            if (idx !== -1) {
+              setEditingMeal({ meal: mealHistory[idx], index: idx });
+              setSelectedEntry(null);
+            }
+          }}
+          theme={theme}
+        />
+      )}
+
+      {/* Meal Edit Modal */}
+      {editingMeal && (
+        <MealEditModal
+          meal={editingMeal.meal}
+          mealIndex={editingMeal.index}
+          onSave={(idx, updated) => {
+            const newHistory = [...mealHistory];
+            newHistory[idx] = updated;
+            setMealHistory(newHistory);
+            if (userDataId) {
+              updateCachedUserData(userDataId, { meal_history: newHistory });
+              base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
+            }
+          }}
+          onDelete={(idx) => {
+            const newHistory = mealHistory.filter((_, i) => i !== idx);
+            setMealHistory(newHistory);
+            if (userDataId) {
+              updateCachedUserData(userDataId, { meal_history: newHistory });
+              base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
+            }
+          }}
+          onClose={() => setEditingMeal(null)}
           theme={theme}
         />
       )}

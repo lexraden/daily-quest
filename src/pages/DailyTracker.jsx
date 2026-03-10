@@ -15,7 +15,6 @@ import OnboardingModal from '@/components/daily/OnboardingModal.jsx';
 import StreakCelebrationModal, { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
 import StreakFreezeModal from '@/components/daily/StreakFreezeModal.jsx';
 import MealReportModal from '@/components/daily/MealReportModal.jsx';
-import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
@@ -1249,18 +1248,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           })}
         </div>
       </div>
-
-      {/* Daily Calories Card */}
-      {mealHistory.length > 0 && (
-        <div className="px-5 mt-4">
-          <DailyCaloriesCard
-            mealHistory={mealHistory}
-            onEditMeal={handleEditMeal}
-            onDeleteMeal={handleDeleteMeal}
-            theme={theme}
-          />
-        </div>
-      )}
 
       {/* Action Buttons */}
       <div className="px-5 mt-6 pb-4">
