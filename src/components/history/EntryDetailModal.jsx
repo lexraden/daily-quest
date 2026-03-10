@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const CATEGORIES = {
@@ -11,7 +11,7 @@ const CATEGORIES = {
   friends: { name: "Friends", icon: "👥", bgColor: "bg-pink-500/10", textColor: "text-pink-400" }
 };
 
-export default function EntryDetailModal({ entry, onClose, theme }) {
+export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) {
   if (!entry) return null;
 
   const catInfo = CATEGORIES[entry.category];
@@ -111,6 +111,17 @@ export default function EntryDetailModal({ entry, onClose, theme }) {
                 <div className="text-lg font-bold text-green-500">{Math.round(entry.carbs)} <span className="text-xs font-normal">г</span></div>
               </div>
             </div>
+          )}
+
+          {/* Edit meal button */}
+          {isMeal && onEditMeal && (
+            <Button
+              onClick={() => onEditMeal(entry)}
+              className="w-full h-10 mb-4 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
+            >
+              <Pencil className="w-4 h-4 mr-2" />
+              Редактировать
+            </Button>
           )}
 
           {/* Raw voice input */}
