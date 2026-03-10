@@ -128,10 +128,10 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
         />
         <Button
           onClick={() => fileInputRef.current?.click()}
-          className={`h-12 rounded-2xl font-medium flex-1 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600`}
+          size="icon"
+          className={`h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600`}
         >
-          <Camera className="w-5 h-5 mr-2" />
-          Калории
+          <Camera className="w-5 h-5" />
         </Button>
       </>
     );
