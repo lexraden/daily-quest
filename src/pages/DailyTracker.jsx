@@ -663,6 +663,14 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setPendingMeal(null);
   };
 
+  const handleEditMeal = (index, updatedMeal) => {
+    setMealHistory(prev => prev.map((m, i) => i === index ? updatedMeal : m));
+  };
+
+  const handleDeleteMeal = (index) => {
+    setMealHistory(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Загрузка данных из базы данных
   useEffect(() => {
     const loadUserData = async () => {
