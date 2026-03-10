@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import StatsSection from '@/components/profile/StatsSection';
-import { getCachedUser, getCachedUserData, invalidateCache } from '@/components/UserDataCache';
+import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData } from '@/components/UserDataCache';
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 
 const CATEGORIES_KEYS = ['health', 'mind', 'work', 'money', 'love', 'friends'];
