@@ -128,16 +128,21 @@ export default function Profile() {
             const newHistory = [...mealHistory];
             newHistory[idx] = updated;
             setMealHistory(newHistory);
-            // Persist
             getCachedUserData(user.email).then(({ id }) => {
-              if (id) base44.entities.UserQuestData.update(id, { meal_history: newHistory });
+              if (id) {
+                updateCachedUserData(id, { meal_history: newHistory });
+                base44.entities.UserQuestData.update(id, { meal_history: newHistory });
+              }
             });
           }}
           onDeleteMeal={(idx) => {
             const newHistory = mealHistory.filter((_, i) => i !== idx);
             setMealHistory(newHistory);
             getCachedUserData(user.email).then(({ id }) => {
-              if (id) base44.entities.UserQuestData.update(id, { meal_history: newHistory });
+              if (id) {
+                updateCachedUserData(id, { meal_history: newHistory });
+                base44.entities.UserQuestData.update(id, { meal_history: newHistory });
+              }
             });
           }}
           theme={theme}
