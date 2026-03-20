@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle2, Circle, Flame, Trophy, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 // CalendarView replaced by History page
@@ -797,7 +797,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       }, [user]);
 
   // Сохранение данных в БД (optimistic: UI already updated, revert on failure)
-  const lastSavedSnapshotRef = React.useRef(null);
+  const lastSavedSnapshotRef = useRef(null);
 
   useEffect(() => {
     if (!isLoaded || !userDataId) return;
