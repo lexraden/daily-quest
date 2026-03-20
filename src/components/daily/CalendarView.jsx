@@ -421,7 +421,8 @@ export default function CalendarView({ completionHistory, onClose, categories, t
               onClick={onClose}
               variant="ghost"
               size="icon"
-              className={`h-10 w-10 rounded-full ${
+              aria-label="Закрыть историю"
+              className={`h-11 w-11 rounded-full ${
                 theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
               }`}
             >
@@ -449,7 +450,8 @@ export default function CalendarView({ completionHistory, onClose, categories, t
             onClick={navigatePrevious}
             variant="ghost"
             size="icon"
-            className={`h-10 w-10 rounded-full ${
+            aria-label="Предыдущий период"
+            className={`h-11 w-11 rounded-full ${
               theme === 'light'
                 ? 'bg-black/5 hover:bg-black/10'
                 : 'bg-white/5 hover:bg-white/10'
@@ -468,7 +470,8 @@ export default function CalendarView({ completionHistory, onClose, categories, t
             onClick={navigateNext}
             variant="ghost"
             size="icon"
-            className={`h-10 w-10 rounded-full ${
+            aria-label="Следующий период"
+            className={`h-11 w-11 rounded-full ${
               theme === 'light'
                 ? 'bg-black/5 hover:bg-black/10'
                 : 'bg-white/5 hover:bg-white/10'
@@ -527,6 +530,7 @@ export default function CalendarView({ completionHistory, onClose, categories, t
               onClick={goToToday}
               variant="outline"
               size="sm"
+              aria-label="Перейти к сегодня"
               className={
                 theme === 'light'
                   ? 'border-purple-400 text-purple-600 hover:bg-purple-50'

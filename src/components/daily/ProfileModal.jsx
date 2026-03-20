@@ -36,7 +36,8 @@ export default function ProfileModal({
             onClick={onClose}
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-full hover:bg-white/10"
+            aria-label="Закрыть профиль"
+            className="h-11 w-11 rounded-full hover:bg-white/10"
           >
             <X className="w-5 h-5" />
           </Button>
@@ -145,7 +146,8 @@ export default function ProfileModal({
         <div className={`p-5 border-t ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
           <Button
             onClick={onClose}
-            className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            aria-label="Закрыть профиль"
+            className="w-full min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
           >
             Закрыть
           </Button>

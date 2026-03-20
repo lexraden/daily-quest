@@ -2,18 +2,29 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { CheckCircle2, Circle, Flame, Trophy, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 // CalendarView replaced by History page
-import PremiumModal from '@/components/daily/PremiumModal.jsx';
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
-import CategoryProgressModal from '@/components/daily/CategoryProgressModal.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
-import QuestSuggestionModal from '@/components/daily/QuestSuggestionModal.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
-import AIResponseModal from '@/components/daily/AIResponseModal.jsx';
-import OnboardingModal from '@/components/daily/OnboardingModal.jsx';
-import StreakCelebrationModal, { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
-import StreakFreezeModal from '@/components/daily/StreakFreezeModal.jsx';
-import MealReportModal from '@/components/daily/MealReportModal.jsx';
-import confetti from 'canvas-confetti';
+import { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
+
+// Lazy-loaded modals — only fetched when actually shown (reduces initial bundle)
+const PremiumModal = React.lazy(() => import('@/components/daily/PremiumModal.jsx'));
+const CategoryProgressModal = React.lazy(() => import('@/components/daily/CategoryProgressModal.jsx'));
+const QuestSuggestionModal = React.lazy(() => import('@/components/daily/QuestSuggestionModal.jsx'));
+const AIResponseModal = React.lazy(() => import('@/components/daily/AIResponseModal.jsx'));
+const OnboardingModal = React.lazy(() => import('@/components/daily/OnboardingModal.jsx'));
+const StreakCelebrationModal = React.lazy(() => import('@/components/daily/StreakCelebrationModal.jsx'));
+const StreakFreezeModal = React.lazy(() => import('@/components/daily/StreakFreezeModal.jsx'));
+const MealReportModal = React.lazy(() => import('@/components/daily/MealReportModal.jsx'));
+
+// Dynamic import for confetti — only loaded on first quest completion
+let confettiModule = null;
+const getConfetti = () => {
+  if (!confettiModule) {
+    confettiModule = import('canvas-confetti').then(m => m.default);
+  }
+  return confettiModule;
+};
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
@@ -802,47 +813,21 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     return { ...quest, category };
   };
 
-  // Конфетти
-  const fireConfetti = () => {
+  // Конфетти (dynamically loaded)
+  const fireConfetti = async () => {
+    const confetti = await getConfetti();
     const count = 200;
-    const defaults = {
-      origin: { y: 0.7 }
+    const defaults = { origin: { y: 0.7 } };
+
+    const fire = (particleRatio, opts) => {
+      confetti({ ...defaults, ...opts, particleCount: Math.floor(count * particleRatio) });
     };
 
-    function fire(particleRatio, opts) {
-      confetti({
-        ...defaults,
-        ...opts,
-        particleCount: Math.floor(count * particleRatio)
-      });
-    }
-
-    fire(0.25, {
-      spread: 26,
-      startVelocity: 55,
-    });
-
-    fire(0.2, {
-      spread: 60,
-    });
-
-    fire(0.35, {
-      spread: 100,
-      decay: 0.91,
-      scalar: 0.8
-    });
-
-    fire(0.1, {
-      spread: 120,
-      startVelocity: 25,
-      decay: 0.92,
-      scalar: 1.2
-    });
-
-    fire(0.1, {
-      spread: 120,
-      startVelocity: 45,
-    });
+    fire(0.25, { spread: 26, startVelocity: 55 });
+    fire(0.2, { spread: 60 });
+    fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+    fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+    fire(0.1, { spread: 120, startVelocity: 45 });
   };
 
   // Подсчёт текущего уровня игрока
@@ -1055,7 +1040,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
 
   // Show onboarding first
   if (showOnboarding) {
-    return <OnboardingModal onComplete={handleOnboardingComplete} theme={theme} />;
+    return (
+      <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500" /></div>}>
+        <OnboardingModal onComplete={handleOnboardingComplete} theme={theme} />
+      </React.Suspense>
+    );
   }
 
   const handlePullRefresh = async () => {
@@ -1226,6 +1215,8 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         </div>
       </div>
 
+      {/* Lazy-loaded Modals wrapped in Suspense */}
+      <React.Suspense fallback={null}>
       {/* Premium Modal */}
       {showPremium && (
         <PremiumModal onClose={() => setShowPremium(false)} theme={theme} />
@@ -1300,6 +1291,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           theme={theme}
         />
       )}
+      </React.Suspense>
 
       <style>{`
         @keyframes shimmer {
