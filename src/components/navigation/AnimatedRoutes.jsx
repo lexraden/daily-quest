@@ -3,6 +3,7 @@ import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import BottomNavBar from './BottomNavBar';
 import BackButton from './BackButton';
+import useAndroidBackButton from '@/hooks/useAndroidBackButton';
 
 // Route-level code splitting via React.lazy
 const DailyTracker = React.lazy(() => import('@/pages/DailyTracker'));
@@ -29,6 +30,9 @@ export default function AnimatedRoutes({ children, fallback }) {
   const [theme, setTheme] = useState('light');
   const [prevIndex, setPrevIndex] = useState(0);
   const prevPathRef = useRef(location.pathname);
+
+  // Android hardware back button + Telegram WebApp back button
+  useAndroidBackButton();
 
   // Track which tabs have been visited so we mount them lazily
   const [visitedTabs, setVisitedTabs] = useState(() => {
