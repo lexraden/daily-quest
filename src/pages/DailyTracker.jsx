@@ -589,12 +589,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
   }, []);
 
   const handleSaveMeal = useCallback(() => {
-    setPendingMeal(prev => {
-      if (!prev) return null;
-      setMealHistory(h => [prev, ...h]);
-      toast.success('🍽️ Приём пищи сохранён!');
-      return null;
-    });
+    setPendingMeal(null);
   }, []);
 
   const handleDiscardMeal = useCallback(() => {
@@ -1289,7 +1284,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       {pendingMeal && (
         <MealReportModal
           meal={pendingMeal}
-          onSave={handleSaveMeal}
+          onSave={() => {
+            setMealHistory(prev => [pendingMeal, ...prev]);
+            setPendingMeal(null);
+            toast.success('🍽️ Приём пищи сохранён!');
+          }}
           onDiscard={handleDiscardMeal}
           theme={theme}
         />

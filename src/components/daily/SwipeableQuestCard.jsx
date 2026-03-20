@@ -303,7 +303,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                     setCurrentIndex(idx);
                   }}
                   aria-label={`Квест ${idx + 1}`}
-                  className="flex items-center justify-center p-3"
+                  className="flex items-center justify-center p-3 min-w-[44px] min-h-[44px]"
                 >
                   <span
                     className={`block transition-all duration-300 ${
