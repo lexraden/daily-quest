@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Circle, Flame, Trophy, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 // CalendarView replaced by History page
 import PremiumModal from '@/components/daily/PremiumModal.jsx';
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
