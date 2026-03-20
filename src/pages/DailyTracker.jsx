@@ -830,7 +830,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setCompletedToday(reverted);
   }, []);
 
-  const { save: debouncedSave } = useSaveUserData({
+  const { save: saveUserData } = useSaveUserData({
     userDataId,
     isLoaded,
     getStateSnapshot,
@@ -840,8 +840,8 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
   // Trigger debounced save whenever data changes
   useEffect(() => {
     if (!isLoaded || !userDataId) return;
-    debouncedSave();
-  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, isLoaded, userDataId, debouncedSave]);
+    saveUserData();
+  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, isLoaded, userDataId, saveUserData]);
 
   // Экспорт данных
   const exportData = () => {
