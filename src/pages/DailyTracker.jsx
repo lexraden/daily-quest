@@ -1264,12 +1264,13 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         <div className="px-5 mt-1">
         <div className="space-y-3">
           {categoryEntries.map(([categoryKey, categoryInfo]) => {
+            const quests = questData[categoryKey] || [];
             return (
               <SwipeableQuestCard
                 key={categoryKey}
                 categoryKey={categoryKey}
                 categoryInfo={categoryInfo}
-                quests={sortedQuests}
+                quests={quests}
                 completedToday={completedToday}
                 onToggleQuest={toggleQuest}
                 celebrationQuest={celebrationQuest}
