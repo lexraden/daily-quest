@@ -48,7 +48,7 @@ function SwipeableQuestCard({
 
   const paginate = (newDirection) => {
     const newIndex = currentIndex + newDirection;
-    if (newIndex >= 0 && newIndex < quests.length) {
+    if (newIndex >= 0 && newIndex < sortedQuests.length) {
       setDirection(newDirection);
       setCurrentIndex(newIndex);
     }
@@ -288,9 +288,9 @@ function SwipeableQuestCard({
 
         {/* Dots Indicator */}
         <div className="flex items-center justify-center gap-2 mt-3 h-4">
-        {quests.length > 1 && (
+        {sortedQuests.length > 1 && (
           <>
-            {quests.map((quest, idx) => {
+            {sortedQuests.map((quest, idx) => {
               const questKey = `${categoryKey}_${quest.level}`;
               const isQuestCompleted = completedToday[questKey];
               const isSelected = idx === currentIndex;
