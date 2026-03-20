@@ -148,7 +148,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
             <button
               onClick={() => removePhoto(idx)}
               aria-label="Удалить фото"
-              className="absolute -top-1 -right-1 w-7 h-7 min-w-[44px] min-h-[44px] bg-black/60 rounded-full flex items-center justify-center"
+              className="absolute -top-1 -right-1 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center p-3 box-content"
             >
               <X className="w-3 h-3 text-white" />
             </button>
