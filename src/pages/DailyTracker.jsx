@@ -154,7 +154,6 @@ export default function DailyTracker() {
   const [streak, setStreak] = useState(0);
   const [lastCompletedDate, setLastCompletedDate] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [tgUser, setTgUser] = useState(null);
   const [celebrationQuest, setCelebrationQuest] = useState(null);
   // showCalendar removed - using History page now
   const [streakFreezes, setStreakFreezes] = useState(1);
@@ -182,17 +181,6 @@ export default function DailyTracker() {
     setTheme(savedTheme);
 
     // Load authenticated user and save name on first login
-    // Initialize Telegram WebApp FIRST (before async code)
-        if (window.Telegram?.WebApp) {
-          const tg = window.Telegram.WebApp;
-          tg.ready();
-          tg.expand();
-
-          if (tg.initDataUnsafe?.user) {
-            setTgUser(tg.initDataUnsafe.user);
-          }
-        }
-
         const loadUser = async () => {
           try {
             const isAuth = await base44.auth.isAuthenticated();
@@ -207,39 +195,10 @@ export default function DailyTracker() {
 
               // Auto-save user name on first login if not set
               if (!authUser.full_name) {
-                const name = window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name || authUser.email?.split('@')[0] || 'Пользователь';
+                const name = authUser.email?.split('@')[0] || 'Пользователь';
                 await base44.auth.updateMe({ full_name: name }).catch(err => {
                   console.log('Failed to save user name:', err);
                 });
-              }
-
-              // Save telegram chat ID for notifications — sync to TelegramUser entity
-              if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
-                const tgUserId = String(window.Telegram.WebApp.initDataUnsafe.user.id);
-                const tgUsername = window.Telegram.WebApp.initDataUnsafe.user.username || '';
-                const tgFirstName = window.Telegram.WebApp.initDataUnsafe.user.first_name || '';
-                localStorage.setItem('telegram_chat_id', tgUserId);
-
-                // Save/update TelegramUser record
-                try {
-                  const existing = await base44.entities.TelegramUser.filter({ telegram_chat_id: tgUserId });
-                  if (existing.length === 0) {
-                    await base44.entities.TelegramUser.create({
-                      telegram_chat_id: tgUserId,
-                      telegram_username: tgUsername,
-                      telegram_first_name: tgFirstName,
-                      user_email: authUser.email
-                    });
-                  } else if (existing[0].user_email !== authUser.email) {
-                    await base44.entities.TelegramUser.update(existing[0].id, {
-                      user_email: authUser.email,
-                      telegram_username: tgUsername,
-                      telegram_first_name: tgFirstName
-                    });
-                  }
-                } catch (err) {
-                  console.log('Failed to sync TelegramUser:', err);
-                }
               }
             }
           } catch (error) {
@@ -429,29 +388,6 @@ export default function DailyTracker() {
 
   const handleOnboardingComplete = async (answers) => {
     try {
-      // Send welcome message to Telegram
-      const telegram_chat_id = localStorage.getItem('telegram_chat_id');
-      if (telegram_chat_id) {
-        try {
-          await base44.functions.invoke('sendDailyReminder', {
-            telegram_chat_id,
-            message: `
-  🎉 <b>Great job!</b>
-
-  You now have your personalized daily quests to level up your life! 💪
-
-  ✅ Health, Mind, Work, Money, Love, Friends
-  🔥 Build your streak every day
-  📈 Track your progress and grow
-
-  Let's start your journey! 🚀
-            `.trim()
-          });
-        } catch (error) {
-          console.log('Failed to send Telegram message:', error);
-        }
-      }
-
       // Generate personalized quests using AI
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Ты - эксперт по персональному развитию. На основе ответов пользователя создай персонализированные ЕЖЕДНЕВНЫЕ квесты для daily tracker.
@@ -1153,7 +1089,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold">
-              {user?.full_name || tgUser?.first_name || 'Daily Quests'}
+              {user?.full_name || 'Daily Quests'}
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -1235,7 +1171,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
 
         {/* Motivational Banner */}
         <MotivationalBanner 
-          userName={tgUser?.first_name}
+          userName={user?.full_name}
           completedCount={completedCount}
           theme={theme}
         />
