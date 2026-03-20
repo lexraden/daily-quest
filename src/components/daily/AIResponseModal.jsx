@@ -185,17 +185,19 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
               <Button
                 onClick={onReject}
                 variant="outline"
-                className={
+                aria-label="Отмена удаления"
+                className={`min-h-[44px] ${
                   theme === 'light'
                     ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
                     : 'border-white/10 text-gray-300 hover:bg-white/5'
-                }
+                }`}
               >
                 Отмена
               </Button>
               <Button
                 onClick={onAccept}
-                className="w-full bg-red-600 hover:bg-red-700 text-white"
+                aria-label="Подтвердить удаление квеста"
+                className="w-full min-h-[44px] bg-red-600 hover:bg-red-700 text-white"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Удалить
@@ -206,17 +208,19 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
               <Button
                 onClick={onReject}
                 variant="outline"
-                className={
+                aria-label="Отмена изменения"
+                className={`min-h-[44px] ${
                   theme === 'light'
                     ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
                     : 'border-white/10 text-gray-300 hover:bg-white/5'
-                }
+                }`}
               >
                 Отмена
               </Button>
               <Button
                 onClick={onAccept}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                aria-label="Подтвердить изменение квеста"
+                className="w-full min-h-[44px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
               >
                 <Pencil className="w-4 h-4 mr-2" />
                 Изменить
@@ -227,17 +231,19 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
               <Button
                 onClick={onReject}
                 variant="outline"
-                className={
+                aria-label="Отмена добавления"
+                className={`min-h-[44px] ${
                   theme === 'light'
                     ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
                     : 'border-white/10 text-gray-300 hover:bg-white/5'
-                }
+                }`}
               >
                 Отмена
               </Button>
               <Button
                 onClick={onAccept}
-                className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+                aria-label="Добавить квест"
+                className="min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
               >
                 Добавить квест
               </Button>
@@ -245,7 +251,8 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
           ) : (
             <Button
               onClick={onAccept}
-              className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+              aria-label="Подтвердить"
+              className="w-full min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
             >
               Отлично!
             </Button>

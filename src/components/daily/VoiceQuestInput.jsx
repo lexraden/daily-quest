@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 import CaloriePhotoInput from './CaloriePhotoInput';
 
-export default function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark' }) {
+const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { recognition } = useSpeechRecognition();
@@ -81,7 +81,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, the
     };
   }, [recognition]);
 
-  const startRecording = () => {
+  const startRecording = useCallback(() => {
     if (!recognition) {
       toast.error('Голосовой ввод не поддерживается');
       return;
@@ -99,7 +99,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, the
       console.error('Failed to start recording:', error);
       toast.error('Не удалось запустить микрофон');
     }
-  };
+  }, [recognition, isRecording, isProcessing]);
 
   const processVoiceInput = async (text) => {
     setIsProcessing(true);
@@ -216,4 +216,6 @@ export default function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, the
       </div>
     </div>
   );
-}
+});
+
+export default VoiceQuestInput;
