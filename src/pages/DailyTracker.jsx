@@ -1102,6 +1102,9 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setSelectedCategory(categoryKey);
   }, []);
 
+  // Memoize category entries to avoid re-sorting on unrelated renders
+  const categoryEntries = useMemo(() => Object.entries(CATEGORIES), []);
+
   const completedCount = Object.keys(completedToday).length;
   const totalQuests = Object.keys(CATEGORIES).length;
   const progress = (completedCount / totalQuests) * 100;
