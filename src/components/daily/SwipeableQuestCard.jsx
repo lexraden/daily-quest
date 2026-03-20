@@ -303,7 +303,7 @@ function SwipeableQuestCard({
                     setCurrentIndex(idx);
                   }}
                   aria-label={`Квест ${idx + 1}`}
-                  className={`transition-all duration-300 flex items-center justify-center ${
+                  className={`transition-all duration-300 flex items-center justify-center min-w-[44px] min-h-[44px] ${
                     isQuestCompleted 
                       ? 'w-4 h-4' 
                       : isSelected ? 'w-2 h-2' : 'w-1.5 h-1.5'
