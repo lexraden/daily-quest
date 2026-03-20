@@ -90,7 +90,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
   };
 
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-1">
       {/* Category Header */}
       <div className="flex items-center gap-2 px-1">
         <button
@@ -113,7 +113,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
 
       {/* Swipeable Quest Card */}
       <div className="relative">
-        <div className="overflow-hidden min-h-[72px]">
+        <div className="overflow-hidden min-h-[80px]">
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
             key={currentIndex}
@@ -144,7 +144,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
               }
             }}
             className={`
-              relative overflow-hidden rounded-2xl px-4 py-3 cursor-pointer
+              relative overflow-hidden rounded-2xl px-4 py-4 cursor-pointer
               transition-all duration-300 ease-out border
               ${isCompleted 
                 ? `${categoryInfo.bgColor} ${categoryInfo.borderColor}` 
@@ -287,7 +287,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
         </div>
 
         {/* Dots Indicator */}
-        <div className="flex items-center justify-center -mt-0.5">
+        <div className="flex items-center justify-center mt-0">
         {sortedQuests.length > 1 && (
           <>
             {sortedQuests.map((quest, idx) => {
