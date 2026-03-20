@@ -52,7 +52,6 @@ import History from './pages/History';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Statistics from './pages/Statistics';
-import TelegramCode from './pages/TelegramCode';
 
 
 export const PAGES = {
@@ -61,7 +60,6 @@ export const PAGES = {
     "Home": Home,
     "Profile": Profile,
     "Statistics": Statistics,
-    "TelegramCode": TelegramCode,
 }
 
 export const pagesConfig = {

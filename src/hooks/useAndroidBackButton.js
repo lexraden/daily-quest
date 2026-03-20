@@ -15,28 +15,6 @@ export default function useAndroidBackButton() {
   useEffect(() => {
     const isTabPage = TAB_PATHS.includes(location.pathname);
 
-    // Telegram WebApp back button
-    const tg = window.Telegram?.WebApp;
-    if (tg) {
-      if (!isTabPage) {
-        tg.BackButton?.show();
-        const handleTgBack = () => {
-          if (window.history.length > 2) {
-            navigate(-1);
-          } else {
-            navigate('/DailyTracker', { replace: true });
-          }
-        };
-        tg.BackButton?.onClick(handleTgBack);
-        return () => {
-          tg.BackButton?.offClick(handleTgBack);
-          tg.BackButton?.hide();
-        };
-      } else {
-        tg.BackButton?.hide();
-      }
-    }
-
     // Android hardware back button via popstate
     // We push a dummy state so that back button triggers popstate instead of leaving the app
     if (isTabPage) {

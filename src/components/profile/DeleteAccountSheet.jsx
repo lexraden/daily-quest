@@ -28,10 +28,6 @@ export default function DeleteAccountSheet({ open, onClose, user, theme = 'light
       for (const ud of userDataList) {
         await base44.entities.UserQuestData.delete(ud.id);
       }
-      const tgUsers = await base44.entities.TelegramUser.filter({ user_email: user?.email });
-      for (const tu of tgUsers) {
-        await base44.entities.TelegramUser.delete(tu.id);
-      }
       invalidateCache();
       toast.success('Аккаунт удалён');
       base44.auth.logout('/');
@@ -102,7 +98,7 @@ export default function DeleteAccountSheet({ open, onClose, user, theme = 'light
                     <li>• История выполнения</li>
                     <li>• Серия дней и прогресс</li>
                     <li>• Записи журнала и питания</li>
-                    <li>• Связь с Telegram</li>
+
                   </ul>
                 </div>
                 <div className="flex gap-3">
