@@ -1076,7 +1076,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
   return (
     <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass} pb-4`}>
       {/* Compact Header */}
-      <div className="px-5 pt-6 pb-4">
+      <div className="px-5 pb-4" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold">

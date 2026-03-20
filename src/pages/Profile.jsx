@@ -123,7 +123,9 @@ export default function Profile() {
       {/* Header */}
       <div className={`sticky top-0 z-10 backdrop-blur-xl border-b ${
         theme === 'light' ? 'bg-white/80 border-gray-200' : 'bg-[#0f1419]/80 border-white/10'
-      }`}>
+      }`}
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <div className="px-5 py-3 flex items-center justify-between">
           <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Профиль</h1>
         </div>

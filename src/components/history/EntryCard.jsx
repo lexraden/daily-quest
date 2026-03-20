@@ -20,7 +20,7 @@ const EntryCard = React.memo(function EntryCard({ entry, compact = false, onSele
     return (
       <div
         onClick={() => isClickable && onSelect?.(entry)}
-        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all ${
+        className={`flex items-center gap-2 px-2.5 py-2.5 rounded-lg transition-all min-h-[44px] ${
           isClickable ? 'cursor-pointer active:scale-[0.97]' : ''
         } ${
           isMeal

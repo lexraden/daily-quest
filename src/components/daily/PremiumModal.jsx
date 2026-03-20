@@ -96,7 +96,9 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
         theme === 'light' 
           ? 'bg-white/90 border-gray-200' 
           : 'bg-[#0f1419]/90 border-white/10'
-      }`}>
+      }`}
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <div className="px-5 py-4">
           <div className="flex items-center justify-between">
             <div>

@@ -75,7 +75,7 @@ export default function DailyCaloriesCard({ mealHistory = [], onEditMeal, onDele
               <div
                 key={meal._originalIndex}
                 onClick={() => setEditingMeal(meal)}
-                className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all active:scale-[0.98] ${
+                className={`flex items-center gap-2.5 p-2.5 rounded-xl cursor-pointer transition-all active:scale-[0.98] min-h-[44px] ${
                   theme === 'light' ? 'bg-white/80 hover:bg-white' : 'bg-white/5 hover:bg-white/10'
                 }`}
               >

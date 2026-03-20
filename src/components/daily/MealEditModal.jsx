@@ -147,7 +147,8 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
                 onClick={() => setShowDeleteConfirm(true)}
                 variant="outline"
                 size="icon"
-                className={`h-10 w-10 flex-shrink-0 ${
+                aria-label="Удалить приём пищи"
+                className={`h-11 w-11 flex-shrink-0 ${
                   theme === 'light' ? 'border-red-200 text-red-500 hover:bg-red-50' : 'border-red-500/30 text-red-400 hover:bg-red-500/10'
                 }`}
               >
@@ -156,7 +157,8 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
               <Button
                 onClick={handleRecalculate}
                 disabled={isRecalculating || !correction.trim()}
-                className="flex-1 h-10 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
+                aria-label="Пересчитать калории"
+                className="flex-1 min-h-[44px] bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
               >
                 {isRecalculating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -178,8 +180,8 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
                   Удалить «{meal.meal_name}»?
                 </p>
                 <div className="flex gap-3">
-                  <Button onClick={() => setShowDeleteConfirm(false)} variant="outline" className="flex-1">Нет</Button>
-                  <Button onClick={handleDelete} className="flex-1 bg-red-500 hover:bg-red-600">Удалить</Button>
+                  <Button onClick={() => setShowDeleteConfirm(false)} variant="outline" aria-label="Отмена удаления" className="flex-1 min-h-[44px]">Нет</Button>
+                  <Button onClick={handleDelete} aria-label="Подтвердить удаление" className="flex-1 min-h-[44px] bg-red-500 hover:bg-red-600">Удалить</Button>
                 </div>
               </div>
             </div>

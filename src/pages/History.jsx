@@ -373,7 +373,9 @@ export default function History() {
     <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass} pb-8`}>
       <div className={`sticky top-0 z-10 backdrop-blur-xl border-b ${
         theme === 'light' ? 'bg-white/80 border-gray-200' : 'bg-[#0f1419]/80 border-white/10'
-      }`}>
+      }`}
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
         <div className="px-5 py-3">
           <div className="flex items-center justify-between mb-3">
             <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>История</h1>
