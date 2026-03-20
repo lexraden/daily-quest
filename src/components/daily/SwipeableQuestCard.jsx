@@ -287,7 +287,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
         </div>
 
         {/* Dots Indicator */}
-        <div className="flex items-center justify-center gap-2 mt-3 h-4">
+        <div className="flex items-center justify-center mt-1">
         {sortedQuests.length > 1 && (
           <>
             {sortedQuests.map((quest, idx) => {
@@ -303,20 +303,24 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                     setCurrentIndex(idx);
                   }}
                   aria-label={`Квест ${idx + 1}`}
-                  className={`transition-all duration-300 flex items-center justify-center min-w-[44px] min-h-[44px] ${
-                    isQuestCompleted 
-                      ? 'w-4 h-4' 
-                      : isSelected ? 'w-2 h-2' : 'w-1.5 h-1.5'
-                  } ${isQuestCompleted ? '' : 'rounded-full'}`}
-                  style={isQuestCompleted ? {} : { 
-                    backgroundColor: theme === 'light' 
-                      ? (isSelected ? '#9ca3af' : '#d1d5db')
-                      : (isSelected ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'),
-                  }}
+                  className="flex items-center justify-center p-3"
                 >
-                  {isQuestCompleted && (
-                    <CheckIcon className="w-4 h-4" style={{ color: categoryInfo.color }} strokeWidth={3} />
-                  )}
+                  <span
+                    className={`block transition-all duration-300 ${
+                      isQuestCompleted 
+                        ? 'w-4 h-4' 
+                        : isSelected ? 'w-2 h-2 rounded-full' : 'w-1.5 h-1.5 rounded-full'
+                    }`}
+                    style={isQuestCompleted ? {} : { 
+                      backgroundColor: theme === 'light' 
+                        ? (isSelected ? '#9ca3af' : '#d1d5db')
+                        : (isSelected ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'),
+                    }}
+                  >
+                    {isQuestCompleted && (
+                      <CheckIcon className="w-4 h-4" style={{ color: categoryInfo.color }} strokeWidth={3} />
+                    )}
+                  </span>
                 </button>
               );
             })}
