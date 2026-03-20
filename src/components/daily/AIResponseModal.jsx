@@ -68,7 +68,8 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
             onClick={onClose}
             variant="ghost"
             size="icon"
-            className={`h-9 w-9 rounded-full ${
+            aria-label="Закрыть"
+            className={`h-11 w-11 rounded-full ${
               theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
             }`}
           >

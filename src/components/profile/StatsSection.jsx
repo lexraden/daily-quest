@@ -158,7 +158,8 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
           <button
             key={key}
             onClick={() => setViewMode(key)}
-            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            aria-label={`Период: ${label}`}
+            className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-all min-h-[44px] ${
               viewMode === key
                 ? theme === 'light'
                   ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white'

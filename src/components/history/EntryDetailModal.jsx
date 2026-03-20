@@ -72,7 +72,8 @@ export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) 
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}
-            className={`h-8 w-8 rounded-full flex-shrink-0 ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
+            aria-label="Закрыть"
+            className={`h-11 w-11 rounded-full flex-shrink-0 ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
             <X className="w-4 h-4" />
           </Button>
         </div>
