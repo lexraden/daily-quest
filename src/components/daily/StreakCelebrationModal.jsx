@@ -77,12 +77,14 @@ export default function StreakCelebrationModal({ streak, onClose, theme = 'dark'
             </p>
           </motion.div>
 
-          <Button
-            onClick={onClose}
-            className="w-full h-12 text-base bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-          >
-            🔥 Продолжаем!
-          </Button>
+          <div style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}>
+            <Button
+              onClick={onClose}
+              className="w-full h-12 text-base bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+            >
+              🔥 Продолжаем!
+            </Button>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>

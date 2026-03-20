@@ -177,7 +177,9 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
         {/* Footer */}
         <div className={`p-5 border-t space-y-2 ${
           theme === 'light' ? 'border-gray-200' : 'border-white/10'
-        }`}>
+        }`}
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}
+        >
           {aiResponse.intent === 'DELETE_QUEST' ? (
             <div className="grid grid-cols-2 gap-2">
               <Button

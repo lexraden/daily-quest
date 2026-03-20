@@ -45,7 +45,7 @@ export default function StreakFreezeModal({ streak, freezesLeft, onUseFreeze, on
             Использовать одну, чтобы сохранить свой стрик?
           </p>
 
-          <div className="space-y-3">
+          <div className="space-y-3" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}>
             <Button
               onClick={onUseFreeze}
               className="w-full h-12 text-base bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"

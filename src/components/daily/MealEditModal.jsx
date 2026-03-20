@@ -103,7 +103,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
             </div>
           )}
 
-          <div className="p-5 space-y-4">
+          <div className="p-5 space-y-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}>
             {/* Header */}
             <div className="flex items-start justify-between">
               <h3 className={`text-lg font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>

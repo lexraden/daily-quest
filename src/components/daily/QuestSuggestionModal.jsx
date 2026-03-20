@@ -99,7 +99,9 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
         {/* Footer */}
         <div className={`p-5 border-t flex gap-3 ${
           theme === 'light' ? 'border-gray-200' : 'border-white/10'
-        }`}>
+        }`}
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}
+        >
           <Button
             onClick={onReject}
             variant="outline"

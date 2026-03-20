@@ -796,29 +796,60 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       }
       }, [user]);
 
-  // Сохранение данных в БД
+  // Сохранение данных в БД (optimistic: UI already updated, revert on failure)
+  const lastSavedSnapshotRef = React.useRef(null);
+
   useEffect(() => {
     if (!isLoaded || !userDataId) return;
     
+    const dataToSave = {
+      quest_data: questData,
+      category_levels: categoryLevels,
+      category_total_completed: categoryTotalCompleted,
+      total_completed: totalCompleted,
+      streak,
+      last_completed_date: lastCompletedDate,
+      completion_history: completionHistory,
+      streak_freezes: streakFreezes,
+      journal_entries: journalEntries,
+      meal_history: mealHistory,
+      last_visit_date: getTodayKey()
+    };
+
+    // Take snapshot before saving so we can revert on failure
+    const previousSnapshot = lastSavedSnapshotRef.current;
+
+    // Optimistic: update cache immediately
+    updateCachedUserData(userDataId, dataToSave);
+
     const saveData = async () => {
       try {
-        const dataToSave = {
-          quest_data: questData,
-          category_levels: categoryLevels,
-          category_total_completed: categoryTotalCompleted,
-          total_completed: totalCompleted,
-          streak,
-          last_completed_date: lastCompletedDate,
-          completion_history: completionHistory,
-          streak_freezes: streakFreezes,
-          journal_entries: journalEntries,
-          meal_history: mealHistory,
-          last_visit_date: getTodayKey()
-        };
-        updateCachedUserData(userDataId, dataToSave);
         await base44.entities.UserQuestData.update(userDataId, dataToSave);
+        // Persist snapshot only on success
+        lastSavedSnapshotRef.current = dataToSave;
       } catch (error) {
         console.error('Error saving user data:', error);
+        toast.error('Ошибка сохранения. Откатываю изменения...');
+        // Revert to last known good state
+        if (previousSnapshot) {
+          setQuestData(previousSnapshot.quest_data);
+          setCategoryLevels(previousSnapshot.category_levels);
+          setCategoryTotalCompleted(previousSnapshot.category_total_completed);
+          setTotalCompleted(previousSnapshot.total_completed);
+          setStreak(previousSnapshot.streak);
+          setLastCompletedDate(previousSnapshot.last_completed_date);
+          setCompletionHistory(previousSnapshot.completion_history);
+          setStreakFreezes(previousSnapshot.streak_freezes);
+          setJournalEntries(previousSnapshot.journal_entries);
+          setMealHistory(previousSnapshot.meal_history);
+          // Rebuild completedToday from reverted history
+          const today = getTodayKey();
+          const todayHistory = previousSnapshot.completion_history?.[today] || [];
+          const reverted = {};
+          todayHistory.forEach(q => { reverted[`${q.category}_${q.level}`] = true; });
+          setCompletedToday(reverted);
+          updateCachedUserData(userDataId, previousSnapshot);
+        }
       }
     };
     

@@ -38,7 +38,7 @@ export default function MealReportModal({ meal, onSave, onDiscard, theme = 'dark
             </div>
           )}
 
-          <div className="p-5 space-y-4">
+          <div className="p-5 space-y-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}>
             {/* Meal name */}
             <div>
               <h3 className={`text-lg font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>

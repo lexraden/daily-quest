@@ -215,7 +215,9 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
         </div>
 
         {/* Footer */}
-        <div className={`p-5 border-t ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
+        <div className={`p-5 border-t ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}
+        >
           <Button
             onClick={onClose}
             className="w-full"
