@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Circle, Pencil, Check, X } from 'lucide-react';
+import { CheckCircle2, Circle, Pencil, Check, X, Check as CheckIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 export default function SwipeableQuestCard({ 
@@ -281,6 +281,7 @@ export default function SwipeableQuestCard({
             {quests.map((quest, idx) => {
               const questKey = `${categoryKey}_${quest.level}`;
               const isQuestCompleted = completedToday[questKey];
+              const isSelected = idx === currentIndex;
               
               return (
                 <button
@@ -290,19 +291,21 @@ export default function SwipeableQuestCard({
                     setCurrentIndex(idx);
                   }}
                   aria-label={`Квест ${idx + 1}`}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 flex items-center justify-center ${
-                    idx === currentIndex ? 'font-bold' : ''
-                  }`}
-                  style={{ 
-                    backgroundColor: isQuestCompleted 
-                      ? categoryInfo.color 
-                      : theme === 'light' 
-                        ? '#d1d5db' 
-                        : 'rgba(255, 255, 255, 0.2)',
-                    fontWeight: idx === currentIndex ? '700' : '400',
-                    transform: idx === currentIndex ? 'scale(1.5)' : 'scale(1)'
+                  className={`transition-all duration-300 flex items-center justify-center ${
+                    isQuestCompleted 
+                      ? 'w-4 h-4' 
+                      : isSelected ? 'w-2 h-2' : 'w-1.5 h-1.5'
+                  } ${isQuestCompleted ? '' : 'rounded-full'}`}
+                  style={isQuestCompleted ? {} : { 
+                    backgroundColor: theme === 'light' 
+                      ? (isSelected ? '#9ca3af' : '#d1d5db')
+                      : (isSelected ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)'),
                   }}
-                />
+                >
+                  {isQuestCompleted && (
+                    <CheckIcon className="w-4 h-4" style={{ color: categoryInfo.color }} strokeWidth={3} />
+                  )}
+                </button>
               );
             })}
           </>
