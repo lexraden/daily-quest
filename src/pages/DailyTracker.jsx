@@ -1283,8 +1283,8 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
                 pendingText={APP_CONFIG.pendingText}
                 theme={theme}
                 categoryLevel={categoryLevels[categoryKey] || 1}
-                onCategoryClick={() => setSelectedCategory(categoryKey)}
-                onSaveQuest={handleSaveQuest}
+                onCategoryClick={handleCategoryClick}
+                onSaveQuest={handleSaveQuestCb}
               />
             );
           })}
