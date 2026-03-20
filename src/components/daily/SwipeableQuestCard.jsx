@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, Pencil, Check, X, Check as CheckIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,19 @@ function SwipeableQuestCard({
   const [editedEmoji, setEditedEmoji] = useState('');
   const [editedName, setEditedName] = useState('');
 
-  const currentQuest = quests[currentIndex];
+  // Sort quests: uncompleted first
+  const sortedQuests = useMemo(() => {
+    return [...quests].sort((a, b) => {
+      const aCompleted = completedToday[`${categoryKey}_${a.level}`];
+      const bCompleted = completedToday[`${categoryKey}_${b.level}`];
+      if (!aCompleted && bCompleted) return -1;
+      if (aCompleted && !bCompleted) return 1;
+      return 0;
+    });
+  }, [quests, completedToday, categoryKey]);
+
+  const safeIndex = Math.min(currentIndex, sortedQuests.length - 1);
+  const currentQuest = sortedQuests[safeIndex];
   const questKey = `${categoryKey}_${currentQuest.level}`;
   const isCompleted = completedToday[questKey];
   const isCelebrating = celebrationQuest === categoryKey;
