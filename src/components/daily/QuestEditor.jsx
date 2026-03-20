@@ -36,7 +36,8 @@ export default function QuestEditor({ questData, categories, onSave, onClose, th
             onClick={onClose}
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-full hover:bg-white/10"
+            aria-label="Закрыть редактор"
+            className="h-11 w-11 rounded-full hover:bg-white/10"
           >
             <X className="w-5 h-5" />
           </Button>
@@ -108,7 +109,9 @@ export default function QuestEditor({ questData, categories, onSave, onClose, th
         {/* Footer */}
         <div className={`p-5 border-t flex gap-3 ${
           theme === 'light' ? 'border-gray-200' : 'border-white/10'
-        }`}>
+        }`}
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}
+        >
           <Button
             onClick={onClose}
             variant="outline"

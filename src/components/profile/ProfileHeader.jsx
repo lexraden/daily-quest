@@ -59,8 +59,8 @@ export default function ProfileHeader({ user, tgUser, stats, levelProgress, them
                 autoFocus
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
               />
-              <Button onClick={handleSaveName} size="sm" className="bg-purple-600 hover:bg-purple-700 text-xs px-2">✓</Button>
-              <Button onClick={() => { setIsEditingName(false); setEditedName(user?.full_name || ''); }} size="sm" variant="ghost" className="text-xs px-2">✕</Button>
+              <Button onClick={handleSaveName} size="sm" aria-label="Сохранить имя" className="bg-purple-600 hover:bg-purple-700 text-xs px-2 min-w-[44px] min-h-[44px]">✓</Button>
+              <Button onClick={() => { setIsEditingName(false); setEditedName(user?.full_name || ''); }} size="sm" variant="ghost" aria-label="Отменить редактирование" className="text-xs px-2 min-w-[44px] min-h-[44px]">✕</Button>
             </div>
           ) : (
             <div className="flex items-center gap-1.5">

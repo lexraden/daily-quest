@@ -44,7 +44,7 @@ export default function StreakCelebrationModal({ streak, onClose, theme = 'dark'
               : 'bg-[#1e2836] border-orange-500/30'
           }`}
         >
-          <button onClick={onClose} className={`absolute top-4 right-4 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`}>
+          <button onClick={onClose} aria-label="Закрыть" className={`absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`}>
             <X className="w-5 h-5" />
           </button>
 

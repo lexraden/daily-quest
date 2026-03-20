@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import BottomNavBar from './BottomNavBar';
 import BackButton from './BackButton';
-import DailyTracker from '@/pages/DailyTracker';
-import History from '@/pages/History';
-import Profile from '@/pages/Profile';
+
+// Route-level code splitting via React.lazy
+const DailyTracker = React.lazy(() => import('@/pages/DailyTracker'));
+const History = React.lazy(() => import('@/pages/History'));
+const Profile = React.lazy(() => import('@/pages/Profile'));
 
 // Tab indices for determining slide direction
 const TAB_ORDER = { '/': 0, '/DailyTracker': 0, '/History': 1, '/Profile': 2 };
@@ -13,10 +15,17 @@ const TAB_ORDER = { '/': 0, '/DailyTracker': 0, '/History': 1, '/Profile': 2 };
 // Pages that should show the bottom nav
 const NAV_PATHS = ['/', '/DailyTracker', '/History', '/Profile'];
 
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+  </div>
+);
+
 export default function AnimatedRoutes({ children, fallback }) {
   const location = useLocation();
   const [theme, setTheme] = useState('light');
   const [prevIndex, setPrevIndex] = useState(0);
+  const prevPathRef = useRef(location.pathname);
 
   useEffect(() => {
     const saved = localStorage.getItem('dailyQuestsTheme') || 'light';
@@ -29,13 +38,25 @@ export default function AnimatedRoutes({ children, fallback }) {
   }, [theme]);
 
   const currentIndex = TAB_ORDER[location.pathname] ?? -1;
-  const direction = currentIndex >= 0 ? (currentIndex > prevIndex ? 1 : -1) : 1;
+  const wasChildPage = !NAV_PATHS.includes(prevPathRef.current);
+  const isNowRootPage = NAV_PATHS.includes(location.pathname);
+
+  // Child → root = always slide back (-1); root ↔ root = tab direction; root → child = forward (1)
+  let direction;
+  if (wasChildPage && isNowRootPage) {
+    direction = -1; // back transition
+  } else if (currentIndex >= 0) {
+    direction = currentIndex > prevIndex ? 1 : (currentIndex < prevIndex ? -1 : 1);
+  } else {
+    direction = 1; // forward into child
+  }
 
   useEffect(() => {
     if (currentIndex >= 0) {
       setPrevIndex(currentIndex);
     }
-  }, [currentIndex]);
+    prevPathRef.current = location.pathname;
+  }, [currentIndex, location.pathname]);
 
   const showNav = NAV_PATHS.includes(location.pathname);
   const isChildPage = !showNav;
@@ -75,14 +96,16 @@ export default function AnimatedRoutes({ children, fallback }) {
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="min-h-screen"
           >
-            <Routes location={location}>
-              <Route path="/" element={<DailyTracker />} />
-              <Route path="/DailyTracker" element={<DailyTracker />} />
-              <Route path="/History" element={<History />} />
-              <Route path="/Profile" element={<Profile />} />
-              {/* Render remaining pages from pagesConfig loop */}
-              {children}
-            </Routes>
+            <Suspense fallback={<RouteFallback />}>
+              <Routes location={location}>
+                <Route path="/" element={<DailyTracker />} />
+                <Route path="/DailyTracker" element={<DailyTracker />} />
+                <Route path="/History" element={<History />} />
+                <Route path="/Profile" element={<Profile />} />
+                {/* Render remaining pages from pagesConfig loop */}
+                {children}
+              </Routes>
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </div>

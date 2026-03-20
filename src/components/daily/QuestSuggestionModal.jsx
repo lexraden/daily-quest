@@ -38,7 +38,8 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
             onClick={onReject}
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full hover:bg-white/10"
+            aria-label="Закрыть"
+            className="h-11 w-11 rounded-full hover:bg-white/10"
           >
             <X className="w-4 h-4" />
           </Button>
