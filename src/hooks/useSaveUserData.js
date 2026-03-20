@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { updateCachedUserData } from '@/components/UserDataCache';
 import { toast } from 'sonner';
@@ -17,8 +17,15 @@ export default function useSaveUserData({
   restoreSnapshot,
 }) {
   const timerRef = useRef(null);
-  const latestDataRef = useRef(null);
   const lastSavedRef = useRef(null);
+  const getSnapshotRef = useRef(getStateSnapshot);
+  const restoreRef = useRef(restoreSnapshot);
+  const userDataIdRef = useRef(userDataId);
+
+  // Keep refs up to date without causing re-renders
+  useEffect(() => { getSnapshotRef.current = getStateSnapshot; }, [getStateSnapshot]);
+  useEffect(() => { restoreRef.current = restoreSnapshot; }, [restoreSnapshot]);
+  useEffect(() => { userDataIdRef.current = userDataId; }, [userDataId]);
 
   const mutation = useMutation({
     mutationFn: async ({ id, data }) => {
@@ -26,7 +33,6 @@ export default function useSaveUserData({
       return data;
     },
     onMutate: async ({ id, data }) => {
-      // Optimistic: update cache immediately
       const previousSnapshot = lastSavedRef.current;
       updateCachedUserData(id, data);
       return { previousSnapshot };
@@ -37,30 +43,28 @@ export default function useSaveUserData({
     onError: (_error, _variables, context) => {
       toast.error('Ошибка сохранения. Откатываю изменения...');
       if (context?.previousSnapshot) {
-        restoreSnapshot(context.previousSnapshot);
-        if (userDataId) {
-          updateCachedUserData(userDataId, context.previousSnapshot);
+        restoreRef.current(context.previousSnapshot);
+        if (userDataIdRef.current) {
+          updateCachedUserData(userDataIdRef.current, context.previousSnapshot);
         }
       }
     },
   });
 
-  const debouncedSave = useCallback(() => {
-    if (!isLoaded || !userDataId) return;
-    const data = getStateSnapshot();
-    latestDataRef.current = data;
+  // Stable save function that reads latest state via refs
+  const save = useCallback(() => {
+    if (!isLoaded || !userDataIdRef.current) return;
 
-    // Optimistic cache update happens immediately
-    updateCachedUserData(userDataId, data);
+    // Optimistic cache update immediately
+    const data = getSnapshotRef.current();
+    updateCachedUserData(userDataIdRef.current, data);
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      const toSave = latestDataRef.current;
-      if (toSave) {
-        mutation.mutate({ id: userDataId, data: toSave });
-      }
+      const toSave = getSnapshotRef.current();
+      mutation.mutate({ id: userDataIdRef.current, data: toSave });
     }, DEBOUNCE_MS);
-  }, [isLoaded, userDataId, getStateSnapshot, mutation]);
+  }, [isLoaded, mutation]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -69,5 +73,5 @@ export default function useSaveUserData({
     };
   }, []);
 
-  return { save: debouncedSave, isSaving: mutation.isPending };
+  return { save, isSaving: mutation.isPending };
 }
