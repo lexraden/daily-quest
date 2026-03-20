@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, Pencil, Check, X, Check as CheckIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-function SwipeableQuestCard({ 
+const SwipeableQuestCard = React.memo(function SwipeableQuestCard({ 
   categoryKey, 
   categoryInfo, 
   quests, 
@@ -326,6 +326,6 @@ function SwipeableQuestCard({
       </div>
     </div>
   );
-}
+});
 
-export default React.memo(SwipeableQuestCard);
+export default SwipeableQuestCard;
