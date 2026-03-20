@@ -1126,6 +1126,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
               onClick={toggleTheme}
               variant="ghost"
               size="icon"
+              aria-label={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}
               className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
             >
               {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
@@ -1251,17 +1252,19 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           <Button
             onClick={exportData}
             variant="outline"
-            className={theme === 'light' 
+            aria-label="Экспорт данных"
+            className={`min-h-[44px] ${theme === 'light' 
               ? 'border-gray-200 hover:bg-gray-50 text-gray-700'
               : 'border-white/10 hover:bg-white/5 text-gray-300'
-            }
+            }`}
           >
             <Download className="w-4 h-4 mr-2" />
             Экспорт
           </Button>
           <Button
             onClick={() => setShowPremium(true)}
-            className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            aria-label="Открыть Premium"
+            className="min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
           >
             <Lock className="w-4 h-4 mr-2" />
             Premium

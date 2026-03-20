@@ -83,7 +83,8 @@ export default function SwipeableQuestCard({
       <div className="flex items-center gap-2 px-1">
         <button
           onClick={onCategoryClick}
-          className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer"
+          aria-label={`${categoryInfo.name} прогресс`}
+          className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer min-h-[44px]"
         >
           <div className={`p-1.5 rounded-lg ${categoryInfo.bgColor}`}>
             <Icon className={`w-4 h-4 ${categoryInfo.textColor}`} />
@@ -154,8 +155,9 @@ export default function SwipeableQuestCard({
                     e.stopPropagation();
                     onToggleQuest(categoryKey, currentQuest.level);
                   }}
+                  aria-label={isCompleted ? 'Отменить квест' : 'Выполнить квест'}
                   className={`
-                    relative w-9 h-9 rounded-full flex items-center justify-center
+                    relative w-11 h-11 rounded-full flex items-center justify-center
                     transition-all duration-300 flex-shrink-0 cursor-pointer
                     hover:scale-110 active:scale-95
                     ${isCompleted 
@@ -204,8 +206,9 @@ export default function SwipeableQuestCard({
                         e.stopPropagation();
                         handleSaveEdit();
                       }}
+                      aria-label="Сохранить"
                       className={`
-                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 flex-shrink-0
+                        p-2.5 rounded-lg transition-all hover:scale-110 active:scale-95 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center
                         ${theme === 'light' 
                           ? 'hover:bg-green-100' 
                           : 'hover:bg-green-500/20'
@@ -219,8 +222,9 @@ export default function SwipeableQuestCard({
                         e.stopPropagation();
                         handleCancelEdit();
                       }}
+                      aria-label="Отмена"
                       className={`
-                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 flex-shrink-0
+                        p-2.5 rounded-lg transition-all hover:scale-110 active:scale-95 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center
                         ${theme === 'light' 
                           ? 'hover:bg-red-100' 
                           : 'hover:bg-red-500/20'
@@ -247,8 +251,9 @@ export default function SwipeableQuestCard({
                         e.stopPropagation();
                         handleStartEdit();
                       }}
+                      aria-label="Редактировать квест"
                       className={`
-                        p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95
+                        p-2.5 rounded-lg transition-all hover:scale-110 active:scale-95 min-w-[44px] min-h-[44px] flex items-center justify-center
                         ${theme === 'light' 
                           ? 'hover:bg-gray-100' 
                           : 'hover:bg-white/10'
@@ -284,7 +289,8 @@ export default function SwipeableQuestCard({
                     setDirection(idx > currentIndex ? 1 : -1);
                     setCurrentIndex(idx);
                   }}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                  aria-label={`Квест ${idx + 1}`}
+                  className={`w-3 h-3 rounded-full transition-all duration-300 flex items-center justify-center ${
                     idx === currentIndex ? 'font-bold' : ''
                   }`}
                   style={{ 
@@ -294,7 +300,7 @@ export default function SwipeableQuestCard({
                         ? '#d1d5db' 
                         : 'rgba(255, 255, 255, 0.2)',
                     fontWeight: idx === currentIndex ? '700' : '400',
-                    transform: idx === currentIndex ? 'scale(1.3)' : 'scale(1)'
+                    transform: idx === currentIndex ? 'scale(1.5)' : 'scale(1)'
                   }}
                 />
               );

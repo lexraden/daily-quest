@@ -67,7 +67,7 @@ export default function ProfileHeader({ user, tgUser, stats, levelProgress, them
               <h2 className={`text-lg font-bold truncate ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
                 {user?.full_name || tgUser?.first_name || 'Пользователь'}
               </h2>
-              <button onClick={() => setIsEditingName(true)} className="text-sm opacity-50 hover:opacity-100">✏️</button>
+              <button onClick={() => setIsEditingName(true)} aria-label="Редактировать имя" className="text-sm opacity-50 hover:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center">✏️</button>
             </div>
           )}
           <div className="flex items-center gap-2 mt-1">
@@ -87,7 +87,8 @@ export default function ProfileHeader({ user, tgUser, stats, levelProgress, them
           onClick={() => base44.auth.logout()}
           variant="ghost"
           size="icon"
-          className={`h-9 w-9 flex-shrink-0 ${theme === 'light' ? 'hover:bg-black/5 text-gray-400' : 'hover:bg-white/10 text-gray-500'}`}
+          aria-label="Выйти"
+          className={`h-11 w-11 flex-shrink-0 ${theme === 'light' ? 'hover:bg-black/5 text-gray-400' : 'hover:bg-white/10 text-gray-500'}`}
         >
           <LogOut className="w-4 h-4" />
         </Button>

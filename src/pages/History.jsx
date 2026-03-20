@@ -609,14 +609,16 @@ export default function History() {
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <Button onClick={navigatePrevious} variant="ghost" size="icon"
-            className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}>
+            aria-label="Предыдущий период"
+            className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}>
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <div className="text-center">
             <h2 className="text-sm font-semibold">{formatTitle()}</h2>
           </div>
           <Button onClick={navigateNext} variant="ghost" size="icon"
-            className={`h-9 w-9 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}>
+            aria-label="Следующий период"
+            className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}>
             <ChevronRight className="w-5 h-5" />
           </Button>
         </div>

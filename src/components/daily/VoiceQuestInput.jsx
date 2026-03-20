@@ -193,6 +193,7 @@ export default function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, the
         <Button
           onClick={startRecording}
           disabled={isProcessing}
+          aria-label={isRecording ? 'Остановить запись' : 'Голосовой ввод'}
           className={`h-12 rounded-2xl font-medium transition-all flex-1 ${
             isRecording
               ? 'bg-red-500 hover:bg-red-600 animate-pulse'

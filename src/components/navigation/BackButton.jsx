@@ -19,7 +19,8 @@ export default function BackButton({ theme = 'light', fallbackPath = '/DailyTrac
       onClick={handleBack}
       variant="ghost"
       size="icon"
-      className={`h-9 w-9 rounded-full flex-shrink-0 ${
+      aria-label="Назад"
+      className={`h-11 w-11 rounded-full flex-shrink-0 ${
         theme === 'light' ? 'hover:bg-black/5 text-gray-700' : 'hover:bg-white/10 text-gray-300'
       }`}
     >

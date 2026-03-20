@@ -129,6 +129,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
         <Button
           onClick={() => fileInputRef.current?.click()}
           size="icon"
+          aria-label="Сфотографировать еду"
           className={`h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600`}
         >
           <Camera className="w-5 h-5" />
@@ -146,7 +147,8 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
             <img src={photo.preview} alt="meal" className="w-full h-full object-cover" />
             <button
               onClick={() => removePhoto(idx)}
-              className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"
+              aria-label="Удалить фото"
+              className="absolute top-1 right-1 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center"
             >
               <X className="w-3 h-3 text-white" />
             </button>
@@ -155,6 +157,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
         {photos.length < 2 && (
           <button
             onClick={() => fileInputRef.current?.click()}
+            aria-label="Добавить фото"
             className={`w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center ${
               theme === 'light' ? 'border-gray-300 text-gray-400' : 'border-white/20 text-gray-500'
             }`}
@@ -166,7 +169,8 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
       </div>
       <Button
         onClick={analyzeMeal}
-        className="w-full h-10 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 font-medium"
+        aria-label="Анализировать еду"
+        className="w-full h-11 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 font-medium"
       >
         <Send className="w-4 h-4 mr-2" />
         Анализировать
