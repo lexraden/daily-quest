@@ -113,7 +113,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
 
       {/* Swipeable Quest Card */}
       <div className="relative">
-        <div className="overflow-hidden min-h-[80px]">
+        <div className="overflow-hidden min-h-[88px]">
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
             key={currentIndex}
@@ -144,7 +144,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
               }
             }}
             className={`
-              relative overflow-hidden rounded-2xl px-4 py-4 cursor-pointer
+              relative overflow-hidden rounded-2xl px-4 py-5 cursor-pointer
               transition-all duration-300 ease-out border
               ${isCompleted 
                 ? `${categoryInfo.bgColor} ${categoryInfo.borderColor}` 
@@ -303,7 +303,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                   setCurrentIndex(idx);
                 }}
                 aria-label={`Квест ${idx + 1}`}
-                className="flex items-center justify-center px-1.5 py-1 min-w-[44px] min-h-[36px]"
+                className="flex items-center justify-center px-0.5 py-1 min-w-[44px] min-h-[36px]"
                 >
                   <span
                     className={`block transition-all duration-300 ${
