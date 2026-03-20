@@ -200,8 +200,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     const handleStart = () => {
       setIsRecording(true);
       accumulatedTextRef.current = '';
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      if (navigator.vibrate) {
+        navigator.vibrate(30);
       }
     };
 

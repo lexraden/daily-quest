@@ -974,9 +974,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
       try { celebrationSound(); } catch (e) {}
 
       // Вибрация
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
-      } else if (navigator.vibrate) {
+      if (navigator.vibrate) {
         navigator.vibrate(50);
       }
       

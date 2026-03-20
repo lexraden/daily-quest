@@ -80,8 +80,8 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
       photos.forEach(p => URL.revokeObjectURL(p.preview));
       setPhotos([]);
 
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
       }
     } catch (error) {
       console.error('Error analyzing meal:', error);

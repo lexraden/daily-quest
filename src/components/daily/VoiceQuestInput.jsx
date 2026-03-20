@@ -24,8 +24,8 @@ export default function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, the
     const handleStart = () => {
       setIsRecording(true);
       accumulatedTextRef.current = '';
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      if (navigator.vibrate) {
+        navigator.vibrate(30);
       }
     };
 
@@ -155,8 +155,8 @@ export default function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, the
         userInput: text
       });
       
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
       }
     } catch (error) {
       console.error('Error processing voice input:', error);
