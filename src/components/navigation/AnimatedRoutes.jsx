@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import BottomNavBar from './BottomNavBar';
+import BackButton from './BackButton';
 import DailyTracker from '@/pages/DailyTracker';
 import History from '@/pages/History';
 import Profile from '@/pages/Profile';
@@ -37,6 +38,7 @@ export default function AnimatedRoutes({ children, fallback }) {
   }, [currentIndex]);
 
   const showNav = NAV_PATHS.includes(location.pathname);
+  const isChildPage = !showNav;
 
   const variants = {
     enter: (dir) => ({
@@ -55,7 +57,13 @@ export default function AnimatedRoutes({ children, fallback }) {
 
   return (
     <>
-      <div className={showNav ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]' : ''}>
+      {/* Floating back button for child (non-tab) pages */}
+      {isChildPage && (
+        <div className="fixed top-3 left-3 z-50" style={{ top: 'max(env(safe-area-inset-top, 0px), 12px)' }}>
+          <BackButton theme={theme} />
+        </div>
+      )}
+      <div className={showNav ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+8px)]' : ''}>
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={location.pathname}
