@@ -190,8 +190,8 @@ export default function Profile() {
                 Ваша история и достижения сохранятся. Мы создадим новые персонализированные квесты.
               </p>
               <div className="flex gap-3">
-                <Button onClick={() => setShowResetConfirm(false)} variant="outline" className={theme === 'light' ? 'border-gray-300' : 'border-white/10'}>Отмена</Button>
-                <Button onClick={() => { setShowResetConfirm(false); setShowOnboarding(true); }} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600">Да, обновить</Button>
+                <Button onClick={() => setShowResetConfirm(false)} variant="outline" aria-label="Отмена" className={`min-h-[44px] ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}>Отмена</Button>
+                <Button onClick={() => { setShowResetConfirm(false); setShowOnboarding(true); }} aria-label="Подтвердить обновление квестов" className="flex-1 min-h-[44px] bg-gradient-to-r from-blue-600 to-cyan-600">Да, обновить</Button>
               </div>
             </div>
           </div>

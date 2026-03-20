@@ -4,17 +4,14 @@ import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
- * Back button that uses the navigation stack for reliable back behavior.
- * Falls back to /DailyTracker if no stack history is available.
+ * Simple back button using native React Router navigation.
+ * Falls back to /DailyTracker if there's no history (deep link entry).
  */
-export default function BackButton({ theme = 'light', getBackPath }) {
+export default function BackButton({ theme = 'light' }) {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    if (getBackPath) {
-      const path = getBackPath();
-      navigate(path, { replace: true });
-    } else if (window.history.length > 2) {
+    if (window.history.length > 2) {
       navigate(-1);
     } else {
       navigate('/DailyTracker', { replace: true });

@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import BottomNavBar from './BottomNavBar';
 import BackButton from './BackButton';
 import useAndroidBackButton from '@/hooks/useAndroidBackButton';
-import useNavigationStack from '@/hooks/useNavigationStack';
 
 const DailyTracker = React.lazy(() => import('@/pages/DailyTracker'));
 const History = React.lazy(() => import('@/pages/History'));
@@ -26,12 +25,33 @@ const TAB_COMPONENTS = {
   profile: Profile,
 };
 
+// GPU-accelerated slide variants for child pages
+const childVariants = {
+  enter: (dir) => ({
+    x: dir > 0 ? '100%' : '-30%',
+    opacity: dir > 0 ? 1 : 0.6,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (dir) => ({
+    x: dir < 0 ? '100%' : '-30%',
+    opacity: dir < 0 ? 1 : 0.6,
+  }),
+};
+
+const childTransition = {
+  type: 'tween',
+  ease: [0.25, 0.46, 0.45, 0.94], // ease-out-quad
+  duration: 0.28,
+};
+
 export default function AnimatedRoutes({ children, fallback }) {
   const location = useLocation();
   const [theme, setTheme] = useState(() => localStorage.getItem('dailyQuestsTheme') || 'light');
   const [prevIndex, setPrevIndex] = useState(0);
   const prevPathRef = useRef(location.pathname);
-  const { push: pushNav, getBackPath } = useNavigationStack();
 
   useAndroidBackButton();
 
@@ -57,32 +77,29 @@ export default function AnimatedRoutes({ children, fallback }) {
   const isTabPage = NAV_PATHS.has(location.pathname);
   const currentIndex = TAB_ORDER[location.pathname] ?? -1;
 
-  // Slide direction
+  // Slide direction: 1 = push forward, -1 = pop back
   const wasChildPage = !NAV_PATHS.has(prevPathRef.current);
   let direction;
   if (wasChildPage && isTabPage) {
-    direction = -1;
-  } else if (currentIndex >= 0) {
-    direction = currentIndex > prevIndex ? 1 : (currentIndex < prevIndex ? -1 : 1);
+    direction = -1; // returning to tab from child
+  } else if (!isTabPage) {
+    direction = 1; // entering child page
   } else {
-    direction = 1;
+    direction = currentIndex >= prevIndex ? 1 : -1;
   }
 
-  // On navigation: save/restore scroll, track visited tabs, update stack
+  // On navigation: save/restore scroll, track visited tabs
   useEffect(() => {
     const prevTabKey = TAB_KEY_MAP[prevPathRef.current];
 
-    // Save previous tab's scroll
     if (prevTabKey && prevTabKey !== currentTabKey) {
       scrollPositions.current[prevTabKey] = window.scrollY;
     }
 
-    // Mark current tab as visited
     if (currentTabKey && !visitedTabs.has(currentTabKey)) {
       setVisitedTabs(prev => new Set([...prev, currentTabKey]));
     }
 
-    // Restore scroll for current tab; reset for child pages
     if (currentTabKey) {
       requestAnimationFrame(() => {
         window.scrollTo(0, scrollPositions.current[currentTabKey] || 0);
@@ -92,32 +109,24 @@ export default function AnimatedRoutes({ children, fallback }) {
     }
 
     if (currentIndex >= 0) setPrevIndex(currentIndex);
-    pushNav(location.pathname);
     prevPathRef.current = location.pathname;
   }, [location.pathname, currentIndex, currentTabKey]);
 
   const showNav = isTabPage;
-
-  const childVariants = {
-    enter: (dir) => ({ x: dir > 0 ? '30%' : '-30%', opacity: 0 }),
-    center: { x: 0, opacity: 1 },
-    exit: (dir) => ({ x: dir < 0 ? '30%' : '-30%', opacity: 0 }),
-  };
 
   return (
     <>
       {/* Back button for child pages */}
       {!isTabPage && (
         <div className="fixed top-3 left-3 z-50" style={{ top: 'max(env(safe-area-inset-top, 0px), 12px)' }}>
-          <BackButton theme={theme} getBackPath={getBackPath} />
+          <BackButton theme={theme} />
         </div>
       )}
 
       {/* 
         PERSISTENT TAB LAYER
         Always rendered. Uses display:none to hide inactive tabs.
-        Crucially, this layer stays mounted even when on child pages —
-        it just hides ALL tabs via display:none.
+        Stays mounted even on child pages.
       */}
       <div className={showNav ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+8px)]' : ''}>
         <Suspense fallback={<RouteFallback />}>
@@ -136,7 +145,7 @@ export default function AnimatedRoutes({ children, fallback }) {
           })}
         </Suspense>
 
-        {/* Child (non-tab) pages — animated transitions */}
+        {/* Child (non-tab) pages — hardware-accelerated slide transitions */}
         {!isTabPage && (
           <AnimatePresence mode="wait" custom={direction} initial={false}>
             <motion.div
@@ -146,8 +155,9 @@ export default function AnimatedRoutes({ children, fallback }) {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              transition={childTransition}
               className="min-h-screen"
+              style={{ willChange: 'transform, opacity' }}
             >
               <Suspense fallback={<RouteFallback />}>
                 <Routes location={location}>
