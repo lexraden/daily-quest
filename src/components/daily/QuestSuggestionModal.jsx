@@ -13,11 +13,11 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onReject}
     >
       <div 
-        className={`rounded-2xl max-w-md w-full border ${
+        className={`rounded-t-2xl sm:rounded-2xl max-w-md w-full border ${
           theme === 'light' 
             ? 'bg-white border-gray-200' 
             : 'bg-[#1e2836] border-white/10'
@@ -105,7 +105,8 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
           <Button
             onClick={onReject}
             variant="outline"
-            className={`flex-1 ${
+            aria-label="Отклонить предложение"
+            className={`flex-1 min-h-[44px] ${
               theme === 'light' 
                 ? 'border-gray-300 hover:bg-gray-100' 
                 : 'border-white/10 hover:bg-white/5'
@@ -115,7 +116,8 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
           </Button>
           <Button
             onClick={() => onAccept(editedSuggestion)}
-            className="flex-1 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            aria-label="Добавить квест"
+            className="flex-1 min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
           >
             <Check className="w-4 h-4 mr-2" />
             Добавить

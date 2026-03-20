@@ -597,9 +597,9 @@ export default function History() {
           </div>
           <Tabs value={viewMode} onValueChange={setViewMode}>
             <TabsList className={`w-full ${theme === 'light' ? 'bg-black/5' : 'bg-white/5'}`}>
-              <TabsTrigger value="day" className="flex-1">День</TabsTrigger>
-              <TabsTrigger value="week" className="flex-1">Неделя</TabsTrigger>
-              <TabsTrigger value="month" className="flex-1">Месяц</TabsTrigger>
+              <TabsTrigger value="day" className="flex-1 min-h-[44px]">День</TabsTrigger>
+              <TabsTrigger value="week" className="flex-1 min-h-[44px]">Неделя</TabsTrigger>
+              <TabsTrigger value="month" className="flex-1 min-h-[44px]">Месяц</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -627,7 +627,8 @@ export default function History() {
         {!isToday(currentDate) && (
           <div className="flex justify-center">
             <Button onClick={() => setCurrentDate(new Date())} variant="outline" size="sm"
-              className={theme === 'light' ? 'border-purple-400 text-purple-600 hover:bg-purple-50 text-xs h-7' : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10 text-xs h-7'}>
+              aria-label="Перейти к сегодняшнему дню"
+              className={`min-h-[44px] ${theme === 'light' ? 'border-purple-400 text-purple-600 hover:bg-purple-50 text-xs' : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10 text-xs'}`}>
               Сегодня
             </Button>
           </div>

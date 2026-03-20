@@ -190,7 +190,8 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
           </div>
           <Button
             onClick={onClose}
-            className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+            aria-label="Закрыть Premium"
+            className="w-full min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
           >
             Понятно
           </Button>
