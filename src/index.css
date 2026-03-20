@@ -12,6 +12,26 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Prevent accidental text selection on interactive elements */
+button,
+a,
+nav,
+[role="button"],
+[role="tab"],
+.select-none {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Cards and interactive list items */
+[class*="rounded-2xl"],
+[class*="rounded-xl"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

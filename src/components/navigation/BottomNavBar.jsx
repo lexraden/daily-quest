@@ -17,7 +17,7 @@ export default function BottomNavBar({ theme = 'light' }) {
         ? 'bg-white/90 border-gray-200'
         : 'bg-[#0f1419]/90 border-white/10'
     }`}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
     >
       <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
         {TABS.map(({ path, icon: Icon, label }) => {
