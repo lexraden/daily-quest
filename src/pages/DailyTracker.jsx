@@ -1086,7 +1086,21 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         }
       }
     }
-  };
+  }, [questData, completedToday, categoryLevels, categoryTotalCompleted, completionHistory, lastCompletedDate, streak]);
+
+  // Stable callback refs for SwipeableQuestCard memo
+  const handleSaveQuestCb = useCallback((categoryKey, questLevel, updatedData) => {
+    setQuestData(prev => ({
+      ...prev,
+      [categoryKey]: prev[categoryKey].map(q => 
+        q.level === questLevel ? { ...q, ...updatedData } : q
+      )
+    }));
+  }, []);
+
+  const handleCategoryClick = useCallback((categoryKey) => {
+    setSelectedCategory(categoryKey);
+  }, []);
 
   const completedCount = Object.keys(completedToday).length;
   const totalQuests = Object.keys(CATEGORIES).length;
