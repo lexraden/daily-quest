@@ -189,7 +189,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
 
   return (
     <div className="px-5 mb-4">
-      <div className="flex gap-1.5">
+      <div className="flex gap-2">
         <Button
           onClick={startRecording}
           disabled={isProcessing}
