@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createPageUrl } from '@/utils';
+
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import OnboardingModal from '@/components/daily/OnboardingModal';
@@ -279,7 +279,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
 
                 setShowOnboarding(false);
                 toast.success('Квесты обновлены! 🎉');
-                setTimeout(() => { window.location.href = createPageUrl('DailyTracker'); }, 500);
+                setTimeout(() => { window.location.href = '/DailyTracker'; }, 500);
               } catch (error) {
                 console.error('Error:', error);
                 toast.error('Ошибка при обновлении квестов');
