@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -42,6 +41,8 @@ export default function Profile() {
   const [mealHistory, setMealHistory] = useState([]);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
@@ -109,11 +110,6 @@ export default function Profile() {
       }`}>
         <div className="px-5 py-3 flex items-center justify-between">
           <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Профиль</h1>
-          <Link to={createPageUrl('DailyTracker')}>
-            <Button variant="ghost" size="icon" className={`h-[60px] w-[60px] rounded-full ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
-            <X style={{ width: 25, height: 25 }} />
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -179,6 +175,61 @@ export default function Profile() {
               <div className="flex gap-3">
                 <Button onClick={() => setShowResetConfirm(false)} variant="outline" className={theme === 'light' ? 'border-gray-300' : 'border-white/10'}>Отмена</Button>
                 <Button onClick={() => { setShowResetConfirm(false); setShowOnboarding(true); }} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600">Да, обновить</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Account */}
+        <Button
+          onClick={() => setShowDeleteConfirm(true)}
+          variant="ghost"
+          className={`w-full h-11 text-sm ${
+            theme === 'light' ? 'text-red-500 hover:bg-red-50' : 'text-red-400 hover:bg-red-500/10'
+          }`}
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Удалить аккаунт
+        </Button>
+
+        {/* Delete Account Confirmation */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className={`rounded-2xl p-6 max-w-sm w-full ${theme === 'light' ? 'bg-white shadow-xl' : 'bg-[#1e2836]'}`}>
+              <h2 className={`text-xl font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Удалить аккаунт?</h2>
+              <p className={`text-sm mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                Все ваши данные, квесты и прогресс будут безвозвратно удалены.
+              </p>
+              <div className="flex gap-3">
+                <Button onClick={() => setShowDeleteConfirm(false)} variant="outline" className={`flex-1 ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}>Отмена</Button>
+                <Button
+                  onClick={async () => {
+                    setIsDeleting(true);
+                    try {
+                      // Delete user quest data
+                      const userDataList = await base44.entities.UserQuestData.filter({ created_by: user?.email });
+                      for (const ud of userDataList) {
+                        await base44.entities.UserQuestData.delete(ud.id);
+                      }
+                      // Delete telegram user
+                      const tgUsers = await base44.entities.TelegramUser.filter({ user_email: user?.email });
+                      for (const tu of tgUsers) {
+                        await base44.entities.TelegramUser.delete(tu.id);
+                      }
+                      invalidateCache();
+                      toast.success('Аккаунт удалён');
+                      base44.auth.logout('/');
+                    } catch (error) {
+                      console.error('Error deleting account:', error);
+                      toast.error('Ошибка при удалении');
+                      setIsDeleting(false);
+                    }
+                  }}
+                  disabled={isDeleting}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                >
+                  {isDeleting ? 'Удаление...' : 'Удалить'}
+                </Button>
               </div>
             </div>
           </div>

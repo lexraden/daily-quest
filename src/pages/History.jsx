@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { createPageUrl } from '@/utils';
 import { getCachedUser, getCachedUserData, updateCachedUserData } from '@/components/UserDataCache';
 import { base44 } from '@/api/base44Client';
 import EntryDetailModal from '@/components/history/EntryDetailModal';
@@ -582,11 +580,6 @@ export default function History() {
         <div className="px-5 py-3">
           <div className="flex items-center justify-between mb-3">
             <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>История</h1>
-            <Link to={createPageUrl('DailyTracker')}>
-              <Button variant="ghost" size="icon" className={`h-[60px] w-[60px] rounded-full ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
-                <X style={{ width: 25, height: 25 }} />
-              </Button>
-            </Link>
           </div>
           <Tabs value={viewMode} onValueChange={setViewMode}>
             <TabsList className={`w-full ${theme === 'light' ? 'bg-black/5' : 'bg-white/5'}`}>
