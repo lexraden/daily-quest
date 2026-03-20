@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Circle, Flame, Trophy, Calendar as CalendarIcon, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, User, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon, BarChart3 } from 'lucide-react';
+import { CheckCircle2, Circle, Flame, Trophy, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -1098,7 +1098,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
   }
 
   return (
-    <div className={`min-h-screen ${bgClass} pb-8`}>
+    <div className={`min-h-screen ${bgClass} pb-4`}>
       {/* Compact Header */}
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-4">
@@ -1108,24 +1108,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Link to={createPageUrl('Profile')}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
-              >
-                <User className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Link to={createPageUrl('History')}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
-              >
-                <CalendarIcon className="w-5 h-5" />
-              </Button>
-            </Link>
             <Button
               onClick={toggleTheme}
               variant="ghost"
