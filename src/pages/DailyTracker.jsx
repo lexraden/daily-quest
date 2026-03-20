@@ -956,7 +956,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
   }, [totalCompleted, getCurrentLevel]);
 
   // Отметка квеста
-  const toggleQuest = (category, level = null) => {
+  const toggleQuest = useCallback((category, level = null) => {
     const currentQuest = level ? questData[category].find(q => q.level === level) : getCurrentQuest(category);
     const questKey = `${category}_${currentQuest.level}`;
     const wasCompleted = completedToday[questKey];

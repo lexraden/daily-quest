@@ -315,3 +315,5 @@ function SwipeableQuestCard({
     </div>
   );
 }
+
+export default React.memo(SwipeableQuestCard);
