@@ -74,13 +74,15 @@ export default function MealReportModal({ meal, onSave, onDiscard, theme = 'dark
               <Button
                 onClick={onDiscard}
                 variant="outline"
-                className={`flex-1 ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}
+                aria-label="Отменить"
+                className={`flex-1 min-h-[44px] ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}
               >
                 Отмена
               </Button>
               <Button
                 onClick={onSave}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
+                aria-label="Сохранить приём пищи"
+                className="flex-1 min-h-[44px] bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
               >
                 Сохранить
               </Button>

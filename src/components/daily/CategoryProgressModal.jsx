@@ -33,13 +33,13 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
 
   return (
     <div 
-      className={`fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4 ${
+      className={`fixed inset-0 z-50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 ${
         theme === 'light' ? 'bg-black/60' : 'bg-black/80'
       }`}
       onClick={onClose}
     >
       <div 
-        className={`rounded-2xl max-w-md w-full border ${
+        className={`rounded-t-2xl sm:rounded-2xl max-w-md w-full border max-h-[90vh] overflow-y-auto ${
           theme === 'light' 
             ? 'bg-white border-gray-200' 
             : 'bg-[#1e2836] border-white/10'
@@ -220,7 +220,8 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
         >
           <Button
             onClick={onClose}
-            className="w-full"
+            aria-label="Закрыть прогресс категории"
+            className="w-full min-h-[44px]"
             style={{ backgroundColor: categoryInfo.color }}
           >
             Закрыть
