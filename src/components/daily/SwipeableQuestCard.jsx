@@ -82,7 +82,7 @@ function SwipeableQuestCard({
       {/* Category Header */}
       <div className="flex items-center gap-2 px-1">
         <button
-          onClick={onCategoryClick}
+          onClick={() => onCategoryClick(categoryKey)}
           aria-label={`${categoryInfo.name} прогресс`}
           className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer min-h-[44px]"
         >
