@@ -1176,7 +1176,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
 
         {/* Quest Categories */}
         <div className="px-5 mt-1">
-        <div className="space-y-1.5">
+        <div className="space-y-0">
           {categoryEntries.map(([categoryKey, categoryInfo]) => {
             const quests = questData[categoryKey] || [];
             return (
