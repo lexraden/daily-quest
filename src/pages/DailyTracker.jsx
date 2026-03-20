@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { CheckCircle2, Circle, Flame, Trophy, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 // CalendarView replaced by History page
@@ -1260,16 +1260,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         {/* Quest Categories */}
         <div className="px-5 mt-1">
         <div className="space-y-3">
-          {Object.entries(CATEGORIES).map(([categoryKey, categoryInfo]) => {
-            // Сортируем квесты: невыполненные отображаются первыми
-            const sortedQuests = [...questData[categoryKey]].sort((a, b) => {
-              const aCompleted = completedToday[`${categoryKey}_${a.level}`];
-              const bCompleted = completedToday[`${categoryKey}_${b.level}`];
-              if (!aCompleted && bCompleted) return -1;
-              if (aCompleted && !bCompleted) return 1;
-              return 0;
-            });
-
+          {categoryEntries.map(([categoryKey, categoryInfo]) => {
             return (
               <SwipeableQuestCard
                 key={categoryKey}
