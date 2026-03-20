@@ -29,7 +29,6 @@ const LEVELS = [
 
 export default function Profile() {
   const [theme, setTheme] = useState('light');
-  const [tgUser, setTgUser] = useState(null);
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
     streak: 0,
@@ -48,10 +47,6 @@ export default function Profile() {
   useEffect(() => {
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
     setTheme(savedTheme);
-
-    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-      setTgUser(window.Telegram.WebApp.initDataUnsafe.user);
-    }
 
     const loadData = async () => {
       try {
@@ -136,7 +131,7 @@ export default function Profile() {
 
       <div className="px-5 py-3 space-y-3 max-w-2xl mx-auto pb-6">
         {/* Profile header - compact */}
-        <ProfileHeader user={user} tgUser={tgUser} stats={stats} levelProgress={levelProgress} theme={theme} />
+        <ProfileHeader user={user} stats={stats} levelProgress={levelProgress} theme={theme} />
 
         {/* Daily Calories */}
         <DailyCaloriesCard
