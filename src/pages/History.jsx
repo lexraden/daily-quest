@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getCachedUser, getCachedUserData, updateCachedUserData } from '@/components/UserDataCache';
+import { getCachedUser, getCachedUserData, updateCachedUserData, invalidateCache } from '@/components/UserDataCache';
 import { base44 } from '@/api/base44Client';
 import EntryDetailModal from '@/components/history/EntryDetailModal';
 import MealEditModal from '@/components/daily/MealEditModal';
+import PullToRefresh from '@/components/navigation/PullToRefresh';
 
 const CATEGORIES = {
   health: { name: "Health", icon: "💪", bgColor: "bg-green-500/10", textColor: "text-green-400", color: "#00b894" },
@@ -571,8 +572,21 @@ export default function History() {
     ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
     : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
 
+  const handlePullRefresh = async () => {
+    invalidateCache();
+    const authUser = await getCachedUser();
+    if (!authUser) return;
+    const { data, id } = await getCachedUserData(authUser.email);
+    if (data) {
+      setCompletionHistory(data.completion_history || {});
+      setJournalEntries(data.journal_entries || []);
+      setMealHistory(data.meal_history || []);
+      setUserDataId(id);
+    }
+  };
+
   return (
-    <div className={`min-h-screen ${bgClass} pb-8`}>
+    <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass} pb-8`}>
       {/* Header */}
       <div className={`sticky top-0 z-10 backdrop-blur-xl border-b ${
         theme === 'light' ? 'bg-white/80 border-gray-200' : 'bg-[#0f1419]/80 border-white/10'
@@ -668,6 +682,6 @@ export default function History() {
           theme={theme}
         />
       )}
-    </div>
+    </PullToRefresh>
   );
 }

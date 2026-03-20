@@ -16,7 +16,8 @@ import MealReportModal from '@/components/daily/MealReportModal.jsx';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
-import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser } from '@/components/UserDataCache';
+import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
+import PullToRefresh from '@/components/navigation/PullToRefresh';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -1095,8 +1096,23 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     return <OnboardingModal onComplete={handleOnboardingComplete} theme={theme} />;
   }
 
+  const handlePullRefresh = async () => {
+    invalidateCache();
+    if (user?.email) {
+      const { data, id } = await getCachedUserData(user.email);
+      if (data) {
+        if (data.quest_data) setQuestData(data.quest_data);
+        setTotalCompleted(data.total_completed || 0);
+        setStreak(data.streak || 0);
+        setMealHistory(data.meal_history || []);
+        setJournalEntries(data.journal_entries || []);
+        setUserDataId(id);
+      }
+    }
+  };
+
   return (
-    <div className={`min-h-screen ${bgClass} pb-4`}>
+    <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass} pb-4`}>
       {/* Compact Header */}
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-4">
@@ -1333,6 +1349,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           animation: shimmer 2s infinite;
         }
       `}</style>
-    </div>
+    </PullToRefresh>
   );
 }

@@ -9,6 +9,7 @@ import ProfileHeader from '@/components/profile/ProfileHeader';
 import StatsSection from '@/components/profile/StatsSection';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData } from '@/components/UserDataCache';
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
+import PullToRefresh from '@/components/navigation/PullToRefresh';
 
 const CATEGORIES_KEYS = ['health', 'mind', 'work', 'money', 'love', 'friends'];
 
@@ -102,8 +103,28 @@ export default function Profile() {
     ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
     : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
 
+  const handlePullRefresh = async () => {
+    invalidateCache();
+    const authUser = await getCachedUser();
+    if (!authUser) return;
+    setUser(authUser);
+    const { data } = await getCachedUserData(authUser.email);
+    if (data) {
+      const tc = data.total_completed || 0;
+      let cl = LEVELS[0];
+      for (const level of LEVELS) { if (tc >= level.threshold) cl = level; }
+      setStats({
+        streak: data.streak || 0, totalCompleted: tc,
+        categoryLevels: data.category_levels || {}, categoryTotalCompleted: data.category_total_completed || {},
+        completionHistory: data.completion_history || {}, currentLevel: cl
+      });
+      setJournalEntries(data.journal_entries || []);
+      setMealHistory(data.meal_history || []);
+    }
+  };
+
   return (
-    <div className={`min-h-screen ${bgClass}`}>
+    <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass}`}>
       {/* Header */}
       <div className={`sticky top-0 z-10 backdrop-blur-xl border-b ${
         theme === 'light' ? 'bg-white/80 border-gray-200' : 'bg-[#0f1419]/80 border-white/10'
@@ -290,6 +311,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           />
         )}
       </div>
-    </div>
+    </PullToRefresh>
   );
 }
