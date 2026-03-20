@@ -420,6 +420,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             {/* CTA */}
             <Button
               onClick={() => setCurrentStep(0)}
+              aria-label="Начать настройку"
               className="w-full h-14 text-lg font-bold bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 shadow-lg"
             >
               {t.welcome.button}
@@ -535,6 +536,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
                 type="button"
                 onClick={startRecording}
                 disabled={isProcessingVoice}
+                aria-label={isRecording ? 'Остановить запись' : 'Голосовой ввод'}
                 className={`w-full h-14 text-base transition-all ${
                   isProcessingVoice
                     ? 'bg-gray-400 cursor-not-allowed'
@@ -572,11 +574,14 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
         theme === 'light' 
           ? 'bg-white/90 border-gray-200' 
           : 'bg-[#0f1419]/90 border-white/10'
-      }`}>
+      }`}
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}
+      >
         <div className="max-w-2xl mx-auto">
           <Button
             onClick={handleNext}
             disabled={!canProceed}
+            aria-label={currentStep === ONBOARDING_QUESTIONS.length - 1 ? 'Создать квесты' : 'Далее'}
             className="w-full h-12 text-base bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 disabled:opacity-50"
           >
             {currentStep === ONBOARDING_QUESTIONS.length - 1 ? (

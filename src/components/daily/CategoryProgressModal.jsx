@@ -67,7 +67,8 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
             onClick={onClose}
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-full hover:bg-white/10"
+            aria-label="Закрыть"
+            className="h-11 w-11 rounded-full hover:bg-white/10"
           >
             <X className="w-5 h-5" />
           </Button>

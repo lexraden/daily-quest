@@ -10,6 +10,7 @@ import StatsSection from '@/components/profile/StatsSection';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData } from '@/components/UserDataCache';
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
+import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 
 const CATEGORIES_KEYS = ['health', 'mind', 'work', 'money', 'love', 'friends'];
 
@@ -42,8 +43,7 @@ export default function Profile() {
   const [mealHistory, setMealHistory] = useState([]);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteSheet, setShowDeleteSheet] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
@@ -179,6 +179,7 @@ export default function Profile() {
         {/* Update quests button */}
         <Button
           onClick={() => setShowResetConfirm(true)}
+          aria-label="Обновить квесты"
           className="w-full h-11 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
@@ -203,8 +204,9 @@ export default function Profile() {
 
         {/* Delete Account */}
         <Button
-          onClick={() => setShowDeleteConfirm(true)}
+          onClick={() => setShowDeleteSheet(true)}
           variant="ghost"
+          aria-label="Удалить аккаунт"
           className={`w-full h-11 text-sm ${
             theme === 'light' ? 'text-red-500 hover:bg-red-50' : 'text-red-400 hover:bg-red-500/10'
           }`}
@@ -213,48 +215,13 @@ export default function Profile() {
           Удалить аккаунт
         </Button>
 
-        {/* Delete Account Confirmation */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <div className={`rounded-2xl p-6 max-w-sm w-full ${theme === 'light' ? 'bg-white shadow-xl' : 'bg-[#1e2836]'}`}>
-              <h2 className={`text-xl font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Удалить аккаунт?</h2>
-              <p className={`text-sm mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Все ваши данные, квесты и прогресс будут безвозвратно удалены.
-              </p>
-              <div className="flex gap-3">
-                <Button onClick={() => setShowDeleteConfirm(false)} variant="outline" className={`flex-1 ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}>Отмена</Button>
-                <Button
-                  onClick={async () => {
-                    setIsDeleting(true);
-                    try {
-                      // Delete user quest data
-                      const userDataList = await base44.entities.UserQuestData.filter({ created_by: user?.email });
-                      for (const ud of userDataList) {
-                        await base44.entities.UserQuestData.delete(ud.id);
-                      }
-                      // Delete telegram user
-                      const tgUsers = await base44.entities.TelegramUser.filter({ user_email: user?.email });
-                      for (const tu of tgUsers) {
-                        await base44.entities.TelegramUser.delete(tu.id);
-                      }
-                      invalidateCache();
-                      toast.success('Аккаунт удалён');
-                      base44.auth.logout('/');
-                    } catch (error) {
-                      console.error('Error deleting account:', error);
-                      toast.error('Ошибка при удалении');
-                      setIsDeleting(false);
-                    }
-                  }}
-                  disabled={isDeleting}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                >
-                  {isDeleting ? 'Удаление...' : 'Удалить'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Delete Account Bottom Sheet */}
+        <DeleteAccountSheet
+          open={showDeleteSheet}
+          onClose={() => setShowDeleteSheet(false)}
+          user={user}
+          theme={theme}
+        />
 
         {/* Onboarding Modal */}
         {showOnboarding && (

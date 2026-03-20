@@ -111,7 +111,8 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
               onClick={onClose}
               variant="ghost"
               size="icon"
-              className={`h-10 w-10 rounded-full ${
+              aria-label="Закрыть"
+              className={`h-11 w-11 rounded-full ${
                 theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
               }`}
             >
@@ -178,7 +179,9 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
           theme === 'light' 
             ? 'bg-white/90 border-gray-200' 
             : 'bg-[#0f1419]/90 border-white/10'
-        }`}>
+        }`}
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}
+        >
           <div className={`text-center text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
             <p>Premium функции будут доступны после релиза 🚀</p>
             <p className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
