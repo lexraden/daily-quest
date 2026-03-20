@@ -220,9 +220,9 @@ export default function DailyTracker() {
     localStorage.setItem('dailyQuestsTheme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
+  }, []);
 
   const handleSaveQuest = (categoryKey, questLevel, updatedData) => {
     setQuestData(prev => ({
@@ -233,10 +233,10 @@ export default function DailyTracker() {
     }));
   };
 
-  const handleQuestSuggestion = (suggestion) => {
+  const handleQuestSuggestion = useCallback((suggestion) => {
     // Показать модал с AI ответом
     setAiResponse(suggestion);
-  };
+  }, []);
 
   const handleAcceptAiResponse = () => {
     const { intent, category, emoji, name, description, action, level } = aiResponse;
@@ -382,9 +382,9 @@ export default function DailyTracker() {
     setAiResponse(null);
   };
 
-  const handleRejectAiResponse = () => {
+  const handleRejectAiResponse = useCallback(() => {
     setAiResponse(null);
-  };
+  }, []);
 
   const handleOnboardingComplete = async (answers) => {
     try {
@@ -565,39 +565,41 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setQuestSuggestion(null);
   };
 
-  const handleRejectSuggestion = () => {
+  const handleRejectSuggestion = useCallback(() => {
     setQuestSuggestion(null);
-  };
+  }, []);
 
-  const handleUseFreeze = () => {
+  const handleUseFreeze = useCallback(() => {
     // Сохраняем streak, тратим freeze
     setStreakFreezes(prev => Math.max(prev - 1, 0));
     setShowStreakFreeze(false);
     setPendingFreezeData(null);
     toast.success('❄️ Заморозка использована! Серия сохранена.');
-  };
+  }, []);
 
-  const handleLoseStreak = () => {
+  const handleLoseStreak = useCallback(() => {
     setStreak(0);
     setShowStreakFreeze(false);
     setPendingFreezeData(null);
     toast('Серия сброшена. Начинай заново! 💪');
-  };
+  }, []);
 
-  const handleMealAnalyzed = (meal) => {
+  const handleMealAnalyzed = useCallback((meal) => {
     setPendingMeal(meal);
-  };
+  }, []);
 
-  const handleSaveMeal = () => {
-    if (!pendingMeal) return;
-    setMealHistory(prev => [pendingMeal, ...prev]);
-    setPendingMeal(null);
-    toast.success('🍽️ Приём пищи сохранён!');
-  };
+  const handleSaveMeal = useCallback(() => {
+    setPendingMeal(prev => {
+      if (!prev) return null;
+      setMealHistory(h => [prev, ...h]);
+      toast.success('🍽️ Приём пищи сохранён!');
+      return null;
+    });
+  }, []);
 
-  const handleDiscardMeal = () => {
+  const handleDiscardMeal = useCallback(() => {
     setPendingMeal(null);
-  };
+  }, []);
 
   const handleEditMeal = (index, updatedMeal) => {
     setMealHistory(prev => prev.map((m, i) => i === index ? updatedMeal : m));
@@ -780,7 +782,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
   }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, isLoaded, userDataId, saveUserData]);
 
   // Экспорт данных
-  const exportData = () => {
+  const exportData = useCallback(() => {
     const data = {
       questData,
       categoryLevels,
@@ -799,7 +801,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     a.download = `daily-quests-${getTodayKey()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  };
+  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, streakFreezes, completionHistory]);
 
   // Получить текущий квест для категории
   const getCurrentQuest = (category) => {

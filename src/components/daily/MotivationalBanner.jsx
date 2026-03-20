@@ -17,7 +17,7 @@ const MOTIVATIONAL_PHRASES = [
   { text: "Прогресс есть, продолжай!", emoji: "📈" }
 ];
 
-export default function MotivationalBanner({ userName, completedCount, theme = 'dark' }) {
+const MotivationalBanner = React.memo(function MotivationalBanner({ userName, completedCount, theme = 'dark' }) {
   const [currentPhrase, setCurrentPhrase] = useState(null);
   const [show, setShow] = useState(false);
 
@@ -71,4 +71,6 @@ export default function MotivationalBanner({ userName, completedCount, theme = '
       )}
     </AnimatePresence>
   );
-}
+});
+
+export default MotivationalBanner;
