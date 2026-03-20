@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Target, CalendarDays, User } from 'lucide-react';
 
 const TABS = [
@@ -10,6 +10,7 @@ const TABS = [
 
 export default function BottomNavBar({ theme = 'light' }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <nav className={`fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-xl select-none ${
@@ -23,9 +24,9 @@ export default function BottomNavBar({ theme = 'light' }) {
         {TABS.map(({ path, icon: Icon, label }) => {
           const isActive = location.pathname === path || (path === '/DailyTracker' && location.pathname === '/');
           return (
-            <Link
+            <button
               key={path}
-              to={path}
+              onClick={() => navigate(path, { replace: true })}
               aria-label={label}
               className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full min-h-[44px] transition-colors ${
                 isActive
@@ -35,7 +36,7 @@ export default function BottomNavBar({ theme = 'light' }) {
             >
               <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
               <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>{label}</span>
-            </Link>
+            </button>
           );
         })}
       </div>
