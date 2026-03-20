@@ -588,10 +588,6 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setPendingMeal(meal);
   }, []);
 
-  const handleSaveMeal = useCallback(() => {
-    setPendingMeal(null);
-  }, []);
-
   const handleDiscardMeal = useCallback(() => {
     setPendingMeal(null);
   }, []);
