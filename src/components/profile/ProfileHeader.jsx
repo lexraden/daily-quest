@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
-export default function ProfileHeader({ user, tgUser, stats, levelProgress, theme }) {
+export default function ProfileHeader({ user, stats, levelProgress, theme }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user?.full_name || '');
 
@@ -36,13 +36,9 @@ export default function ProfileHeader({ user, tgUser, stats, levelProgress, them
         <div className={`w-14 h-14 rounded-full overflow-hidden flex-shrink-0 ${
           theme === 'light' ? 'bg-gradient-to-br from-purple-100 to-cyan-100' : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20'
         }`}>
-          {tgUser?.photo_url ? (
-            <img src={tgUser.photo_url} alt="Profile" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <User className={`w-7 h-7 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
-            </div>
-          )}
+          <div className="w-full h-full flex items-center justify-center">
+            <User className={`w-7 h-7 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
+          </div>
         </div>
 
         {/* Name + Level */}
@@ -65,7 +61,7 @@ export default function ProfileHeader({ user, tgUser, stats, levelProgress, them
           ) : (
             <div className="flex items-center gap-1.5">
               <h2 className={`text-lg font-bold truncate ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                {user?.full_name || tgUser?.first_name || 'Пользователь'}
+                {user?.full_name || 'Пользователь'}
               </h2>
               <button onClick={() => setIsEditingName(true)} aria-label="Редактировать имя" className="text-sm opacity-50 hover:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center">✏️</button>
             </div>
