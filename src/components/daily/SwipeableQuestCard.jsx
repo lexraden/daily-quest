@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, Pencil, Check, X, Check as CheckIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-export default function SwipeableQuestCard({ 
+function SwipeableQuestCard({ 
   categoryKey, 
   categoryInfo, 
   quests, 
