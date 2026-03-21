@@ -1,12 +1,16 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Target, CalendarDays, User } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
-const TABS = [
-  { path: '/DailyTracker', icon: Target, label: 'Квесты' },
-  { path: '/History', icon: CalendarDays, label: 'История' },
-  { path: '/Profile', icon: User, label: 'Профиль' },
-];
+const getTabs = () => {
+  const i = t();
+  return [
+    { path: '/DailyTracker', icon: Target, label: i.nav.quests },
+    { path: '/History', icon: CalendarDays, label: i.nav.history },
+    { path: '/Profile', icon: User, label: i.nav.profile },
+  ];
+};
 
 export default function BottomNavBar({ theme = 'light' }) {
   const location = useLocation();
@@ -21,7 +25,7 @@ export default function BottomNavBar({ theme = 'light' }) {
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
     >
       <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
-        {TABS.map(({ path, icon: Icon, label }) => {
+        {getTabs().map(({ path, icon: Icon, label }) => {
           const isActive = location.pathname === path || (path === '/DailyTracker' && location.pathname === '/');
           return (
             <button

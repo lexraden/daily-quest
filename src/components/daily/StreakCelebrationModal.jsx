@@ -2,25 +2,16 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-const STREAK_MILESTONES = {
-  3: { emoji: '🔥', title: '3 дня подряд!', message: 'Отличное начало! Привычка начинает формироваться.' },
-  5: { emoji: '⚡', title: '5 дней подряд!', message: 'Ты набираешь обороты! Так держать!' },
-  7: { emoji: '🌟', title: 'Неделя подряд!', message: 'Целая неделя! Ты уже на пути к настоящей привычке.' },
-  10: { emoji: '💪', title: '10 дней подряд!', message: 'Молодец! Ты уже 10 дней повышаешь свой уровень!' },
-  14: { emoji: '🏅', title: '2 недели подряд!', message: 'Невероятная дисциплина! Ты — настоящий воин.' },
-  21: { emoji: '🧠', title: '21 день подряд!', message: 'Привычка сформирована! Ты — машина!' },
-  30: { emoji: '🏆', title: 'Месяц подряд!', message: 'Целый месяц без пропусков! Это легендарно!' },
-  50: { emoji: '👑', title: '50 дней подряд!', message: 'Полсотни дней! Ты в элите!' },
-  100: { emoji: '✨', title: '100 дней подряд!', message: 'СТО ДНЕЙ! Ты — абсолютная легенда!' },
-};
+import { t } from '@/lib/i18n';
 
 export function getStreakMilestone(streak) {
-  return STREAK_MILESTONES[streak] || null;
+  const i = t();
+  return i.streakCeleb[streak] || null;
 }
 
 export default function StreakCelebrationModal({ streak, onClose, theme = 'dark' }) {
-  const milestone = STREAK_MILESTONES[streak];
+  const i = t();
+  const milestone = i.streakCeleb[streak];
   if (!milestone) return null;
 
   return (
@@ -80,10 +71,10 @@ export default function StreakCelebrationModal({ streak, onClose, theme = 'dark'
           <div style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}>
             <Button
               onClick={onClose}
-              aria-label="Продолжить"
+              aria-label={i.common.close}
               className="w-full min-h-[44px] h-12 text-base bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
             >
-              🔥 Продолжаем!
+              {i.streakContinue}
             </Button>
           </div>
         </motion.div>

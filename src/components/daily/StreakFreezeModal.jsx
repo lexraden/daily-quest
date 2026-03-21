@@ -2,8 +2,11 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Flame, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 
 export default function StreakFreezeModal({ streak, freezesLeft, onUseFreeze, onLoseStreak, theme = 'dark' }) {
+  const i = t();
+  const sf = i.streakFreeze;
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-5">
@@ -27,7 +30,7 @@ export default function StreakFreezeModal({ streak, freezesLeft, onUseFreeze, on
           <div className="text-5xl mb-4">❄️</div>
 
           <h2 className={`text-xl font-bold mb-2 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-            Ты пропустил вчерашний день!
+            {sf.missedDay}
           </h2>
 
           <div className="flex items-center justify-center gap-2 mb-3">
@@ -36,28 +39,27 @@ export default function StreakFreezeModal({ streak, freezesLeft, onUseFreeze, on
               {streak}
             </span>
             <span className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
-              дней серия
+              {sf.daySeries}
             </span>
           </div>
 
           <p className={`text-sm mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-            У тебя есть <span className="font-bold text-cyan-500">{freezesLeft}</span> заморозк{freezesLeft === 1 ? 'а' : 'и'} серии. 
-            Использовать одну, чтобы сохранить свой стрик?
+            {sf.youHave} <span className="font-bold text-cyan-500">{freezesLeft}</span> {freezesLeft === 1 ? sf.freezeWord : sf.freezeWordPlural} {sf.freezeQuestion}
           </p>
 
           <div className="space-y-3" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}>
             <Button
               onClick={onUseFreeze}
-              aria-label="Использовать заморозку серии"
+              aria-label={sf.useFreeze}
               className="w-full min-h-[44px] h-12 text-base bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
             >
               <Shield className="w-5 h-5 mr-2" />
-              Использовать заморозку
+              {sf.useFreeze}
             </Button>
             <Button
               onClick={onLoseStreak}
               variant="outline"
-              aria-label="Сбросить серию"
+              aria-label={sf.resetStreak}
               className={`w-full min-h-[44px] h-12 text-base ${
                 theme === 'light'
                   ? 'border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -65,7 +67,7 @@ export default function StreakFreezeModal({ streak, freezesLeft, onUseFreeze, on
               }`}
             >
               <AlertTriangle className="w-4 h-4 mr-2" />
-              Сбросить серию
+              {sf.resetStreak}
             </Button>
           </div>
         </motion.div>
