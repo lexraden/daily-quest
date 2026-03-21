@@ -1,21 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
-
-const MOTIVATIONAL_PHRASES = [
-  { text: "Ты на правильном пути!", emoji: "🚀" },
-  { text: "Каждый день — новая возможность!", emoji: "🌟" },
-  { text: "Продолжай в том же духе!", emoji: "💪" },
-  { text: "Ты делаешь невероятные вещи!", emoji: "⭐" },
-  { text: "Верь в себя, всё получится!", emoji: "🔥" },
-  { text: "Маленькие шаги — большие результаты!", emoji: "👣" },
-  { text: "Ты сильнее, чем думаешь!", emoji: "💎" },
-  { text: "Сегодня твой день!", emoji: "☀️" },
-  { text: "Ты можешь больше!", emoji: "🎯" },
-  { text: "Двигайся вперёд, не останавливайся!", emoji: "🏃" },
-  { text: "Ты вдохновляешь!", emoji: "✨" },
-  { text: "Прогресс есть, продолжай!", emoji: "📈" }
-];
+import { t } from '@/lib/i18n';
 
 const MotivationalBanner = React.memo(function MotivationalBanner({ userName, completedCount, theme = 'dark' }) {
   const [currentPhrase, setCurrentPhrase] = useState(null);
@@ -24,7 +10,8 @@ const MotivationalBanner = React.memo(function MotivationalBanner({ userName, co
   useEffect(() => {
     // Show banner randomly (30% chance)
     if (Math.random() < 0.3) {
-      const randomPhrase = MOTIVATIONAL_PHRASES[Math.floor(Math.random() * MOTIVATIONAL_PHRASES.length)];
+      const phrases = t().motivation.phrases;
+      const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
       setCurrentPhrase(randomPhrase);
       setShow(true);
 

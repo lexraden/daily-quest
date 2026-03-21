@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 import CaloriePhotoInput from './CaloriePhotoInput';
+import { t, getSpeechLang } from '@/lib/i18n';
 
 const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -17,7 +18,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
   useEffect(() => {
     if (!recognition) return;
 
-    recognition.lang = 'ru-RU';
+    recognition.lang = getSpeechLang();
     recognition.continuous = true;
     recognition.interimResults = false;
 
@@ -58,7 +59,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
 
     const handleError = (event) => {
       if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-        toast.error('Разрешите доступ к микрофону');
+        toast.error(t().voice.micPermission);
         setIsRecording(false);
       } else if (event.error === 'no-speech') {
         setIsRecording(false);
@@ -83,7 +84,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
 
   const startRecording = useCallback(() => {
     if (!recognition) {
-      toast.error('Голосовой ввод не поддерживается');
+      toast.error(t().voice.notSupported);
       return;
     }
     if (isRecording || isProcessing) return;
@@ -97,7 +98,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       recognition.start();
     } catch (error) {
       console.error('Failed to start recording:', error);
-      toast.error('Не удалось запустить микрофон');
+      toast.error(t().voice.micFailed);
     }
   }, [recognition, isRecording, isProcessing]);
 
@@ -160,7 +161,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       }
     } catch (error) {
       console.error('Error processing voice input:', error);
-      toast.error('Ошибка обработки');
+      toast.error(t().voice.processError);
     } finally {
       setIsProcessing(false);
     }
@@ -180,7 +181,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
             <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
           <span className={`text-sm font-medium ${theme === 'light' ? 'text-purple-700' : 'text-purple-300'}`}>
-            Обрабатываю...
+            {t().common.processing}
           </span>
         </div>
       </div>
@@ -193,7 +194,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
         <Button
           onClick={startRecording}
           disabled={isProcessing}
-          aria-label={isRecording ? 'Остановить запись' : 'Голосовой ввод'}
+          aria-label={isRecording ? t().voice.listening : t().voice.voiceInput}
           className={`h-12 rounded-2xl font-medium transition-all flex-1 ${
             isRecording
               ? 'bg-red-500 hover:bg-red-600 animate-pulse'
@@ -203,12 +204,12 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
           {isRecording ? (
             <>
               <Mic className="w-5 h-5 mr-2 animate-pulse" />
-              Слушаю...
+              {t().voice.listening}
             </>
           ) : (
             <>
               <Mic className="w-5 h-5 mr-2" />
-              Голос
+              {t().voice.voice}
             </>
           )}
         </Button>
