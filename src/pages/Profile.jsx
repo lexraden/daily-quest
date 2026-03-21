@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { t } from '@/lib/i18n';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import StatsSection from '@/components/profile/StatsSection';
@@ -14,20 +15,22 @@ import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 
 const CATEGORIES_KEYS = ['health', 'mind', 'work', 'money', 'love', 'friends'];
 
-const LEVELS = [
-  { level: 1, threshold: 0, name: "Новичок", icon: "🌱", color: "#6c5ce7" },
-  { level: 2, threshold: 10, name: "Ученик", icon: "📚", color: "#00cec9" },
-  { level: 3, threshold: 25, name: "Практик", icon: "⚡", color: "#fdcb6e" },
-  { level: 4, threshold: 50, name: "Мастер", icon: "🔥", color: "#e17055" },
-  { level: 5, threshold: 100, name: "Эксперт", icon: "💎", color: "#d63031" },
-  { level: 6, threshold: 200, name: "Герой", icon: "⚔️", color: "#fd79a8" },
-  { level: 7, threshold: 350, name: "Чемпион", icon: "🏆", color: "#fdcb6e" },
-  { level: 8, threshold: 550, name: "Легенда", icon: "👑", color: "#ffeaa7" },
-  { level: 9, threshold: 800, name: "Титан", icon: "⚡", color: "#a29bfe" },
-  { level: 10, threshold: 1100, name: "Бог", icon: "✨", color: "#ffffff" }
+const LEVEL_DEFS = [
+  { level: 1, threshold: 0, icon: "🌱", color: "#6c5ce7" },
+  { level: 2, threshold: 10, icon: "📚", color: "#00cec9" },
+  { level: 3, threshold: 25, icon: "⚡", color: "#fdcb6e" },
+  { level: 4, threshold: 50, icon: "🔥", color: "#e17055" },
+  { level: 5, threshold: 100, icon: "💎", color: "#d63031" },
+  { level: 6, threshold: 200, icon: "⚔️", color: "#fd79a8" },
+  { level: 7, threshold: 350, icon: "🏆", color: "#fdcb6e" },
+  { level: 8, threshold: 550, icon: "👑", color: "#ffeaa7" },
+  { level: 9, threshold: 800, icon: "⚡", color: "#a29bfe" },
+  { level: 10, threshold: 1100, icon: "✨", color: "#ffffff" }
 ];
+const LEVELS = LEVEL_DEFS.map(l => ({ ...l, name: t().levels[l.level] }));
 
 export default function Profile() {
+  const i = t();
   const [theme, setTheme] = useState('light');
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
@@ -127,7 +130,7 @@ export default function Profile() {
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
         <div className="px-5 py-3 flex items-center justify-between">
-          <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Профиль</h1>
+          <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{i.profilePage.title}</h1>
         </div>
       </div>
 
@@ -176,24 +179,24 @@ export default function Profile() {
         {/* Update quests button */}
         <Button
           onClick={() => setShowResetConfirm(true)}
-          aria-label="Обновить квесты"
+          aria-label={i.profilePage.updateQuests}
           className="w-full h-11 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
-          Обновить квесты
+          {i.profilePage.updateQuests}
         </Button>
 
         {/* Reset Confirmation */}
         {showResetConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
             <div className={`rounded-2xl p-6 max-w-sm w-full ${theme === 'light' ? 'bg-white shadow-xl' : 'bg-[#1e2836]'}`}>
-              <h2 className={`text-xl font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Обновить квесты?</h2>
+              <h2 className={`text-xl font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{i.profilePage.updateQuestsQ}</h2>
               <p className={`text-sm mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Ваша история и достижения сохранятся. Мы создадим новые персонализированные квесты.
+                {i.profilePage.updateQuestsDesc}
               </p>
               <div className="flex gap-3">
-                <Button onClick={() => setShowResetConfirm(false)} variant="outline" aria-label="Отмена" className={`min-h-[44px] ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}>Отмена</Button>
-                <Button onClick={() => { setShowResetConfirm(false); setShowOnboarding(true); }} aria-label="Подтвердить обновление квестов" className="flex-1 min-h-[44px] bg-gradient-to-r from-blue-600 to-cyan-600">Да, обновить</Button>
+                <Button onClick={() => setShowResetConfirm(false)} variant="outline" aria-label={i.common.cancel} className={`min-h-[44px] ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}>{i.common.cancel}</Button>
+                <Button onClick={() => { setShowResetConfirm(false); setShowOnboarding(true); }} aria-label={i.profilePage.yesUpdate} className="flex-1 min-h-[44px] bg-gradient-to-r from-blue-600 to-cyan-600">{i.profilePage.yesUpdate}</Button>
               </div>
             </div>
           </div>
@@ -203,13 +206,13 @@ export default function Profile() {
         <Button
           onClick={() => setShowDeleteSheet(true)}
           variant="ghost"
-          aria-label="Удалить аккаунт"
+          aria-label={i.profilePage.deleteAccount}
           className={`w-full h-11 text-sm ${
             theme === 'light' ? 'text-red-500 hover:bg-red-50' : 'text-red-400 hover:bg-red-500/10'
           }`}
         >
           <Trash2 className="w-4 h-4 mr-2" />
-          Удалить аккаунт
+          {i.profilePage.deleteAccount}
         </Button>
 
         {/* Delete Account Bottom Sheet */}
@@ -263,11 +266,11 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
                 });
 
                 setShowOnboarding(false);
-                toast.success('Квесты обновлены! 🎉');
+                toast.success(i.profilePage.questsUpdated);
                 setTimeout(() => { window.location.href = '/DailyTracker'; }, 500);
               } catch (error) {
                 console.error('Error:', error);
-                toast.error('Ошибка при обновлении квестов');
+                toast.error(i.profilePage.questsUpdateError);
                 setShowOnboarding(false);
               }
             }}

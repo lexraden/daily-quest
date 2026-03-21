@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getCachedUser, getCachedUserData, updateCachedUserData, invalidateCache } from '@/components/UserDataCache';
 import { base44 } from '@/api/base44Client';
+import { t, getLocale } from '@/lib/i18n';
 import EntryDetailModal from '@/components/history/EntryDetailModal';
 import EntryCard from '@/components/history/EntryCard';
 import VirtualizedEntryList from '@/components/history/VirtualizedEntryList';
@@ -11,6 +12,8 @@ import MealEditModal from '@/components/daily/MealEditModal';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 
 export default function History() {
+  const i = t();
+  const hp = i.historyPage;
   const [theme, setTheme] = useState('light');
   const [viewMode, setViewMode] = useState('day');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -60,10 +63,10 @@ export default function History() {
     setCurrentDate(d);
   };
 
-  const monthsGen = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-  const dayNames = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
-  const dayNamesShort = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const monthsGen = hp.monthsGen;
+  const months = hp.months;
+  const dayNames = hp.dayNames;
+  const dayNamesShort = hp.dayNamesShort;
 
   const formatTitle = () => {
     if (viewMode === 'day') return `${dayNames[currentDate.getDay()]}, ${currentDate.getDate()} ${monthsGen[currentDate.getMonth()]}`;
@@ -131,8 +134,8 @@ export default function History() {
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayKey = formatDateKey(yesterdayDate);
-    if (dateStr === todayKey) return 'Сегодня';
-    if (dateStr === yesterdayKey) return 'Вчера';
+    if (dateStr === todayKey) return i.common.today;
+    if (dateStr === yesterdayKey) return i.common.yesterday;
     const date = new Date(dateStr + 'T12:00:00');
     return `${dayNamesShort[date.getDay()]}, ${date.getDate()} ${monthsGen[date.getMonth()]}`;
   }, []);
@@ -145,17 +148,17 @@ export default function History() {
     }`}>
       <div className="text-center flex-1">
         <div className={`text-2xl font-bold ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`}>{questCount}</div>
-        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>🎯 квестов</div>
+        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>🎯 {i.common.quests}</div>
       </div>
       <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
       <div className="text-center flex-1">
         <div className={`text-2xl font-bold ${theme === 'light' ? 'text-cyan-600' : 'text-cyan-400'}`}>{noteCount}</div>
-        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>📝 заметок</div>
+        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>📝 {i.common.notes}</div>
       </div>
       <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
       <div className="text-center flex-1">
         <div className={`text-2xl font-bold ${theme === 'light' ? 'text-green-600' : 'text-green-400'}`}>{totalCount}</div>
-        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>всего</div>
+        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>{i.common.total}</div>
       </div>
     </div>
   );
@@ -168,7 +171,7 @@ export default function History() {
         <span className="text-2xl">📋</span>
       </div>
       <p className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
-        Нет записей за этот период
+        {hp.noRecords}
       </p>
     </div>
   );
@@ -299,7 +302,7 @@ export default function History() {
 
         {/* Day names header */}
         <div className="grid grid-cols-7 gap-1">
-          {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d => (
+          {hp.dayNamesShortMon.map(d => (
             <div key={d} className={`text-center text-[10px] font-medium py-1 ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>{d}</div>
           ))}
         </div>
@@ -378,13 +381,13 @@ export default function History() {
       >
         <div className="px-5 py-3">
           <div className="flex items-center justify-between mb-3">
-            <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>История</h1>
+            <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{hp.title}</h1>
           </div>
           <Tabs value={viewMode} onValueChange={setViewMode}>
             <TabsList className={`w-full ${theme === 'light' ? 'bg-black/5' : 'bg-white/5'}`}>
-              <TabsTrigger value="day" className="flex-1 min-h-[44px]">День</TabsTrigger>
-              <TabsTrigger value="week" className="flex-1 min-h-[44px]">Неделя</TabsTrigger>
-              <TabsTrigger value="month" className="flex-1 min-h-[44px]">Месяц</TabsTrigger>
+              <TabsTrigger value="day" className="flex-1 min-h-[44px]">{hp.day}</TabsTrigger>
+              <TabsTrigger value="week" className="flex-1 min-h-[44px]">{hp.week}</TabsTrigger>
+              <TabsTrigger value="month" className="flex-1 min-h-[44px]">{hp.month}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -392,14 +395,14 @@ export default function History() {
 
       <div className="px-5 py-3 space-y-3 max-w-2xl mx-auto">
         <div className="flex items-center justify-between">
-          <Button onClick={navigatePrevious} variant="ghost" size="icon" aria-label="Предыдущий период"
+          <Button onClick={navigatePrevious} variant="ghost" size="icon" aria-label={hp.prevPeriod}
             className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}>
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <div className="text-center">
             <h2 className="text-sm font-semibold">{formatTitle()}</h2>
           </div>
-          <Button onClick={navigateNext} variant="ghost" size="icon" aria-label="Следующий период"
+          <Button onClick={navigateNext} variant="ghost" size="icon" aria-label={hp.nextPeriod}
             className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}>
             <ChevronRight className="w-5 h-5" />
           </Button>
@@ -407,9 +410,9 @@ export default function History() {
 
         {!isToday(currentDate) && (
           <div className="flex justify-center">
-            <Button onClick={() => setCurrentDate(new Date())} variant="outline" size="sm" aria-label="Перейти к сегодняшнему дню"
+            <Button onClick={() => setCurrentDate(new Date())} variant="outline" size="sm" aria-label={hp.goToToday}
               className={`min-h-[44px] ${theme === 'light' ? 'border-purple-400 text-purple-600 hover:bg-purple-50 text-xs' : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10 text-xs'}`}>
-              Сегодня
+              {i.common.today}
             </Button>
           </div>
         )}
