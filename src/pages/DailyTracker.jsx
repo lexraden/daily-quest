@@ -360,16 +360,19 @@ export default function DailyTracker() {
 
   const handleOnboardingComplete = async (answers) => {
     try {
+      const lang = getLang();
+      const isRu = lang === 'ru';
       // Generate personalized quests using AI
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Ты - эксперт по персональному развитию. На основе ответов пользователя создай персонализированные ЕЖЕДНЕВНЫЕ квесты для daily tracker.
+        prompt: isRu
+          ? `Ты - эксперт по персональному развитию. На основе ответов пользователя создай персонализированные ЕЖЕДНЕВНЫЕ квесты для daily tracker.
 
 Ответы пользователя:
 ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')}
 
 ВАЖНО: Квесты должны быть ЕЖЕДНЕВНЫМИ действиями, которые можно выполнять каждый день, а НЕ долгосрочными целями!
 ❌ Неправильно: "Сбросить 5кг", "Получить повышение", "Купить квартиру"
-✅ Правильно: "Пробежать 3км", "Выполнить задачу на работе", "Отложить 500₽"
+✅ Правильно: "Пробежать 3км", "Выполнить задачу на работе", "Отложить деньги"
 
 Для каждой категории создай РОВНО 3 ЕЖЕДНЕВНЫХ квеста, СТРОГО отсортированных по уровню сложности:
 - Level 1 (самый лёгкий, +1 XP): простое базовое действие на каждый день
@@ -393,13 +396,53 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
 - Реалистичными для ежедневного выполнения
 - Мотивирующими
 - Короткими (до 30 символов)
+- НА РУССКОМ ЯЗЫКЕ
 - БЕЗ эмодзи в названии (эмодзи только в поле emoji)
 
 ВАЖНО для категории money:
 - НЕ указывай конкретные суммы или валюты (₽, $, 500₽, 10%)
 - Используй общие формулировки ("отложить часть дохода", "проверить бюджет")
 
-Подбери подходящие эмодзи для каждого квеста (эмодзи отдельно, не в названии).`,
+Подбери подходящие эмодзи для каждого квеста (эмодзи отдельно, не в названии).`
+          : `You are a personal development expert. Based on the user's answers, create personalized DAILY quests for a daily tracker.
+
+User's answers:
+${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')}
+
+IMPORTANT: Quests must be DAILY actions that can be done every day, NOT long-term goals!
+❌ Wrong: "Lose 5kg", "Get promoted", "Buy a house"
+✅ Right: "Run 3km", "Complete a work task", "Save some money"
+
+For each category create EXACTLY 3 DAILY quests, STRICTLY sorted by difficulty:
+- Level 1 (easiest, +1 XP): simple basic daily action
+- Level 2 (medium, +2 XP): requires more effort but doable daily
+- Level 3 (hardest, +3 XP): ambitious daily action
+
+IMPORTANT: Quests MUST go in order level=1, level=2, level=3 by increasing difficulty!
+
+Categories:
+- health: physical activity, sports, wellness
+- mind: learning, meditation, reading
+- work: work tasks, projects
+- money: financial habits, savings
+- love: romantic relationships, quality time with partner
+- friends: socializing, friendships
+
+Quests must be:
+- DAILY actions
+- Specific and measurable
+- Tailored to the user's situation
+- Realistic for daily completion
+- Motivating
+- Short (up to 30 characters)
+- IN ENGLISH
+- NO emoji in the name (emoji only in the emoji field)
+
+IMPORTANT for money category:
+- Do NOT specify exact amounts or currencies ($, €, $500, 10%)
+- Use general phrasing ("save part of income", "review budget")
+
+Pick appropriate emojis for each quest (emoji separate, not in the name).`,
         response_json_schema: {
           type: "object",
           properties: {
