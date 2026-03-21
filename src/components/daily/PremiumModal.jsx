@@ -1,57 +1,20 @@
 import React from 'react';
 import { X, Lock, Camera, Footprints, TrendingUp, History, Sparkles, Shield, FileText, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 
 export default function PremiumModal({ onClose, theme = 'dark' }) {
+  const i = t();
+  const p = i.premium;
   const premiumFeatures = [
-    {
-      icon: Camera,
-      title: "AI Калории по фото",
-      description: "Сфотографируй еду и получи точный подсчет калорий",
-      status: "coming_soon"
-    },
-    {
-      icon: Footprints,
-      title: "Автопроверка шагов",
-      description: "Автоматическая синхронизация с Apple Health / Google Fit",
-      status: "unavailable"
-    },
-    {
-      icon: TrendingUp,
-      title: "Аналитика питания",
-      description: "Отслеживание дефицита/профицита калорий",
-      status: "coming_soon"
-    },
-    {
-      icon: History,
-      title: "История тела",
-      description: "Трекинг веса, объемов и прогресса",
-      status: "coming_soon"
-    },
-    {
-      icon: Sparkles,
-      title: "Умные рекомендации",
-      description: "Персональные советы от AI на основе твоих данных",
-      status: "coming_soon"
-    },
-    {
-      icon: Shield,
-      title: "Защита стрика",
-      description: "1 бесплатная защита, +3 с Premium",
-      status: "active"
-    },
-    {
-      icon: FileText,
-      title: "Экспорт данных",
-      description: "Выгрузка всей истории в JSON формате",
-      status: "free"
-    },
-    {
-      icon: Bot,
-      title: "Coach Mode",
-      description: "Личный AI тренер для мотивации и советов",
-      status: "coming_soon"
-    }
+    { icon: Camera, title: p.caloriePhoto, description: p.caloriePhotoDesc, status: "coming_soon" },
+    { icon: Footprints, title: p.autoSteps, description: p.autoStepsDesc, status: "unavailable" },
+    { icon: TrendingUp, title: p.nutritionAnalytics, description: p.nutritionAnalyticsDesc, status: "coming_soon" },
+    { icon: History, title: p.bodyHistory, description: p.bodyHistoryDesc, status: "coming_soon" },
+    { icon: Sparkles, title: p.smartRecommendations, description: p.smartRecommendationsDesc, status: "coming_soon" },
+    { icon: Shield, title: p.streakProtection, description: p.streakProtectionDesc, status: "active" },
+    { icon: FileText, title: p.dataExport, description: p.dataExportDesc, status: "free" },
+    { icon: Bot, title: p.coachMode, description: p.coachModeDesc, status: "coming_soon" }
   ];
 
   const getStatusBadge = (status) => {
@@ -61,25 +24,25 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
           theme === 'light' 
             ? 'bg-green-100 text-green-700' 
             : 'bg-green-500/20 text-green-400'
-        }`}>Бесплатно</span>;
+        }`}>{p.free}</span>;
       case 'active':
         return <span className={`text-xs px-2 py-1 rounded-full ${
           theme === 'light' 
             ? 'bg-cyan-100 text-cyan-700' 
             : 'bg-cyan-500/20 text-cyan-400'
-        }`}>1 freeze</span>;
+        }`}>{p.freeze1}</span>;
       case 'coming_soon':
         return <span className={`text-xs px-2 py-1 rounded-full ${
           theme === 'light' 
             ? 'bg-purple-100 text-purple-700' 
             : 'bg-purple-500/20 text-purple-400'
-        }`}>Скоро</span>;
+        }`}>{p.soon}</span>;
       case 'unavailable':
         return <span className={`text-xs px-2 py-1 rounded-full ${
           theme === 'light' 
             ? 'bg-gray-200 text-gray-600' 
             : 'bg-gray-500/20 text-gray-500'
-        }`}>Web ограничен</span>;
+        }`}>{p.webLimited}</span>;
       default:
         return null;
     }
@@ -106,7 +69,7 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
                 Premium Features
               </h1>
               <p className={`text-sm mt-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Расширенные возможности трекера
+                {p.subtitle}
               </p>
             </div>
             <Button
@@ -185,17 +148,17 @@ export default function PremiumModal({ onClose, theme = 'dark' }) {
           style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)' }}
         >
           <div className={`text-center text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-            <p>Premium функции будут доступны после релиза 🚀</p>
+            <p>{p.afterRelease}</p>
             <p className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
-              Telegram Mini Apps пока имеют технические ограничения
+              {p.tgLimit}
             </p>
           </div>
           <Button
             onClick={onClose}
-            aria-label="Закрыть Premium"
+            aria-label={i.common.close}
             className="w-full min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
           >
-            Понятно
+            {p.understood}
           </Button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, Pencil, Check, X, Check as CheckIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { t } from '@/lib/i18n';
 
 const SwipeableQuestCard = React.memo(function SwipeableQuestCard({ 
   categoryKey, 
@@ -39,6 +40,8 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
   const questKey = `${categoryKey}_${currentQuest.level}`;
   const isCompleted = completedToday[questKey];
   const isCelebrating = celebrationQuest === categoryKey;
+  const i = t();
+  const qe = i.questEdit;
   const Icon = categoryInfo.icon;
 
   const swipeConfidenceThreshold = 10000;
@@ -95,7 +98,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
       <div className="flex items-center gap-2 px-1">
         <button
           onClick={() => onCategoryClick(categoryKey)}
-          aria-label={`${categoryInfo.name} прогресс`}
+          aria-label={`${categoryInfo.name} ${qe.categoryProgress}`}
           className="flex items-center gap-2 hover:opacity-70 transition-opacity cursor-pointer min-h-[44px]"
         >
           <div className={`p-1.5 rounded-lg ${categoryInfo.bgColor}`}>
@@ -167,7 +170,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                     e.stopPropagation();
                     onToggleQuest(categoryKey, currentQuest.level);
                   }}
-                  aria-label={isCompleted ? 'Отменить квест' : 'Выполнить квест'}
+                  aria-label={isCompleted ? qe.uncheckQuest : qe.completeQuest}
                   className={`
                     relative w-11 h-11 rounded-full flex items-center justify-center
                     transition-all duration-300 flex-shrink-0 cursor-pointer
@@ -218,7 +221,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                         e.stopPropagation();
                         handleSaveEdit();
                       }}
-                      aria-label="Сохранить"
+                      aria-label={qe.saveQuest}
                       className={`
                         p-2.5 rounded-lg transition-all hover:scale-110 active:scale-95 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center
                         ${theme === 'light' 
@@ -234,7 +237,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                         e.stopPropagation();
                         handleCancelEdit();
                       }}
-                      aria-label="Отмена"
+                      aria-label={qe.cancelEdit}
                       className={`
                         p-2.5 rounded-lg transition-all hover:scale-110 active:scale-95 flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center
                         ${theme === 'light' 
@@ -263,7 +266,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                         e.stopPropagation();
                         handleStartEdit();
                       }}
-                      aria-label="Редактировать квест"
+                      aria-label={qe.editQuest}
                       className={`
                         p-2.5 rounded-lg transition-all hover:scale-110 active:scale-95 min-w-[44px] min-h-[44px] flex items-center justify-center
                         ${theme === 'light' 

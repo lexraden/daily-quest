@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BookOpen, Calendar } from 'lucide-react';
+import { t, getLocale } from '@/lib/i18n';
 
 const CATEGORIES = {
   health: { name: "Health", icon: "💪", bgColor: "bg-green-500/10", textColor: "text-green-400", borderColor: "border-green-500/30" },
@@ -31,9 +32,11 @@ function FilterChip({ active, onClick, children, theme }) {
 
 export default function JournalSection({ entries, type, theme }) {
   const [filterCategory, setFilterCategory] = useState('all');
-  const title = type === 'quest_completed' ? 'Выполненные квесты' : 'Заметки';
+  const i = t();
+  const j = i.journal;
+  const title = type === 'quest_completed' ? j.completedQuests : j.notes;
   const icon = type === 'quest_completed' ? '🎯' : '📝';
-  const emptyText = type === 'quest_completed' ? 'Нет выполненных квестов' : 'Нет заметок';
+  const emptyText = type === 'quest_completed' ? j.noQuests : j.noNotes;
 
   const filtered = useMemo(() => {
     return entries.filter(e => {
@@ -67,7 +70,7 @@ export default function JournalSection({ entries, type, theme }) {
       {/* Category filter */}
       <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
         <FilterChip active={filterCategory === 'all'} onClick={() => setFilterCategory('all')} theme={theme}>
-          Все
+          {i.common.all}
         </FilterChip>
         {Object.entries(CATEGORIES).map(([key, info]) => (
           <FilterChip
@@ -121,7 +124,7 @@ export default function JournalSection({ entries, type, theme }) {
                         {catInfo?.name || entry.category}
                       </span>
                       <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {new Date(entry.timestamp).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(entry.timestamp).toLocaleString(getLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>
