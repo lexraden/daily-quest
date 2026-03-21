@@ -2,15 +2,18 @@ import React from 'react';
 import { X, Flame, Beef, Droplets, Wheat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { t } from '@/lib/i18n';
 
 export default function MealReportModal({ meal, onSave, onDiscard, theme = 'dark' }) {
   if (!meal) return null;
 
+  const i = t();
+  const c = i.calories;
   const nutrients = [
-    { label: 'Калории', value: meal.calories, unit: 'ккал', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-    { label: 'Белки', value: meal.protein, unit: 'г', icon: Beef, color: 'text-red-500', bg: 'bg-red-500/10' },
-    { label: 'Жиры', value: meal.fat, unit: 'г', icon: Droplets, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-    { label: 'Углеводы', value: meal.carbs, unit: 'г', icon: Wheat, color: 'text-green-500', bg: 'bg-green-500/10' },
+    { label: c.caloriesLabel, value: meal.calories, unit: c.kcal, icon: Flame, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+    { label: c.protein, value: meal.protein, unit: 'g', icon: Beef, color: 'text-red-500', bg: 'bg-red-500/10' },
+    { label: c.fat, value: meal.fat, unit: 'g', icon: Droplets, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+    { label: c.carbs, value: meal.carbs, unit: 'g', icon: Wheat, color: 'text-green-500', bg: 'bg-green-500/10' },
   ];
 
   return (
@@ -74,17 +77,17 @@ export default function MealReportModal({ meal, onSave, onDiscard, theme = 'dark
               <Button
                 onClick={onDiscard}
                 variant="outline"
-                aria-label="Отменить"
+                aria-label={i.mealReport.discard}
                 className={`flex-1 min-h-[44px] ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}
               >
-                Отмена
+                {i.mealReport.discard}
               </Button>
               <Button
                 onClick={onSave}
-                aria-label="Сохранить приём пищи"
+                aria-label={i.mealReport.saveMeal}
                 className="flex-1 min-h-[44px] bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
               >
-                Сохранить
+                {i.mealReport.saveMeal}
               </Button>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { Camera, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { t } from '@/lib/i18n';
 
 export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
   const [photos, setPhotos] = useState([]);
@@ -85,7 +86,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
       }
     } catch (error) {
       console.error('Error analyzing meal:', error);
-      toast.error('Ошибка анализа фото');
+      toast.error(t().calories.analysisError);
     } finally {
       setIsAnalyzing(false);
     }
@@ -100,7 +101,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
       }`}>
         <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
         <span className={`text-sm font-medium ${theme === 'light' ? 'text-orange-700' : 'text-orange-300'}`}>
-          Анализирую еду...
+          {t().calories.analyzing}
         </span>
       </div>
     );
@@ -129,7 +130,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
         <Button
           onClick={() => fileInputRef.current?.click()}
           size="icon"
-          aria-label="Сфотографировать еду"
+          aria-label={t().calories.photoFood}
           className={`h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600`}
         >
           <Camera className="w-5 h-5" />
@@ -147,7 +148,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
             <img src={photo.preview} alt="meal" className="w-full h-full object-cover" />
             <button
               onClick={() => removePhoto(idx)}
-              aria-label="Удалить фото"
+              aria-label={t().calories.removePhoto}
               className="absolute -top-1 -right-1 min-w-[44px] min-h-[44px] bg-black/60 rounded-full flex items-center justify-center"
             >
               <X className="w-3 h-3 text-white" />
@@ -157,7 +158,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
         {photos.length < 2 && (
           <button
             onClick={() => fileInputRef.current?.click()}
-            aria-label="Добавить фото"
+            aria-label={t().calories.addPhoto}
             className={`w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center ${
               theme === 'light' ? 'border-gray-300 text-gray-400' : 'border-white/20 text-gray-500'
             }`}
@@ -169,11 +170,11 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
       </div>
       <Button
         onClick={analyzeMeal}
-        aria-label="Анализировать еду"
+        aria-label={t().calories.analyze}
         className="w-full h-11 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 font-medium"
       >
         <Send className="w-4 h-4 mr-2" />
-        Анализировать
+        {t().calories.analyze}
       </Button>
     </div>
   );
