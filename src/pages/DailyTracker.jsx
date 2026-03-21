@@ -30,6 +30,7 @@ import { base44 } from '@/api/base44Client';
 import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import useSaveUserData from '@/hooks/useSaveUserData';
+import { t, getLang } from '@/lib/i18n';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -37,18 +38,8 @@ import useSaveUserData from '@/hooks/useSaveUserData';
 
 const APP_CONFIG = {
   title: "Daily Quests",
-  subtitle: "Твой путь к успеху",
-  streakLabel: "Серия",
-  levelLabel: "Уровень",
   completedText: "✓",
   pendingText: "○",
-  motivationTexts: [
-    "Отличное начало! 🚀",
-    "Ты на верном пути! 💪",
-    "Невероятный прогресс! ⭐",
-    "Ты — чемпион! 🏆",
-    "Легенда! 👑"
-  ]
 };
 
 // Категории с иконками и цветами
@@ -103,53 +94,23 @@ const CATEGORIES = {
   }
 };
 
-// Квесты по умолчанию (будут загружены из localStorage или использованы эти)
-const DEFAULT_QUEST_DATA = {
-  health: [
-    { level: 1, name: "Прогулка 15 мин", emoji: "🚶" },
-    { level: 2, name: "Зарядка 20 мин", emoji: "🏃" },
-    { level: 3, name: "Тренировка 45 мин", emoji: "💪" }
-  ],
-  mind: [
-    { level: 1, name: "Медитация 5 мин", emoji: "🧘" },
-    { level: 2, name: "Чтение 20 мин", emoji: "📖" },
-    { level: 3, name: "Изучение нового 1 час", emoji: "🎓" }
-  ],
-  money: [
-    { level: 1, name: "Проверить расходы", emoji: "💳" },
-    { level: 2, name: "Отложить 10%", emoji: "💰" },
-    { level: 3, name: "Инвестировать", emoji: "📈" }
-  ],
-  work: [
-    { level: 1, name: "План на день", emoji: "📝" },
-    { level: 2, name: "Фокус-сессия 1 час", emoji: "⏰" },
-    { level: 3, name: "Завершить проект", emoji: "🎯" }
-  ],
-  love: [
-    { level: 1, name: "Позвонить близким", emoji: "☎️" },
-    { level: 2, name: "Провести вечер вместе", emoji: "🌟" },
-    { level: 3, name: "Сюрприз для любимых", emoji: "🎁" }
-  ],
-  friends: [
-    { level: 1, name: "Написать другу", emoji: "💬" },
-    { level: 2, name: "Встретиться с другом", emoji: "🤝" },
-    { level: 3, name: "Организовать встречу", emoji: "🎉" }
-  ]
-};
+// Default quest data loaded from i18n
+const DEFAULT_QUEST_DATA = t().defaultQuests;
 
-// Система уровней (прогрессивная как в RPG)
-const LEVELS = [
-  { level: 1, threshold: 0, name: "Новичок", icon: "🌱", color: "#6c5ce7" },
-  { level: 2, threshold: 10, name: "Ученик", icon: "📚", color: "#00cec9" },
-  { level: 3, threshold: 25, name: "Практик", icon: "⚡", color: "#fdcb6e" },
-  { level: 4, threshold: 50, name: "Мастер", icon: "🔥", color: "#e17055" },
-  { level: 5, threshold: 100, name: "Эксперт", icon: "💎", color: "#d63031" },
-  { level: 6, threshold: 200, name: "Герой", icon: "⚔️", color: "#fd79a8" },
-  { level: 7, threshold: 350, name: "Чемпион", icon: "🏆", color: "#fdcb6e" },
-  { level: 8, threshold: 550, name: "Легенда", icon: "👑", color: "#ffeaa7" },
-  { level: 9, threshold: 800, name: "Титан", icon: "⚡", color: "#a29bfe" },
-  { level: 10, threshold: 1100, name: "Бог", icon: "✨", color: "#ffffff" }
+// Level system with i18n names
+const LEVEL_DEFS = [
+  { level: 1, threshold: 0, icon: "🌱", color: "#6c5ce7" },
+  { level: 2, threshold: 10, icon: "📚", color: "#00cec9" },
+  { level: 3, threshold: 25, icon: "⚡", color: "#fdcb6e" },
+  { level: 4, threshold: 50, icon: "🔥", color: "#e17055" },
+  { level: 5, threshold: 100, icon: "💎", color: "#d63031" },
+  { level: 6, threshold: 200, icon: "⚔️", color: "#fd79a8" },
+  { level: 7, threshold: 350, icon: "🏆", color: "#fdcb6e" },
+  { level: 8, threshold: 550, icon: "👑", color: "#ffeaa7" },
+  { level: 9, threshold: 800, icon: "⚡", color: "#a29bfe" },
+  { level: 10, threshold: 1100, icon: "✨", color: "#ffffff" }
 ];
+const LEVELS = LEVEL_DEFS.map(l => ({ ...l, name: t().levels[l.level] }));
 
 /* ============================================
    END OF CUSTOMIZATION SECTION
@@ -206,7 +167,7 @@ export default function DailyTracker() {
 
               // Auto-save user name on first login if not set
               if (!authUser.full_name) {
-                const name = authUser.email?.split('@')[0] || 'Пользователь';
+                const name = authUser.email?.split('@')[0] || t().profilePage.user;
                 await base44.auth.updateMe({ full_name: name }).catch(err => {
                   console.log('Failed to save user name:', err);
                 });
@@ -285,9 +246,9 @@ export default function DailyTracker() {
                 i === questIndex ? { ...q, name: name, emoji: emoji } : q
               )
             }));
-            toast.success(aiResponse.message || 'Квест изменён! ✏️');
+            toast.success(aiResponse.message || '✏️');
           } else {
-            toast.error('Квест не найден');
+            toast.error(t().common.error);
           }
         } else if (intent === 'DELETE_QUEST') {
           // Найти квест по имени
@@ -321,9 +282,9 @@ export default function DailyTracker() {
               ...prev,
               [category]: prev[category].filter((_, i) => i !== questIndex)
             }));
-            toast.success(aiResponse.message || 'Квест удалён! 🗑️');
+            toast.success(aiResponse.message || '🗑️');
           } else {
-            toast.error('Квест не найден');
+            toast.error(t().common.error);
           }
         } else if (intent === 'COMPLETED_QUEST') {
       // Найти подходящий квест в текущей категории
@@ -368,7 +329,7 @@ export default function DailyTracker() {
       };
       setJournalEntries(prev => [newEntry, ...prev]);
       
-      toast.success(aiResponse.message || 'Квест выполнен! 🎉');
+      toast.success(aiResponse.message || '🎉');
     } else if (intent === 'ADD_QUEST') {
       // Добавить новый квест
       setQuestSuggestion(aiResponse);
@@ -387,7 +348,7 @@ export default function DailyTracker() {
       };
       setJournalEntries(prev => [newEntry, ...prev]);
       
-      toast.success(aiResponse.message || 'Заметка добавлена! 📝');
+      toast.success(aiResponse.message || '📝');
     }
 
     setAiResponse(null);
@@ -544,10 +505,10 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         setUserDataId(newUserData.id);
 
         setShowOnboarding(false);
-        toast.success('Ваши персональные квесты готовы! 🎉');
+        toast.success(t().onboarding.questsReady);
         } catch (error) {
         console.error('Error generating quests:', error);
-        toast.error('Ошибка при создании квестов. Используем стандартные.');
+        toast.error(t().onboarding.questsError);
         setShowOnboarding(false);
         }
         };
@@ -585,14 +546,14 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
     setStreakFreezes(prev => Math.max(prev - 1, 0));
     setShowStreakFreeze(false);
     setPendingFreezeData(null);
-    toast.success('❄️ Заморозка использована! Серия сохранена.');
+    toast.success(t().streakFreeze.freezeUsed);
   }, []);
 
   const handleLoseStreak = useCallback(() => {
     setStreak(0);
     setShowStreakFreeze(false);
     setPendingFreezeData(null);
-    toast('Серия сброшена. Начинай заново! 💪');
+    toast(t().streakFreeze.streakReset);
   }, []);
 
   const handleMealAnalyzed = useCallback((meal) => {
@@ -726,7 +687,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           }
       } catch (error) {
         console.error('Error loading user data:', error);
-        toast.error('Ошибка загрузки данных');
+        toast.error(t().onboarding.dataLoadError);
       }
 
       setIsLoaded(true);
@@ -1010,13 +971,15 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
   const currentLevel = getCurrentLevel();
   const levelProgress = getProgressToNextLevel();
 
+  const i = t();
   const getMotivation = () => {
     if (completedCount === 0) return "";
+    const motivations = i.tracker.motivations;
     const index = Math.min(
-      Math.floor((completedCount / totalQuests) * APP_CONFIG.motivationTexts.length),
-      APP_CONFIG.motivationTexts.length - 1
+      Math.floor((completedCount / totalQuests) * motivations.length),
+      motivations.length - 1
     );
-    return APP_CONFIG.motivationTexts[index];
+    return motivations[index];
   };
 
   if (!isLoaded) {
@@ -1077,7 +1040,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
               onClick={toggleTheme}
               variant="ghost"
               size="icon"
-              aria-label={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}
+              aria-label={theme === 'light' ? i.tracker.darkTheme : i.tracker.lightTheme}
               className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
             >
               {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
@@ -1089,13 +1052,13 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
         <div className="flex items-center gap-3 mb-3 text-sm">
           <div className="flex items-center gap-1.5">
             <span className="text-lg">{currentLevel.icon}</span>
-            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{currentLevel.name}</span>
+            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{i.levels[currentLevel.level] || currentLevel.name}</span>
           </div>
           <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
           <div className="flex items-center gap-1.5">
             <Flame className="w-4 h-4 text-orange-400" />
             <span className={`font-semibold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{streak}</span>
-            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>дней</span>
+            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{i.common.days}</span>
           </div>
           {streakFreezes > 0 && (
             <>
@@ -1122,7 +1085,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
             {levelProgress.nextLevel && (
               <div className="flex items-center gap-1.5">
                 <span className={theme === 'light' ? 'text-gray-500' : 'text-gray-500'}>
-                  {levelProgress.remaining} до
+                  {levelProgress.remaining} {i.tracker.xpTo}
                 </span>
                 <span className={`font-semibold ${theme === 'light' ? 'text-cyan-600' : 'text-cyan-400'}`}>
                   Level {levelProgress.nextLevel.level}
@@ -1195,14 +1158,14 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           <Button
             onClick={exportData}
             variant="outline"
-            aria-label="Экспорт данных"
+            aria-label={i.common.export}
             className={`min-h-[44px] ${theme === 'light' 
               ? 'border-gray-200 hover:bg-gray-50 text-gray-700'
               : 'border-white/10 hover:bg-white/5 text-gray-300'
             }`}
           >
             <Download className="w-4 h-4 mr-2" />
-            Экспорт
+            {i.common.export}
           </Button>
           <Button
             onClick={() => setShowPremium(true)}
@@ -1274,7 +1237,7 @@ ${Object.entries(answers).map(([cat, answer]) => `${cat}: ${answer}`).join('\n')
           onSave={() => {
             setMealHistory(prev => [pendingMeal, ...prev]);
             setPendingMeal(null);
-            toast.success('🍽️ Приём пищи сохранён!');
+            toast.success(i.calories.mealSaved);
           }}
           onDiscard={handleDiscardMeal}
           theme={theme}
