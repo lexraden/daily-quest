@@ -6,8 +6,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { t } from '@/lib/i18n';
 
 export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClose, theme = 'dark' }) {
+  const i = t();
+  const me = i.mealEdit;
+  const c = i.calories;
   const [name, setName] = useState(meal.meal_name || '');
   const [correction, setCorrection] = useState('');
   const [isRecalculating, setIsRecalculating] = useState(false);
@@ -15,7 +19,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
 
   const handleRecalculate = async () => {
     if (!correction.trim()) {
-      toast.error('Напишите, что нужно изменить');
+      toast.error(me.writeChange);
       return;
     }
     setIsRecalculating(true);
@@ -54,11 +58,11 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
         fat: result.fat,
         carbs: result.carbs
       });
-      toast.success('Пересчитано! ✅');
+      toast.success(me.recalculated);
       onClose();
     } catch (error) {
       console.error('Recalculate error:', error);
-      toast.error('Ошибка пересчёта');
+      toast.error(me.recalcError);
     } finally {
       setIsRecalculating(false);
     }
@@ -66,15 +70,15 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
 
   const handleDelete = () => {
     onDelete(mealIndex);
-    toast.success('Приём пищи удалён');
+    toast.success(me.mealDeleted);
     onClose();
   };
 
   const nutrients = [
-    { label: 'Калории', value: meal.calories, unit: 'ккал', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-    { label: 'Белки', value: meal.protein, unit: 'г', icon: Beef, color: 'text-red-500', bg: 'bg-red-500/10' },
-    { label: 'Жиры', value: meal.fat, unit: 'г', icon: Droplets, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-    { label: 'Углеводы', value: meal.carbs, unit: 'г', icon: Wheat, color: 'text-green-500', bg: 'bg-green-500/10' },
+    { label: c.caloriesLabel, value: meal.calories, unit: c.kcal, icon: Flame, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+    { label: c.protein, value: meal.protein, unit: 'g', icon: Beef, color: 'text-red-500', bg: 'bg-red-500/10' },
+    { label: c.fat, value: meal.fat, unit: 'g', icon: Droplets, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+    { label: c.carbs, value: meal.carbs, unit: 'g', icon: Wheat, color: 'text-green-500', bg: 'bg-green-500/10' },
   ];
 
   return (
@@ -129,10 +133,10 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
             {/* Correction input */}
             <div>
               <label className={`text-xs font-medium mb-1.5 block ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Что изменить? (AI пересчитает)
+                {me.whatToChange}
               </label>
               <Textarea
-                placeholder="Например: было 2 круассана, а не 1"
+                placeholder={me.placeholder}
                 value={correction}
                 onChange={e => setCorrection(e.target.value)}
                 className={`h-20 resize-none text-sm rounded-xl ${
@@ -165,7 +169,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Пересчитать
+                    {me.recalculate}
                   </>
                 )}
               </Button>
@@ -177,11 +181,11 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
             <div className="absolute inset-0 z-10 flex items-center justify-center p-6 bg-black/60 rounded-2xl">
               <div className={`p-5 rounded-2xl w-full ${theme === 'light' ? 'bg-white' : 'bg-[#1e2836]'}`}>
                 <p className={`text-sm font-medium mb-4 text-center ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                  Удалить «{meal.meal_name}»?
+                  {i.common.delete} «{meal.meal_name}»?
                 </p>
                 <div className="flex gap-3">
-                  <Button onClick={() => setShowDeleteConfirm(false)} variant="outline" aria-label="Отмена удаления" className="flex-1 min-h-[44px]">Нет</Button>
-                  <Button onClick={handleDelete} aria-label="Подтвердить удаление" className="flex-1 min-h-[44px] bg-red-500 hover:bg-red-600">Удалить</Button>
+                  <Button onClick={() => setShowDeleteConfirm(false)} variant="outline" aria-label={i.common.cancel} className="flex-1 min-h-[44px]">{me.no}</Button>
+                  <Button onClick={handleDelete} aria-label={i.common.delete} className="flex-1 min-h-[44px] bg-red-500 hover:bg-red-600">{i.common.delete}</Button>
                 </div>
               </div>
             </div>

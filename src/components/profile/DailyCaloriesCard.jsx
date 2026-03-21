@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Flame, Beef, Droplets, Wheat, Pencil } from 'lucide-react';
 import MealEditModal from '@/components/daily/MealEditModal';
+import { t } from '@/lib/i18n';
 
 export default function DailyCaloriesCard({ mealHistory = [], onEditMeal, onDeleteMeal, theme = 'light' }) {
   const todayKey = new Date().toISOString().split('T')[0];
@@ -20,10 +21,12 @@ export default function DailyCaloriesCard({ mealHistory = [], onEditMeal, onDele
     count: todayMeals.length
   }), [todayMeals]);
 
+  const i = t();
+  const c = i.calories;
   const nutrients = [
-    { label: 'Белки', value: todayTotals.protein, icon: Beef, color: 'text-red-500', bg: 'bg-red-500/10' },
-    { label: 'Жиры', value: todayTotals.fat, icon: Droplets, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-    { label: 'Углеводы', value: todayTotals.carbs, icon: Wheat, color: 'text-green-500', bg: 'bg-green-500/10' },
+    { label: c.protein, value: todayTotals.protein, icon: Beef, color: 'text-red-500', bg: 'bg-red-500/10' },
+    { label: c.fat, value: todayTotals.fat, icon: Droplets, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+    { label: c.carbs, value: todayTotals.carbs, icon: Wheat, color: 'text-green-500', bg: 'bg-green-500/10' },
   ];
 
   return (
@@ -36,11 +39,11 @@ export default function DailyCaloriesCard({ mealHistory = [], onEditMeal, onDele
         <div className="flex items-center gap-2 mb-3">
           <span className="text-lg">🍽️</span>
           <h3 className={`text-sm font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-            Калории сегодня
+            {c.todayCalories}
           </h3>
           {todayTotals.count > 0 && (
             <span className={`text-xs ml-auto ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`}>
-              {todayTotals.count} приёмов
+              {todayTotals.count} {c.meals}
             </span>
           )}
         </div>
@@ -51,7 +54,7 @@ export default function DailyCaloriesCard({ mealHistory = [], onEditMeal, onDele
           <span className={`text-3xl font-bold ${theme === 'light' ? 'text-orange-600' : 'text-orange-400'}`}>
             {Math.round(todayTotals.calories)}
           </span>
-          <span className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>ккал</span>
+          <span className={`text-sm ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>{c.kcal}</span>
         </div>
 
         {/* Macro bars */}
@@ -69,7 +72,7 @@ export default function DailyCaloriesCard({ mealHistory = [], onEditMeal, onDele
         {todayMeals.length > 0 && (
           <div className="mt-3 space-y-1.5">
             <div className={`text-[10px] font-semibold uppercase tracking-wider ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Приёмы пищи
+              {c.mealList}
             </div>
             {todayMeals.map((meal) => (
               <div
@@ -95,7 +98,7 @@ export default function DailyCaloriesCard({ mealHistory = [], onEditMeal, onDele
                     {meal.meal_name}
                   </div>
                   <div className={`text-[10px] ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {Math.round(meal.calories)} ккал · Б{Math.round(meal.protein)} Ж{Math.round(meal.fat)} У{Math.round(meal.carbs)}
+                    {Math.round(meal.calories)} {c.kcal} · P{Math.round(meal.protein)} F{Math.round(meal.fat)} C{Math.round(meal.carbs)}
                   </div>
                 </div>
                 <Pencil className={`w-3.5 h-3.5 flex-shrink-0 ${theme === 'light' ? 'text-gray-300' : 'text-gray-600'}`} />

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Flame, Trophy, TrendingUp, Calendar, Target } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { t, getLocale } from '@/lib/i18n';
 
 const CATEGORIES = {
   health: { name: "Health", icon: "💪", color: "#00b894" },
@@ -13,6 +14,9 @@ const CATEGORIES = {
 
 export default function StatsSection({ completionHistory, categoryTotalCompleted, totalCompleted, streak, categoryLevels, theme, journalEntries = [] }) {
   const [viewMode, setViewMode] = useState('daily');
+  const i = t();
+  const s = i.stats;
+  const locale = getLocale();
 
   // Build a merged history: completionHistory + journal quest_completed entries
   const mergedHistory = useMemo(() => {
@@ -53,7 +57,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
         const dateKey = date.toISOString().split('T')[0];
         const dayData = mergedHistory[dateKey] || [];
         data.push({
-          date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+          date: date.toLocaleDateString(locale, { day: 'numeric', month: 'short' }),
           quests: dayData.length,
           ...Object.keys(CATEGORIES).reduce((acc, cat) => {
             acc[cat] = dayData.filter(q => q.category === cat).length;
@@ -80,7 +84,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
           });
         }
         data.push({
-          date: `${weekStart.getDate()}-${weekEnd.getDate()} ${weekStart.toLocaleDateString('ru-RU', { month: 'short' })}`,
+          date: `${weekStart.getDate()}-${weekEnd.getDate()} ${weekStart.toLocaleDateString(locale, { month: 'short' })}`,
           quests: weekQuests,
           ...weekCat
         });
@@ -101,7 +105,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
           }
         });
         data.push({
-          date: month.toLocaleDateString('ru-RU', { month: 'short' }),
+          date: month.toLocaleDateString(locale, { month: 'short' }),
           quests: monthQuests,
           ...monthCat
         });
@@ -151,14 +155,14 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
       {/* Period tabs */}
       <div className="flex gap-2">
         {[
-          { key: 'daily', label: 'День' },
-          { key: 'weekly', label: 'Неделя' },
-          { key: 'monthly', label: 'Месяц' }
+          { key: 'daily', label: s.dayPeriod },
+          { key: 'weekly', label: s.weekPeriod },
+          { key: 'monthly', label: s.monthPeriod }
         ].map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setViewMode(key)}
-            aria-label={`Период: ${label}`}
+            aria-label={`${s.period}: ${label}`}
             className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-all min-h-[44px] ${
               viewMode === key
                 ? theme === 'light'
@@ -176,7 +180,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
 
       {/* Line chart */}
       <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
-        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>📈 Динамика</h3>
+        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{s.dynamics}</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -190,7 +194,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
 
       {/* Bar chart */}
       <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
-        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>📊 По категориям</h3>
+        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{s.byCategory}</h3>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
@@ -206,12 +210,12 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
 
       {/* Radar */}
       <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
-        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>🎯 Баланс</h3>
+        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{s.balance}</h3>
         <ResponsiveContainer width="100%" height={220}>
           <RadarChart data={radarData}>
             <PolarGrid stroke={gridColor} />
             <PolarAngleAxis dataKey="category" stroke={axisColor} style={{ fontSize: '10px' }} />
-            <Radar name="Квесты" dataKey="value" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.5} />
+            <Radar name={s.questsLabel} dataKey="value" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.5} />
             <Tooltip contentStyle={tooltipStyle} />
           </RadarChart>
         </ResponsiveContainer>
@@ -219,7 +223,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
 
       {/* Category levels */}
       <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
-        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>🏆 Категории</h3>
+        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{s.categories}</h3>
         <div className="space-y-2">
           {Object.entries(CATEGORIES)
             .sort((a, b) => (mergedCategoryCounts[b[0]] || 0) - (mergedCategoryCounts[a[0]] || 0))
