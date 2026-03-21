@@ -6,12 +6,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { invalidateCache } from '@/components/UserDataCache';
+import { t } from '@/lib/i18n';
 
 export default function DeleteAccountSheet({ open, onClose, user, theme = 'light' }) {
   const [step, setStep] = useState(1); // 1 = info, 2 = confirm
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const CONFIRM_WORD = 'УДАЛИТЬ';
+  const i = t();
+  const d = i.deleteAcc;
+  const CONFIRM_WORD = d.confirmWord;
 
   const handleClose = () => {
     setStep(1);
@@ -29,11 +32,11 @@ export default function DeleteAccountSheet({ open, onClose, user, theme = 'light
         await base44.entities.UserQuestData.delete(ud.id);
       }
       invalidateCache();
-      toast.success('Аккаунт удалён');
+      toast.success(d.deleted);
       base44.auth.logout('/');
     } catch (error) {
       console.error('Error deleting account:', error);
-      toast.error('Ошибка при удалении');
+      toast.error(d.deleteError);
       setIsDeleting(false);
     }
   };
@@ -72,14 +75,14 @@ export default function DeleteAccountSheet({ open, onClose, user, theme = 'light
                 <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
               <h2 className={`text-lg font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                Удаление аккаунта
+                {d.title}
               </h2>
             </div>
             <Button
               onClick={handleClose}
               variant="ghost"
               size="icon"
-              aria-label="Закрыть"
+              aria-label={i.common.close}
               className={`h-11 w-11 rounded-full ${theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}
             >
               <X className="w-5 h-5" />
@@ -91,31 +94,30 @@ export default function DeleteAccountSheet({ open, onClose, user, theme = 'light
               <>
                 <div className={`rounded-xl p-4 ${theme === 'light' ? 'bg-red-50 border border-red-200' : 'bg-red-500/10 border border-red-500/20'}`}>
                   <p className={`text-sm font-medium mb-2 ${theme === 'light' ? 'text-red-800' : 'text-red-300'}`}>
-                    Это действие необратимо. Будут удалены:
+                    {d.irreversible}
                   </p>
                   <ul className={`text-sm space-y-1.5 ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>
-                    <li>• Все квесты и настройки</li>
-                    <li>• История выполнения</li>
-                    <li>• Серия дней и прогресс</li>
-                    <li>• Записи журнала и питания</li>
-
+                    <li>• {d.allQuests}</li>
+                    <li>• {d.history}</li>
+                    <li>• {d.streakProgress}</li>
+                    <li>• {d.journalMeals}</li>
                   </ul>
                 </div>
                 <div className="flex gap-3">
                   <Button
                     onClick={handleClose}
                     variant="outline"
-                    aria-label="Отмена"
+                    aria-label={i.common.cancel}
                     className={`flex-1 min-h-[44px] ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}
                   >
-                    Отмена
+                    {i.common.cancel}
                   </Button>
                   <Button
                     onClick={() => setStep(2)}
-                    aria-label="Продолжить удаление"
+                    aria-label={d.continue}
                     className="flex-1 min-h-[44px] bg-red-500 hover:bg-red-600 text-white"
                   >
-                    Продолжить
+                    {d.continue}
                   </Button>
                 </div>
               </>
@@ -124,7 +126,7 @@ export default function DeleteAccountSheet({ open, onClose, user, theme = 'light
             {step === 2 && (
               <>
                 <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Введите <span className="font-bold text-red-500">{CONFIRM_WORD}</span> для подтверждения:
+                  {d.typeWord} <span className="font-bold text-red-500">{CONFIRM_WORD}</span> {d.toConfirm}
                 </p>
                 <Input
                   value={confirmText}
@@ -139,19 +141,19 @@ export default function DeleteAccountSheet({ open, onClose, user, theme = 'light
                   <Button
                     onClick={() => { setStep(1); setConfirmText(''); }}
                     variant="outline"
-                    aria-label="Назад"
+                    aria-label={i.common.back}
                     className={`flex-1 min-h-[44px] ${theme === 'light' ? 'border-gray-300' : 'border-white/10'}`}
                   >
-                    Назад
+                    {i.common.back}
                   </Button>
                   <Button
                     onClick={handleDelete}
                     disabled={confirmText !== CONFIRM_WORD || isDeleting}
-                    aria-label="Удалить аккаунт навсегда"
+                    aria-label={d.deleteForever}
                     className="flex-1 min-h-[44px] bg-red-500 hover:bg-red-600 text-white disabled:opacity-40"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    {isDeleting ? 'Удаление...' : 'Удалить навсегда'}
+                    {isDeleting ? d.deleting : d.deleteForever}
                   </Button>
                 </div>
               </>

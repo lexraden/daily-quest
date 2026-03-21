@@ -3,8 +3,10 @@ import { User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { t } from '@/lib/i18n';
 
 export default function ProfileHeader({ user, stats, levelProgress, theme }) {
+  const i = t();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user?.full_name || '');
 
@@ -20,10 +22,10 @@ export default function ProfileHeader({ user, stats, levelProgress, theme }) {
     try {
       await base44.auth.updateMe({ full_name: editedName.trim() });
       setIsEditingName(false);
-      toast.success('Имя сохранено! ✓');
+      toast.success(i.profilePage.nameSaved);
       window.location.reload();
     } catch (error) {
-      toast.error('Не удалось сохранить имя');
+      toast.error(i.profilePage.nameError);
     }
   };
 
@@ -55,15 +57,15 @@ export default function ProfileHeader({ user, stats, levelProgress, theme }) {
                 autoFocus
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
               />
-              <Button onClick={handleSaveName} size="sm" aria-label="Сохранить имя" className="bg-purple-600 hover:bg-purple-700 text-xs px-2 min-w-[44px] min-h-[44px]">✓</Button>
-              <Button onClick={() => { setIsEditingName(false); setEditedName(user?.full_name || ''); }} size="sm" variant="ghost" aria-label="Отменить редактирование" className="text-xs px-2 min-w-[44px] min-h-[44px]">✕</Button>
+              <Button onClick={handleSaveName} size="sm" aria-label={i.profilePage.saveName} className="bg-purple-600 hover:bg-purple-700 text-xs px-2 min-w-[44px] min-h-[44px]">✓</Button>
+              <Button onClick={() => { setIsEditingName(false); setEditedName(user?.full_name || ''); }} size="sm" variant="ghost" aria-label={i.profilePage.cancelEdit} className="text-xs px-2 min-w-[44px] min-h-[44px]">✕</Button>
             </div>
           ) : (
             <div className="flex items-center gap-1.5">
               <h2 className={`text-lg font-bold truncate ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-                {user?.full_name || 'Пользователь'}
+                {user?.full_name || i.profilePage.user}
               </h2>
-              <button onClick={() => setIsEditingName(true)} aria-label="Редактировать имя" className="text-sm opacity-50 hover:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center">✏️</button>
+              <button onClick={() => setIsEditingName(true)} aria-label={i.profilePage.editName} className="text-sm opacity-50 hover:opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center">✏️</button>
             </div>
           )}
           <div className="flex items-center gap-2 mt-1">
@@ -83,7 +85,7 @@ export default function ProfileHeader({ user, stats, levelProgress, theme }) {
           onClick={() => base44.auth.logout()}
           variant="ghost"
           size="icon"
-          aria-label="Выйти"
+          aria-label={i.profilePage.logout}
           className={`h-11 w-11 flex-shrink-0 ${theme === 'light' ? 'hover:bg-black/5 text-gray-400' : 'hover:bg-white/10 text-gray-500'}`}
         >
           <LogOut className="w-4 h-4" />
@@ -98,7 +100,7 @@ export default function ProfileHeader({ user, stats, levelProgress, theme }) {
           </span>
           {levelProgress.nextLevel && (
             <span className={theme === 'light' ? 'text-gray-500' : 'text-gray-500'}>
-              {levelProgress.remaining} до Level {levelProgress.nextLevel.level}
+              {levelProgress.remaining} {i.profilePage.toLevel} {levelProgress.nextLevel.level}
             </span>
           )}
         </div>
