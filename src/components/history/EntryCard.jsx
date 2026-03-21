@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
+import { t, getLocale } from '@/lib/i18n';
 
 const CATEGORIES = {
   health: { name: "Health", icon: "💪", bgColor: "bg-green-500/10", textColor: "text-green-400" },
@@ -11,6 +12,8 @@ const CATEGORIES = {
 };
 
 const EntryCard = React.memo(function EntryCard({ entry, compact = false, onSelect, theme }) {
+  const i = t();
+  const c = i.calories;
   const catInfo = CATEGORIES[entry.category];
   const isQuest = entry.type === 'quest_completed';
   const isMeal = entry.type === 'meal';
@@ -38,7 +41,7 @@ const EntryCard = React.memo(function EntryCard({ entry, compact = false, onSele
           <span className={`text-[10px] font-bold flex-shrink-0 ${theme === 'light' ? 'text-purple-500' : 'text-purple-400'}`}>+{entry.level || 1} XP</span>
         )}
         {isMeal && (
-          <span className={`text-[10px] font-bold flex-shrink-0 ${theme === 'light' ? 'text-orange-500' : 'text-orange-400'}`}>{Math.round(entry.calories)} ккал</span>
+          <span className={`text-[10px] font-bold flex-shrink-0 ${theme === 'light' ? 'text-orange-500' : 'text-orange-400'}`}>{Math.round(entry.calories)} {c.kcal}</span>
         )}
       </div>
     );
@@ -86,7 +89,7 @@ const EntryCard = React.memo(function EntryCard({ entry, compact = false, onSele
               {isMeal && (
                 <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                   theme === 'light' ? 'bg-orange-100 text-orange-700' : 'bg-orange-500/20 text-orange-300'
-                }`}>{Math.round(entry.calories)} ккал</span>
+                }`}>{Math.round(entry.calories)} {c.kcal}</span>
               )}
               {!isQuest && !isMeal && <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-300' : 'text-gray-600'}`} />}
             </div>
@@ -94,7 +97,7 @@ const EntryCard = React.memo(function EntryCard({ entry, compact = false, onSele
           <div className="flex items-center gap-2 mt-1.5">
             {isMeal ? (
               <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-orange-500/10 text-orange-500">
-                🍽️ Еда
+                🍽️ {i.entryDetail.food}
               </span>
             ) : (
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${catInfo?.bgColor} ${catInfo?.textColor}`}>
@@ -103,15 +106,15 @@ const EntryCard = React.memo(function EntryCard({ entry, compact = false, onSele
             )}
             {entry.timestamp && (
               <span className={`text-xs ${theme === 'light' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {new Date(entry.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                {new Date(entry.timestamp).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </div>
           {isMeal && (
             <div className="flex gap-3 mt-1.5 text-[10px]">
-              <span className="text-red-500">Б: {Math.round(entry.protein)}г</span>
-              <span className="text-yellow-500">Ж: {Math.round(entry.fat)}г</span>
-              <span className="text-green-500">У: {Math.round(entry.carbs)}г</span>
+              <span className="text-red-500">P: {Math.round(entry.protein)}g</span>
+              <span className="text-yellow-500">F: {Math.round(entry.fat)}g</span>
+              <span className="text-green-500">C: {Math.round(entry.carbs)}g</span>
             </div>
           )}
         </div>

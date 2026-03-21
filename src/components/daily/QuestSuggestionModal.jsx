@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { X, Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { t } from '@/lib/i18n';
 
 export default function QuestSuggestionModal({ suggestion, categories, onAccept, onReject, theme = 'dark' }) {
   const [editedSuggestion, setEditedSuggestion] = useState(suggestion);
   
+  const i = t();
+  const qs = i.questSuggest;
   if (!suggestion) return null;
 
   const categoryInfo = categories[suggestion.category];
@@ -31,7 +34,7 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-400" />
             <h2 className={`text-lg font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-              AI предложение
+              {qs.title}
             </h2>
           </div>
           <Button
@@ -66,7 +69,7 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
           <div className="space-y-3">
             <div>
               <label className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'} mb-1 block`}>
-                Эмодзи
+                {qs.emojiLabel}
               </label>
               <Input
                 value={editedSuggestion.emoji}
@@ -82,7 +85,7 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
 
             <div>
               <label className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'} mb-1 block`}>
-                Название квеста
+                {qs.questName}
               </label>
               <Input
                 value={editedSuggestion.name}
@@ -112,7 +115,7 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
                 : 'border-white/10 hover:bg-white/5'
             }`}
           >
-            Отмена
+            {i.common.cancel}
           </Button>
           <Button
             onClick={() => onAccept(editedSuggestion)}
@@ -120,7 +123,7 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
             className="flex-1 min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
           >
             <Check className="w-4 h-4 mr-2" />
-            Добавить
+            {qs.add}
           </Button>
         </div>
       </div>

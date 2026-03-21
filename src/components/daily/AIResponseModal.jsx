@@ -1,8 +1,11 @@
 import React from 'react';
 import { X, User, Sparkles, CheckCircle2, Plus, BookOpen, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 
 export default function AIResponseModal({ userInput, aiResponse, onClose, onAccept, onReject, theme = 'dark' }) {
+  const i = t();
+  const am = i.aiModal;
   if (!aiResponse) return null;
 
   const getIntentIcon = () => {
@@ -25,17 +28,17 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
   const getIntentLabel = () => {
     switch (aiResponse.intent) {
       case 'COMPLETED_QUEST':
-        return 'Квест выполнен';
+        return am.questCompleted;
       case 'ADD_QUEST':
-        return 'Новый квест';
+        return am.newQuest;
       case 'DELETE_QUEST':
-        return 'Удалить квест';
+        return am.deleteQuest;
       case 'EDIT_QUEST':
-        return 'Изменить квест';
+        return am.editQuest;
       case 'JOURNAL':
-        return 'Заметка';
+        return am.note;
       default:
-        return 'AI ответ';
+        return am.aiResponse;
     }
   };
 
@@ -61,7 +64,7 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
           <div className="flex items-center gap-2">
             <Sparkles className={`w-5 h-5 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
             <h2 className={`text-lg font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-              AI Ассистент
+              {am.title}
             </h2>
           </div>
           <Button
@@ -84,7 +87,7 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
             <div className="flex items-center gap-2">
               <User className={`w-4 h-4 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`} />
               <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Вы сказали:
+                {am.youSaid}
               </span>
             </div>
             <div className={`p-4 rounded-xl ${
@@ -93,7 +96,7 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
                 : 'bg-gradient-to-br from-white/5 to-purple-500/5 border border-white/10'
             }`}>
               <p className={`text-sm ${theme === 'light' ? 'text-gray-800' : 'text-gray-200'}`}>
-                {userInput || 'Обрабатываю ваше сообщение...'}
+                {userInput || am.processingMsg}
               </p>
             </div>
           </div>
@@ -103,7 +106,7 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
             <div className="flex items-center gap-2">
               <Sparkles className={`w-4 h-4 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
               <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                AI понял:
+                {am.aiUnderstood}
               </span>
             </div>
             <div className={`p-4 rounded-xl border ${
@@ -192,15 +195,15 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
                     : 'border-white/10 text-gray-300 hover:bg-white/5'
                 }`}
               >
-                Отмена
+                {i.common.cancel}
               </Button>
               <Button
                 onClick={onAccept}
-                aria-label="Подтвердить удаление квеста"
+                aria-label={am.deleteQuest}
                 className="w-full min-h-[44px] bg-red-600 hover:bg-red-700 text-white"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Удалить
+                {i.common.delete}
               </Button>
             </div>
           ) : aiResponse.intent === 'EDIT_QUEST' ? (
@@ -215,15 +218,15 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
                     : 'border-white/10 text-gray-300 hover:bg-white/5'
                 }`}
               >
-                Отмена
+                {i.common.cancel}
               </Button>
               <Button
                 onClick={onAccept}
-                aria-label="Подтвердить изменение квеста"
+                aria-label={am.editQuest}
                 className="w-full min-h-[44px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
               >
                 <Pencil className="w-4 h-4 mr-2" />
-                Изменить
+                {i.common.edit}
               </Button>
             </div>
           ) : aiResponse.intent === 'ADD_QUEST' ? (
@@ -238,23 +241,23 @@ export default function AIResponseModal({ userInput, aiResponse, onClose, onAcce
                     : 'border-white/10 text-gray-300 hover:bg-white/5'
                 }`}
               >
-                Отмена
+                {i.common.cancel}
               </Button>
               <Button
                 onClick={onAccept}
-                aria-label="Добавить квест"
+                aria-label={am.addQuest}
                 className="min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
               >
-                Добавить квест
+                {am.addQuest}
               </Button>
             </div>
           ) : (
             <Button
               onClick={onAccept}
-              aria-label="Подтвердить"
+              aria-label={am.great}
               className="w-full min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
             >
-              Отлично!
+              {am.great}
             </Button>
           )}
         </div>

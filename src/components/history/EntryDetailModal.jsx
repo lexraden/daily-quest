@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { t, getLocale } from '@/lib/i18n';
 
 const CATEGORIES = {
   health: { name: "Health", icon: "💪", bgColor: "bg-green-500/10", textColor: "text-green-400" },
@@ -12,6 +13,9 @@ const CATEGORIES = {
 };
 
 export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) {
+  const i = t();
+  const ed = i.entryDetail;
+  const c = i.calories;
   if (!entry) return null;
 
   const catInfo = CATEGORIES[entry.category];
@@ -44,7 +48,7 @@ export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) 
               <div className="flex items-center gap-2 flex-wrap">
                 {isMeal ? (
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-orange-500/10 text-orange-500">
-                    🍽️ Еда
+                    🍽️ {ed.food}
                   </span>
                 ) : (
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${catInfo?.bgColor} ${catInfo?.textColor}`}>
@@ -54,17 +58,17 @@ export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) 
                 {isQuest && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                     theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
-                  }`}>🎯 Квест</span>
+                  }`}>🎯 {ed.quest}</span>
                 )}
                 {!isQuest && !isMeal && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                     theme === 'light' ? 'bg-blue-100 text-blue-700' : 'bg-blue-500/20 text-blue-300'
-                  }`}>📝 Заметка</span>
+                  }`}>📝 {ed.noteLabel}</span>
                 )}
               </div>
               {entry.timestamp && (
                 <p className={`text-xs mt-1 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {new Date(entry.timestamp).toLocaleString('ru-RU', {
+                  {new Date(entry.timestamp).toLocaleString(getLocale(), {
                     day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
                   })}
                 </p>
@@ -85,7 +89,7 @@ export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) 
             theme === 'light' ? 'bg-gray-50' : 'bg-white/5'
           }`}>
             <p className={`text-xs font-medium mb-1.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
-              {isMeal ? 'Приём пищи' : isQuest ? 'Выполненный квест' : 'Заметка'}
+              {isMeal ? ed.meal : isQuest ? ed.completedQuest : ed.noteLabel}
             </p>
             <p className={`text-base font-medium leading-relaxed ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
               {entry.text}
@@ -96,20 +100,20 @@ export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) 
           {isMeal && (
             <div className="grid grid-cols-2 gap-2 mb-4">
               <div className="rounded-xl p-3 bg-orange-500/10">
-                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🔥 Калории</div>
-                <div className="text-lg font-bold text-orange-500">{Math.round(entry.calories)} <span className="text-xs font-normal">ккал</span></div>
+                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🔥 {c.caloriesLabel}</div>
+                <div className="text-lg font-bold text-orange-500">{Math.round(entry.calories)} <span className="text-xs font-normal">{c.kcal}</span></div>
               </div>
               <div className="rounded-xl p-3 bg-red-500/10">
-                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🥩 Белки</div>
-                <div className="text-lg font-bold text-red-500">{Math.round(entry.protein)} <span className="text-xs font-normal">г</span></div>
+                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🥩 {c.protein}</div>
+                <div className="text-lg font-bold text-red-500">{Math.round(entry.protein)} <span className="text-xs font-normal">g</span></div>
               </div>
               <div className="rounded-xl p-3 bg-yellow-500/10">
-                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>💧 Жиры</div>
-                <div className="text-lg font-bold text-yellow-500">{Math.round(entry.fat)} <span className="text-xs font-normal">г</span></div>
+                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>💧 {c.fat}</div>
+                <div className="text-lg font-bold text-yellow-500">{Math.round(entry.fat)} <span className="text-xs font-normal">g</span></div>
               </div>
               <div className="rounded-xl p-3 bg-green-500/10">
-                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🌾 Углеводы</div>
-                <div className="text-lg font-bold text-green-500">{Math.round(entry.carbs)} <span className="text-xs font-normal">г</span></div>
+                <div className={`text-xs mb-0.5 ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>🌾 {c.carbs}</div>
+                <div className="text-lg font-bold text-green-500">{Math.round(entry.carbs)} <span className="text-xs font-normal">g</span></div>
               </div>
             </div>
           )}
@@ -122,7 +126,7 @@ export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) 
               className="w-full min-h-[44px] mb-4 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
             >
               <Pencil className="w-4 h-4 mr-2" />
-              Редактировать
+              {i.common.edit}
             </Button>
           )}
 
@@ -134,7 +138,7 @@ export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) 
               <p className={`text-xs font-medium mb-1.5 flex items-center gap-1.5 ${
                 theme === 'light' ? 'text-purple-600' : 'text-purple-400'
               }`}>
-                🎙️ Голосовой ввод
+                🎙️ {i.voice.voiceInput}
               </p>
               <p className={`text-sm leading-relaxed ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
                 {entry.rawText}

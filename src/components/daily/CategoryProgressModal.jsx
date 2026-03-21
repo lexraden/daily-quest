@@ -1,9 +1,12 @@
 import React from 'react';
 import { X, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 
 export default function CategoryProgressModal({ category, categoryInfo, totalCompleted, currentLevel, completionHistory, onClose, theme = 'dark' }) {
   const Icon = categoryInfo.icon;
+  const i = t();
+  const cp = i.catProgress;
   
   // Calculate next level threshold (every 10 quests = +1 level)
   const currentThreshold = (currentLevel - 1) * 10;
@@ -59,7 +62,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
                 {categoryInfo.name}
               </h2>
               <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Недельный отчёт
+                {cp.weeklyReport}
               </p>
             </div>
           </div>
@@ -84,7 +87,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
           }`}>
             <div className="flex items-center justify-between mb-3">
               <span className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                Текущий уровень
+                {cp.currentLevel}
               </span>
               <div className={`px-3 py-1 rounded-lg ${categoryInfo.bgColor}`}>
                 <span className={`text-2xl font-bold ${categoryInfo.textColor}`}>
@@ -97,7 +100,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>
-                  Прогресс до Lvl {currentLevel + 1}
+                  {cp.progressToLvl} {currentLevel + 1}
                 </span>
                 <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>
                   {progressInCurrentLevel}/10
@@ -125,7 +128,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
           }`}>
             <div className="flex items-center justify-between mb-3">
               <span className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                За последние 7 дней
+                {cp.last7Days}
               </span>
               <div className={`text-3xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
                 {weeklyCompleted}
@@ -133,10 +136,10 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
             </div>
             <p className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>
               {weeklyCompleted === 0 
-                ? 'Пора начать!'
+                ? cp.startNow
                 : weeklyCompleted < 7 
-                  ? 'Хорошее начало! Продолжай в том же духе'
-                  : 'Отлично! Ты на правильном пути 🔥'
+                  ? cp.goodStart
+                  : cp.great
               }
             </p>
           </div>
@@ -151,7 +154,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className={`w-4 h-4 ${categoryInfo.textColor}`} />
                 <span className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  Всего квестов
+                  {cp.totalQuests}
                 </span>
               </div>
               <div className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
@@ -167,7 +170,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
               <div className="flex items-center gap-2 mb-2">
                 <Icon className={`w-4 h-4 ${categoryInfo.textColor}`} />
                 <span className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-                  До следующего
+                  {cp.toNext}
                 </span>
               </div>
               <div className={`text-2xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
@@ -179,7 +182,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
           {/* Level Milestones */}
           <div>
             <h3 className={`text-sm font-semibold mb-3 ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
-              Достижения
+              {cp.achievements}
             </h3>
             <div className="space-y-2">
               {[1, 5, 10, 20, 30, 50].map((milestone) => {
@@ -202,7 +205,7 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
                           ? 'text-gray-500' 
                           : 'text-gray-500'
                     }`}>
-                      Уровень {milestone}
+                      {cp.levelN} {milestone}
                     </span>
                     {reached && (
                       <span className="text-lg">✓</span>
@@ -220,11 +223,11 @@ export default function CategoryProgressModal({ category, categoryInfo, totalCom
         >
           <Button
             onClick={onClose}
-            aria-label="Закрыть прогресс категории"
+            aria-label={i.common.close}
             className="w-full min-h-[44px]"
             style={{ backgroundColor: categoryInfo.color }}
           >
-            Закрыть
+            {i.common.close}
           </Button>
         </div>
       </div>
