@@ -125,7 +125,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
               {nutrients.map(n => (
                 <div key={n.label} className={`rounded-lg p-2 text-center ${n.bg}`}>
                   <div className={`text-sm font-bold ${n.color}`}>{Math.round(n.value)}</div>
-                  <div className={`text-[9px] ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>{n.unit === 'ккал' ? 'ккал' : `${n.label} (г)`}</div>
+                  <div className={`text-[9px] ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>{n.unit === c.kcal ? c.kcal : `${n.label} (g)`}</div>
                 </div>
               ))}
             </div>
@@ -151,7 +151,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
                 onClick={() => setShowDeleteConfirm(true)}
                 variant="outline"
                 size="icon"
-                aria-label="Удалить приём пищи"
+                aria-label={me.deleteMeal}
                 className={`h-11 w-11 flex-shrink-0 ${
                   theme === 'light' ? 'border-red-200 text-red-500 hover:bg-red-50' : 'border-red-500/30 text-red-400 hover:bg-red-500/10'
                 }`}
@@ -161,7 +161,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
               <Button
                 onClick={handleRecalculate}
                 disabled={isRecalculating || !correction.trim()}
-                aria-label="Пересчитать калории"
+                aria-label={me.recalculate}
                 className="flex-1 min-h-[44px] bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
               >
                 {isRecalculating ? (
