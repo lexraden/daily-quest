@@ -63,7 +63,7 @@ export default function Profile() {
         }
         setUser(authUser);
 
-        const { data } = await getCachedUserData(authUser.email);
+        const { data, id } = await getCachedUserData(authUser.email);
         if (data) {
           const totalCompleted = data.total_completed || 0;
           let currentLevel = LEVELS[0];
@@ -111,7 +111,7 @@ export default function Profile() {
     const authUser = await getCachedUser();
     if (!authUser) return;
     setUser(authUser);
-    const { data } = await getCachedUserData(authUser.email);
+    const { data, id } = await getCachedUserData(authUser.email);
     if (data) {
       const tc = data.total_completed || 0;
       let cl = LEVELS[0];
@@ -123,6 +123,8 @@ export default function Profile() {
       });
       setJournalEntries(data.journal_entries || []);
       setMealHistory(data.meal_history || []);
+      setNotificationSettings(data.notification_settings || null);
+      setUserDataId(id);
     }
   };
 
