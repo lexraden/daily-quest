@@ -8,6 +8,7 @@ import { t } from '@/lib/i18n';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import StatsSection from '@/components/profile/StatsSection';
+import NotificationSettings from '@/components/profile/NotificationSettings';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData } from '@/components/UserDataCache';
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
@@ -43,6 +44,8 @@ export default function Profile() {
   });
   const [journalEntries, setJournalEntries] = useState([]);
   const [mealHistory, setMealHistory] = useState([]);
+  const [notificationSettings, setNotificationSettings] = useState(null);
+  const [userDataId, setUserDataId] = useState(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
@@ -79,6 +82,8 @@ export default function Profile() {
 
           setJournalEntries(data.journal_entries || []);
           setMealHistory(data.meal_history || []);
+          setNotificationSettings(data.notification_settings || null);
+          setUserDataId(id);
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -137,6 +142,20 @@ export default function Profile() {
       <div className="px-5 py-3 space-y-3 max-w-2xl mx-auto pb-6">
         {/* Profile header - compact */}
         <ProfileHeader user={user} stats={stats} levelProgress={levelProgress} theme={theme} />
+
+        {/* Notification Settings */}
+        <NotificationSettings
+          settings={notificationSettings}
+          onSave={async (newSettings) => {
+            setNotificationSettings(newSettings);
+            if (userDataId) {
+              updateCachedUserData(userDataId, { notification_settings: newSettings });
+              await base44.entities.UserQuestData.update(userDataId, { notification_settings: newSettings });
+              toast.success(i.notifications?.saved || 'Saved!');
+            }
+          }}
+          theme={theme}
+        />
 
         {/* Daily Calories */}
         <DailyCaloriesCard

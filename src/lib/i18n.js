@@ -338,6 +338,18 @@ const translations = {
       completeQuest: 'Выполнить квест',
       categoryProgress: 'прогресс',
     },
+    // Notifications
+    notifications: {
+      title: 'Уведомления',
+      subtitle: 'Настройки напоминаний',
+      enable: 'Включить напоминания',
+      reminderTime: 'Время напоминания',
+      streakWarning: 'Защита стрика',
+      streakWarningDesc: 'Предупреждение о потере серии',
+      pushNotReady: 'Push-уведомления скоро будут доступны. Пока отправляем email.',
+      save: 'Сохранить настройки',
+      saved: 'Настройки сохранены! ✓',
+    },
     // AI prompts language
     aiLang: 'ru',
   },
@@ -652,6 +664,17 @@ const translations = {
       uncheckQuest: 'Uncheck quest',
       completeQuest: 'Complete quest',
       categoryProgress: 'progress',
+    },
+    notifications: {
+      title: 'Notifications',
+      subtitle: 'Reminder settings',
+      enable: 'Enable reminders',
+      reminderTime: 'Reminder time',
+      streakWarning: 'Streak protection',
+      streakWarningDesc: 'Alert before losing streak',
+      pushNotReady: 'Push notifications coming soon. Email reminders active for now.',
+      save: 'Save settings',
+      saved: 'Settings saved! ✓',
     },
     aiLang: 'en',
   }
