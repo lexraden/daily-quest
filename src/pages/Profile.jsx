@@ -145,20 +145,6 @@ export default function Profile() {
         {/* Profile header - compact */}
         <ProfileHeader user={user} stats={stats} levelProgress={levelProgress} theme={theme} />
 
-        {/* Notification Settings */}
-        <NotificationSettings
-          settings={notificationSettings}
-          onSave={async (newSettings) => {
-            setNotificationSettings(newSettings);
-            if (userDataId) {
-              updateCachedUserData(userDataId, { notification_settings: newSettings });
-              await base44.entities.UserQuestData.update(userDataId, { notification_settings: newSettings });
-              toast.success(i.notifications?.saved || 'Saved!');
-            }
-          }}
-          theme={theme}
-        />
-
         {/* Daily Calories */}
         <DailyCaloriesCard
           mealHistory={mealHistory}
@@ -195,6 +181,20 @@ export default function Profile() {
           categoryLevels={stats.categoryLevels}
           theme={theme}
           journalEntries={journalEntries}
+        />
+
+        {/* Notification Settings */}
+        <NotificationSettings
+          settings={notificationSettings}
+          onSave={async (newSettings) => {
+            setNotificationSettings(newSettings);
+            if (userDataId) {
+              updateCachedUserData(userDataId, { notification_settings: newSettings });
+              await base44.entities.UserQuestData.update(userDataId, { notification_settings: newSettings });
+              toast.success(i.notifications?.saved || 'Saved!');
+            }
+          }}
+          theme={theme}
         />
 
         {/* Update quests button */}
