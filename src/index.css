@@ -4,7 +4,7 @@
 
 /* Mobile safe area insets */
 html {
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
 }
 
 html, body {

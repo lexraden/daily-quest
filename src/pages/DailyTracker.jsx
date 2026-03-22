@@ -187,9 +187,13 @@ export default function DailyTracker() {
         return () => window.removeEventListener('focus', handleFocus);
       }, []);
 
-  // Сохранение темы
+  // Сохранение темы + обновление meta theme-color для Android status bar
   useEffect(() => {
     localStorage.setItem('dailyQuestsTheme', theme);
+    const meta = document.getElementById('theme-color-meta');
+    if (meta) {
+      meta.setAttribute('content', theme === 'light' ? '#f9fafb' : '#0f1419');
+    }
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
@@ -1071,7 +1075,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
   return (
     <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass} pb-4`}>
       {/* Compact Header */}
-      <div className="px-5 pb-4" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)' }}>
+      <div className="px-5 pb-3" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold">

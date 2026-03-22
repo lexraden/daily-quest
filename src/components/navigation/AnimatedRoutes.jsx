@@ -128,7 +128,7 @@ export default function AnimatedRoutes({ children, fallback }) {
         Always rendered. Uses display:none to hide inactive tabs.
         Stays mounted even on child pages.
       */}
-      <div className={showNav ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+8px)]' : ''}>
+      <div className={showNav ? 'pb-[calc(3rem+env(safe-area-inset-bottom,0px))]' : ''}>
         <Suspense fallback={<RouteFallback />}>
           {Object.entries(TAB_COMPONENTS).map(([key, Component]) => {
             if (!visitedTabs.has(key)) return null;
