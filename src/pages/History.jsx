@@ -373,7 +373,7 @@ export default function History() {
   };
 
   return (
-    <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass} pb-8`}>
+    <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass} pb-4`}>
       <div className={`sticky top-0 z-10 backdrop-blur-xl border-b ${
         theme === 'light' ? 'bg-white/80 border-gray-200' : 'bg-[#0f1419]/80 border-white/10'
       }`}
