@@ -1175,7 +1175,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
 
         {/* Quest Categories */}
         <div className="px-5 mt-1">
-        <div className="space-y-1">
+        <div className="space-y-0">
           {categoryEntries.map(([categoryKey, categoryInfo]) => {
             const quests = questData[categoryKey] || [];
             return (
