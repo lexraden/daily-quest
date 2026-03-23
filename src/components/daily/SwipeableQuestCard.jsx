@@ -93,7 +93,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
   };
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-0">
       {/* Category Header */}
       <div className="flex items-center gap-2 px-1">
         <button
@@ -290,7 +290,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
         </div>
 
         {/* Dots Indicator */}
-        <div className="flex items-center justify-center mt-1">
+        <div className="flex items-center justify-center mt-0">
         {sortedQuests.length > 1 && (
           <>
             {sortedQuests.map((quest, idx) => {
