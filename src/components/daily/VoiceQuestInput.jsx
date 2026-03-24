@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 import CaloriePhotoInput from './CaloriePhotoInput';
-import { t, getSpeechLang } from '@/lib/i18n';
+import { t, getLang, getSpeechLang } from '@/lib/i18n';
 
 const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark' }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -106,8 +106,11 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
     setIsProcessing(true);
 
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Ты - ассистент для трекера задач и достижений. Пользователь сказал: "${text}"
+      const lang = getLang();
+      const isRu = lang === 'ru';
+
+      const prompt = isRu
+        ? `Ты - ассистент для трекера задач и достижений. Пользователь сказал: "${text}"
 
       Определи, что именно хочет пользователь:
       1. COMPLETED_QUEST - сообщает о выполнении какого-то квеста/задачи (например: "я сегодня пробежал 5 км", "закончил проект", "помедитировал")
@@ -124,7 +127,30 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       - Для DELETE_QUEST: определи, какой именно квест пользователь хочет удалить (уровень 1, 2 или 3)
       - Для EDIT_QUEST: в поле "name" укажи НОВОЕ название квеста, в поле "old_name" укажи СТАРОЕ название квеста которое нужно заменить, в поле "level" укажи уровень квеста который нужно изменить
 
-      Верни результат в JSON формате.`,
+      ВАЖНО: Все ответы (name, description, message) должны быть на РУССКОМ языке.
+      Верни результат в JSON формате.`
+        : `You are an assistant for a daily quest and achievement tracker. The user said: "${text}"
+
+      Determine what the user wants:
+      1. COMPLETED_QUEST - reporting completion of a quest/task (e.g. "I ran 5km today", "finished the project", "meditated")
+      2. ADD_QUEST - wants to add a new quest to the tracker (e.g. "add a quest to run 5km", "I want to add meditation")
+      3. DELETE_QUEST - wants to delete an existing quest (e.g. "delete the running quest", "remove meditation")
+      4. EDIT_QUEST - wants to change/rename an existing quest (e.g. "change running to swimming", "rename meditation to yoga")
+      5. JOURNAL - just sharing a note/thought about the day (e.g. "today was a good day", "tired from work")
+
+      For each action type determine:
+      - Category: health (fitness/sports), mind (learning/meditation), work (work/projects), money (finances/investments), love (family/relationships), friends (friends/socializing)
+      - Short description (up to 30 characters for a quest)
+      - Appropriate emoji
+      - Friendly message for the user
+      - For DELETE_QUEST: determine which quest the user wants to delete (level 1, 2, or 3)
+      - For EDIT_QUEST: put the NEW quest name in "name", the OLD quest name in "old_name", and the quest level in "level"
+
+      IMPORTANT: All responses (name, description, message) MUST be in ENGLISH.
+      Return the result in JSON format.`;
+
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt,
         response_json_schema: {
           type: "object",
           properties: {
