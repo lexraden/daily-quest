@@ -335,8 +335,17 @@ export default function DailyTracker() {
       
       toast.success(aiResponse.message || '🎉');
     } else if (intent === 'ADD_QUEST') {
-      // Добавить новый квест
-      setQuestSuggestion(aiResponse);
+      // Добавить новый квест напрямую
+      const existingLevels = (questData[category] || []).map(q => q.level);
+      let newLevel = level || (Math.max(...existingLevels, 0) + 1);
+      while (existingLevels.includes(newLevel)) {
+        newLevel++;
+      }
+      setQuestData(prev => ({
+        ...prev,
+        [category]: [...(prev[category] || []), { level: newLevel, name, emoji }]
+      }));
+      toast.success(aiResponse.message || '✅');
     } else if (intent === 'JOURNAL') {
       // Добавить заметку в журнал
       const today = getTodayKey();
