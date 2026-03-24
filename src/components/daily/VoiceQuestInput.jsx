@@ -7,7 +7,7 @@ import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 import CaloriePhotoInput from './CaloriePhotoInput';
 import { t, getLang, getSpeechLang } from '@/lib/i18n';
 
-const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark' }) {
+const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark', questData }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { recognition } = useSpeechRecognition();
@@ -109,42 +109,69 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       const lang = getLang();
       const isRu = lang === 'ru';
 
+      // Build existing quests list for better matching
+      const existingQuestsList = questData ? Object.entries(questData).map(([cat, quests]) =>
+        `${cat}: ${quests.map(q => `"${q.emoji} ${q.name}" (level ${q.level})`).join(', ')}`
+      ).join('\n') : '';
+
       const prompt = isRu
         ? `Ты - ассистент для трекера задач и достижений. Пользователь сказал: "${text}"
 
-      Определи, что именно хочет пользователь:
-      1. COMPLETED_QUEST - сообщает о выполнении какого-то квеста/задачи (например: "я сегодня пробежал 5 км", "закончил проект", "помедитировал")
-      2. ADD_QUEST - хочет добавить новый квест в трекер (например: "добавь квест пробежать 5 км", "хочу добавить медитацию")
-      3. DELETE_QUEST - хочет удалить существующий квест (например: "удали квест про бег", "убери медитацию", "удалить задачу про чтение")
-      4. EDIT_QUEST - хочет изменить/переименовать существующий квест (например: "измени квест бег на плавание", "переименуй медитацию в йогу", "замени квест про чтение на изучение языка")
-      5. JOURNAL - просто делится заметкой/мыслями о дне (например: "сегодня был хороший день", "устал на работе")
+      Вот существующие квесты пользователя:
+      ${existingQuestsList}
 
-      Для каждого типа действия определи:
-      - Категория: health (здоровье/спорт), mind (обучение/медитация), work (работа/проекты), money (финансы/инвестиции), love (семья/отношения), friends (друзья/общение)
-      - Краткое описание (до 30 символов для квеста)
-      - Подходящий эмодзи
-      - Дружелюбное сообщение для пользователя
-      - Для DELETE_QUEST: определи, какой именно квест пользователь хочет удалить (уровень 1, 2 или 3)
-      - Для EDIT_QUEST: в поле "name" укажи НОВОЕ название квеста, в поле "old_name" укажи СТАРОЕ название квеста которое нужно заменить, в поле "level" укажи уровень квеста который нужно изменить
+      Определи, что именно хочет пользователь:
+      1. COMPLETED_QUEST - сообщает о выполнении какого-то квеста/задачи
+      2. ADD_QUEST - хочет добавить новый квест в трекер
+      3. DELETE_QUEST - хочет удалить существующий квест
+      4. EDIT_QUEST - хочет изменить/переименовать существующий квест
+      5. JOURNAL - просто делится заметкой/мыслями о дне
+
+      Для DELETE_QUEST, EDIT_QUEST и COMPLETED_QUEST:
+      - ОБЯЗАТЕЛЬНО найди ТОЧНОЕ совпадение с существующим квестом из списка выше
+      - В поле "name" укажи ТОЧНОЕ название существующего квеста (как оно написано в списке)
+      - В поле "emoji" укажи ТОЧНЫЙ эмодзи существующего квеста
+      - В поле "level" укажи ТОЧНЫЙ уровень существующего квеста
+      - В поле "category" укажи ТОЧНУЮ категорию существующего квеста
+
+      Для EDIT_QUEST дополнительно:
+      - В поле "old_name" укажи ТОЧНОЕ старое название квеста
+      - В поле "name" укажи НОВОЕ название
+
+      Для ADD_QUEST и JOURNAL:
+      - Подбери подходящую категорию, эмодзи и краткое описание
+
+      Дружелюбное сообщение для пользователя.
 
       ВАЖНО: Все ответы (name, description, message) должны быть на РУССКОМ языке.
       Верни результат в JSON формате.`
         : `You are an assistant for a daily quest and achievement tracker. The user said: "${text}"
 
-      Determine what the user wants:
-      1. COMPLETED_QUEST - reporting completion of a quest/task (e.g. "I ran 5km today", "finished the project", "meditated")
-      2. ADD_QUEST - wants to add a new quest to the tracker (e.g. "add a quest to run 5km", "I want to add meditation")
-      3. DELETE_QUEST - wants to delete an existing quest (e.g. "delete the running quest", "remove meditation")
-      4. EDIT_QUEST - wants to change/rename an existing quest (e.g. "change running to swimming", "rename meditation to yoga")
-      5. JOURNAL - just sharing a note/thought about the day (e.g. "today was a good day", "tired from work")
+      Here are the user's existing quests:
+      ${existingQuestsList}
 
-      For each action type determine:
-      - Category: health (fitness/sports), mind (learning/meditation), work (work/projects), money (finances/investments), love (family/relationships), friends (friends/socializing)
-      - Short description (up to 30 characters for a quest)
-      - Appropriate emoji
-      - Friendly message for the user
-      - For DELETE_QUEST: determine which quest the user wants to delete (level 1, 2, or 3)
-      - For EDIT_QUEST: put the NEW quest name in "name", the OLD quest name in "old_name", and the quest level in "level"
+      Determine what the user wants:
+      1. COMPLETED_QUEST - reporting completion of a quest/task
+      2. ADD_QUEST - wants to add a new quest to the tracker
+      3. DELETE_QUEST - wants to delete an existing quest
+      4. EDIT_QUEST - wants to change/rename an existing quest
+      5. JOURNAL - just sharing a note/thought about the day
+
+      For DELETE_QUEST, EDIT_QUEST and COMPLETED_QUEST:
+      - You MUST find an EXACT match from the existing quests list above
+      - In "name" field put the EXACT name of the existing quest (as written in the list)
+      - In "emoji" field put the EXACT emoji of the existing quest
+      - In "level" field put the EXACT level of the existing quest
+      - In "category" field put the EXACT category of the existing quest
+
+      For EDIT_QUEST additionally:
+      - In "old_name" put the EXACT old quest name
+      - In "name" put the NEW name
+
+      For ADD_QUEST and JOURNAL:
+      - Pick appropriate category, emoji and short description
+
+      Friendly message for the user.
 
       IMPORTANT: All responses (name, description, message) MUST be in ENGLISH.
       Return the result in JSON format.`;

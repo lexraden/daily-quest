@@ -282,10 +282,35 @@ export default function DailyTracker() {
           }
 
           if (questIndex !== -1) {
+            const deletedQuest = categoryQuests[questIndex];
+            const deletedKey = `${category}_${deletedQuest.level}`;
+            
+            // Remove quest from data
             setQuestData(prev => ({
               ...prev,
               [category]: prev[category].filter((_, i) => i !== questIndex)
             }));
+            
+            // Clean up completedToday for the deleted quest
+            setCompletedToday(prev => {
+              const newState = { ...prev };
+              delete newState[deletedKey];
+              return newState;
+            });
+            
+            // Clean up today's completion history
+            const today = getTodayKey();
+            setCompletionHistory(prev => {
+              const newHistory = { ...prev };
+              if (newHistory[today]) {
+                newHistory[today] = newHistory[today].filter(
+                  c => !(c.category === category && c.level === deletedQuest.level)
+                );
+                if (newHistory[today].length === 0) delete newHistory[today];
+              }
+              return newHistory;
+            });
+            
             toast.success(aiResponse.message || '🗑️');
           } else {
             toast.error(t().common.error);
@@ -1180,6 +1205,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
           onQuestSuggestion={handleQuestSuggestion}
           onMealAnalyzed={handleMealAnalyzed}
           theme={theme}
+          questData={questData}
         />
 
         {/* Quest Categories */}
