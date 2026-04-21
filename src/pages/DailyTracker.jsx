@@ -173,6 +173,9 @@ export default function DailyTracker() {
                   console.log('Failed to save user name:', err);
                 });
               }
+            } else {
+              // No user returned but no error — unblock the UI
+              setIsLoaded(true);
             }
           } catch (error) {
             console.error('Auth error:', error);
@@ -182,10 +185,19 @@ export default function DailyTracker() {
 
         loadUser();
 
+        // Safety net: never leave the user on an infinite spinner.
+        // If after 8 seconds nothing has finished loading, unblock the UI.
+        const loadTimeout = setTimeout(() => {
+          setIsLoaded((prev) => prev || true);
+        }, 8000);
+
         // Reload user on focus to get updated name
         const handleFocus = () => loadUser();
         window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
+        return () => {
+          window.removeEventListener('focus', handleFocus);
+          clearTimeout(loadTimeout);
+        };
       }, []);
 
   // Сохранение темы + обновление meta theme-color для Android status bar

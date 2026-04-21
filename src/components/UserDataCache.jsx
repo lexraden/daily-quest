@@ -11,9 +11,26 @@ const cache = {
 
 const CACHE_TTL = 30000; // 30 seconds
 
+// Retry wrapper with exponential backoff for rate-limited (429) requests
+async function withRetry(fn, { retries = 3, baseDelay = 500 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const status = err?.status || err?.response?.status;
+      if (status !== 429 || attempt === retries) throw err;
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 200;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastError;
+}
+
 export async function getCachedUser() {
   if (cache.user) return cache.user;
-  const user = await base44.auth.me();
+  const user = await withRetry(() => base44.auth.me());
   cache.user = user;
   return user;
 }
@@ -33,7 +50,7 @@ export async function getCachedUserData(email) {
   }
 
   cache.fetching = (async () => {
-    const list = await base44.entities.UserQuestData.filter({ created_by: email });
+    const list = await withRetry(() => base44.entities.UserQuestData.filter({ created_by: email }));
     if (list.length > 0) {
       cache.userData = list[0];
       cache.userDataId = list[0].id;
