@@ -31,6 +31,7 @@ import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser, 
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import useSaveUserData from '@/hooks/useSaveUserData';
 import { t, getLang } from '@/lib/i18n';
+import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -561,8 +562,9 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
         }
         });
 
-        // Update quests with AI-generated ones
-        setQuestData(result);
+        // Update quests with AI-generated ones (sanitized to avoid broken entries)
+        const sanitizedResult = sanitizeQuestData(result, DEFAULT_QUEST_DATA);
+        setQuestData(sanitizedResult);
 
         // Check if we need to delete old data (reset scenario)
         const userDataList = await base44.entities.UserQuestData.filter({ created_by: user?.email });
@@ -572,7 +574,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
 
         // Create new user data record after onboarding
         const newUserData = await base44.entities.UserQuestData.create({
-        quest_data: result,
+        quest_data: sanitizedResult,
         onboarding_answers: answers,
         category_levels: Object.keys(CATEGORIES).reduce((acc, cat) => ({ ...acc, [cat]: 1 }), {}),
         category_total_completed: Object.keys(CATEGORIES).reduce((acc, cat) => ({ ...acc, [cat]: 0 }), {}),
@@ -673,9 +675,9 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
           const data = cachedData;
           setUserDataId(cachedId);
           
-          // Загрузка кастомных квестов
+          // Загрузка кастомных квестов (с санитизацией от битых данных)
           if (data.quest_data) {
-            setQuestData(data.quest_data);
+            setQuestData(sanitizeQuestData(data.quest_data, DEFAULT_QUEST_DATA));
           }
 
           // Загрузка заметок

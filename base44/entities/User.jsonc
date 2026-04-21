@@ -1,0 +1,26 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "default": "user",
+      "description": "User role in the application"
+    },
+    "notification_time": {
+      "type": "string",
+      "default": "09:00",
+      "description": "Preferred time for daily reminders (HH:MM format)"
+    },
+    "notifications_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to receive daily quest reminders"
+    }
+  },
+  "required": []
+}
