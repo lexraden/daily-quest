@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,26 +29,34 @@ export default function History() {
   const [categoryLevels, setCategoryLevels] = useState({});
   const [totalCompleted, setTotalCompleted] = useState(0);
   const [streak, setStreak] = useState(0);
+  const location = useLocation();
 
   useEffect(() => {
     setTheme(localStorage.getItem('dailyQuestsTheme') || 'light');
-    const loadData = async () => {
-      const authUser = await getCachedUser();
-      if (!authUser) return;
-      const { data, id } = await getCachedUserData(authUser.email);
-      if (data) {
-        setCompletionHistory(data.completion_history || {});
-        setJournalEntries(data.journal_entries || []);
-        setMealHistory(data.meal_history || []);
-        setCategoryTotalCompleted(data.category_total_completed || {});
-        setCategoryLevels(data.category_levels || {});
-        setTotalCompleted(data.total_completed || 0);
-        setStreak(data.streak || 0);
-        setUserDataId(id);
-      }
-    };
-    loadData();
   }, []);
+
+  // Re-sync from cache whenever this page becomes active (pathname changes to History)
+  useEffect(() => {
+    const isHistoryActive = location.pathname === '/History';
+    if (!isHistoryActive) return;
+
+    let cancelled = false;
+    (async () => {
+      const authUser = await getCachedUser();
+      if (!authUser || cancelled) return;
+      const { data, id } = await getCachedUserData(authUser.email);
+      if (!data || cancelled) return;
+      setCompletionHistory(data.completion_history || {});
+      setJournalEntries(data.journal_entries || []);
+      setMealHistory(data.meal_history || []);
+      setCategoryTotalCompleted(data.category_total_completed || {});
+      setCategoryLevels(data.category_levels || {});
+      setTotalCompleted(data.total_completed || 0);
+      setStreak(data.streak || 0);
+      setUserDataId(id);
+    })();
+    return () => { cancelled = true; };
+  }, [location.pathname]);
 
   const statsViewMode = viewMode === 'day' ? 'daily' : viewMode === 'week' ? 'weekly' : 'monthly';
 
@@ -463,21 +472,23 @@ export default function History() {
         <MealEditModal
           meal={editingMeal.meal}
           mealIndex={editingMeal.index}
-          onSave={(idx, updated) => {
+          onSave={async (idx, updated) => {
             const newHistory = [...mealHistory];
             newHistory[idx] = updated;
             setMealHistory(newHistory);
             if (userDataId) {
               updateCachedUserData(userDataId, { meal_history: newHistory });
-              base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
+              await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
+              invalidateCache();
             }
           }}
-          onDelete={(idx) => {
+          onDelete={async (idx) => {
             const newHistory = mealHistory.filter((_, i) => i !== idx);
             setMealHistory(newHistory);
             if (userDataId) {
               updateCachedUserData(userDataId, { meal_history: newHistory });
-              base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
+              await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
+              invalidateCache();
             }
           }}
           onClose={() => setEditingMeal(null)}

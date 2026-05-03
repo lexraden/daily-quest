@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -50,48 +51,54 @@ export default function Profile() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
     setTheme(savedTheme);
+  }, []);
 
-    const loadData = async () => {
+  // Re-sync from cache whenever Profile becomes active
+  useEffect(() => {
+    const isProfileActive = location.pathname === '/Profile';
+    if (!isProfileActive) return;
+
+    let cancelled = false;
+    (async () => {
       try {
         const authUser = await getCachedUser();
         if (!authUser) {
           await base44.auth.redirectToLogin(window.location.href);
           return;
         }
+        if (cancelled) return;
         setUser(authUser);
 
         const { data, id } = await getCachedUserData(authUser.email);
-        if (data) {
-          const totalCompleted = data.total_completed || 0;
-          let currentLevel = LEVELS[0];
-          for (const level of LEVELS) {
-            if (totalCompleted >= level.threshold) currentLevel = level;
-          }
-
-          setStats({
-            streak: data.streak || 0,
-            totalCompleted,
-            categoryLevels: data.category_levels || {},
-            categoryTotalCompleted: data.category_total_completed || {},
-            completionHistory: data.completion_history || {},
-            currentLevel
-          });
-
-          setJournalEntries(data.journal_entries || []);
-          setMealHistory(data.meal_history || []);
-          setNotificationSettings(data.notification_settings || null);
-          setUserDataId(id);
+        if (!data || cancelled) return;
+        const totalCompleted = data.total_completed || 0;
+        let currentLevel = LEVELS[0];
+        for (const level of LEVELS) {
+          if (totalCompleted >= level.threshold) currentLevel = level;
         }
+        setStats({
+          streak: data.streak || 0,
+          totalCompleted,
+          categoryLevels: data.category_levels || {},
+          categoryTotalCompleted: data.category_total_completed || {},
+          completionHistory: data.completion_history || {},
+          currentLevel
+        });
+        setJournalEntries(data.journal_entries || []);
+        setMealHistory(data.meal_history || []);
+        setNotificationSettings(data.notification_settings || null);
+        setUserDataId(id);
       } catch (error) {
         console.error('Error loading data:', error);
       }
-    };
-    loadData();
-  }, []);
+    })();
+    return () => { cancelled = true; };
+  }, [location.pathname]);
 
   const getLevelProgress = () => {
     const idx = LEVELS.findIndex(l => l === stats.currentLevel);
