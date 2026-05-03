@@ -58,6 +58,15 @@ export default function Profile() {
     setTheme(savedTheme);
   }, []);
 
+  // Listen for meal updates from other pages and apply them immediately
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.meal_history) setMealHistory(e.detail.meal_history);
+    };
+    window.addEventListener('meal-history-updated', handler);
+    return () => window.removeEventListener('meal-history-updated', handler);
+  }, []);
+
   // Re-sync from cache whenever Profile becomes active
   useEffect(() => {
     const isProfileActive = location.pathname === '/Profile';
@@ -163,8 +172,8 @@ export default function Profile() {
             if (userDataId) {
               updateCachedUserData(userDataId, { meal_history: newHistory });
               await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
-              // Invalidate so DailyTracker re-fetches fresh data when it becomes active
               invalidateCache();
+              window.dispatchEvent(new CustomEvent('meal-history-updated', { detail: { meal_history: newHistory } }));
             }
           }}
           onDeleteMeal={async (idx) => {
@@ -174,6 +183,7 @@ export default function Profile() {
               updateCachedUserData(userDataId, { meal_history: newHistory });
               await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
               invalidateCache();
+              window.dispatchEvent(new CustomEvent('meal-history-updated', { detail: { meal_history: newHistory } }));
             }
           }}
           theme={theme}

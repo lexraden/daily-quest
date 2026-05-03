@@ -875,6 +875,19 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
   useEffect(() => { cancelPendingSaveRef.current = cancelPendingSave; }, [cancelPendingSave]);
   useEffect(() => { hasPendingWriteRef.current = hasPendingWrite; }, [hasPendingWrite]);
 
+  // Listen for meal updates broadcasted from Profile/History — apply immediately
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.meal_history) {
+        cancelPendingSaveRef.current?.();
+        skipNextSaveRef.current = true;
+        setMealHistory(e.detail.meal_history);
+      }
+    };
+    window.addEventListener('meal-history-updated', handler);
+    return () => window.removeEventListener('meal-history-updated', handler);
+  }, []);
+
   // Re-sync meal history & calories when this tab becomes active
   // (after editing meals in Profile/History — they update the cache, we pick it up here)
   useEffect(() => {

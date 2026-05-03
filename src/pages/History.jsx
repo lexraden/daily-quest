@@ -35,6 +35,15 @@ export default function History() {
     setTheme(localStorage.getItem('dailyQuestsTheme') || 'light');
   }, []);
 
+  // Listen for meal updates from other pages and apply them immediately
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.meal_history) setMealHistory(e.detail.meal_history);
+    };
+    window.addEventListener('meal-history-updated', handler);
+    return () => window.removeEventListener('meal-history-updated', handler);
+  }, []);
+
   // Re-sync from cache whenever this page becomes active (pathname changes to History)
   useEffect(() => {
     const isHistoryActive = location.pathname === '/History';
@@ -480,6 +489,7 @@ export default function History() {
               updateCachedUserData(userDataId, { meal_history: newHistory });
               await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
               invalidateCache();
+              window.dispatchEvent(new CustomEvent('meal-history-updated', { detail: { meal_history: newHistory } }));
             }
           }}
           onDelete={async (idx) => {
@@ -489,6 +499,7 @@ export default function History() {
               updateCachedUserData(userDataId, { meal_history: newHistory });
               await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
               invalidateCache();
+              window.dispatchEvent(new CustomEvent('meal-history-updated', { detail: { meal_history: newHistory } }));
             }
           }}
           onClose={() => setEditingMeal(null)}
