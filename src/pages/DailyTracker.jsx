@@ -17,6 +17,8 @@ const OnboardingModal = React.lazy(() => import('@/components/daily/OnboardingMo
 const StreakCelebrationModal = React.lazy(() => import('@/components/daily/StreakCelebrationModal.jsx'));
 const StreakFreezeModal = React.lazy(() => import('@/components/daily/StreakFreezeModal.jsx'));
 const MealReportModal = React.lazy(() => import('@/components/daily/MealReportModal.jsx'));
+const CategoryLevelUpModal = React.lazy(() => import('@/components/daily/CategoryLevelUpModal.jsx'));
+import { isCategoryLevelMilestone } from '@/components/daily/CategoryLevelUpModal.jsx';
 
 // Dynamic import for confetti — only loaded on first quest completion
 let confettiModule = null;
@@ -146,6 +148,7 @@ export default function DailyTracker() {
   const [pendingFreezeData, setPendingFreezeData] = useState(null);
   const [mealHistory, setMealHistory] = useState([]);
   const [pendingMeal, setPendingMeal] = useState(null);
+  const [categoryLevelUp, setCategoryLevelUp] = useState(null); // { category, level }
   const [caloriesBurned, setCaloriesBurned] = useState({}); // { "YYYY-MM-DD": number }
   const [trialStartedAt, setTrialStartedAt] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -1051,11 +1054,20 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
       // Пересчитать уровень категории
       const newTotal = (categoryTotalCompleted[category] || 0) + xpToAdd;
       const newLevel = Math.floor(newTotal / 10) + 1; // Каждые 10 квестов = +1 уровень
+      const oldLevel = categoryLevels[category] || 1;
       setCategoryLevels(prev => ({
         ...prev,
         [category]: newLevel
       }));
-      
+
+      // Триггерим Achievement при достижении milestone уровня категории
+      if (newLevel > oldLevel && isCategoryLevelMilestone(newLevel)) {
+        setTimeout(() => {
+          setCategoryLevelUp({ category, level: newLevel });
+          fireConfetti();
+        }, 800);
+      }
+
       // Streak теперь засчитывается только при загрузке фото еды (см. handleMealAnalyzed → onSave)
     }
   }, [questData, completedToday, categoryLevels, categoryTotalCompleted, completionHistory, lastCompletedDate, streak]);
@@ -1352,6 +1364,16 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
           freezesLeft={pendingFreezeData.freezes}
           onUseFreeze={handleUseFreeze}
           onLoseStreak={handleLoseStreak}
+          theme={theme}
+        />
+      )}
+
+      {/* Category Level Up Modal */}
+      {categoryLevelUp && (
+        <CategoryLevelUpModal
+          category={categoryLevelUp.category}
+          level={categoryLevelUp.level}
+          onClose={() => setCategoryLevelUp(null)}
           theme={theme}
         />
       )}

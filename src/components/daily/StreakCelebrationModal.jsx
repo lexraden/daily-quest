@@ -16,7 +16,7 @@ export default function StreakCelebrationModal({ streak, onClose, theme = 'dark'
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-5" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-5" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -24,12 +24,12 @@ export default function StreakCelebrationModal({ streak, onClose, theme = 'dark'
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         />
         <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className={`relative w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-8 text-center border ${
+          className={`relative w-full max-w-sm rounded-3xl p-8 text-center border ${
             theme === 'light'
               ? 'bg-white border-orange-200 shadow-2xl'
               : 'bg-[#1e2836] border-orange-500/30'
