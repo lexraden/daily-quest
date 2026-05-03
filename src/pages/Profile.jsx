@@ -11,6 +11,7 @@ import StatsSection from '@/components/profile/StatsSection';
 import NotificationSettings from '@/components/profile/NotificationSettings';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData } from '@/components/UserDataCache';
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
+import CategoryLevelsCard from '@/components/profile/CategoryLevelsCard';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 
@@ -169,6 +170,14 @@ export default function Profile() {
               }
             });
           }}
+          theme={theme}
+        />
+
+        {/* Category levels (moved up under Calories) */}
+        <CategoryLevelsCard
+          completionHistory={stats.completionHistory}
+          journalEntries={journalEntries}
+          categoryLevels={stats.categoryLevels}
           theme={theme}
         />
 

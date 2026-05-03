@@ -221,36 +221,6 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
         </ResponsiveContainer>
       </div>
 
-      {/* Category levels */}
-      <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
-        <h3 className={`text-sm font-bold mb-3 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{s.categories}</h3>
-        <div className="space-y-2">
-          {Object.entries(CATEGORIES)
-            .sort((a, b) => (mergedCategoryCounts[b[0]] || 0) - (mergedCategoryCounts[a[0]] || 0))
-            .map(([key, info]) => {
-              const count = mergedCategoryCounts[key] || 0;
-              const maxCount = Math.max(...Object.values(mergedCategoryCounts), 1);
-              const level = categoryLevels?.[key] || 1;
-              return (
-                <div key={key} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span>{info.icon}</span>
-                      <span className={`text-xs font-medium ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{info.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>LVL {level}</span>
-                      <span className={`text-xs font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{count}</span>
-                    </div>
-                  </div>
-                  <div className={`h-1.5 rounded-full overflow-hidden ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`}>
-                    <div className="h-full transition-all duration-500" style={{ width: `${(count / maxCount) * 100}%`, backgroundColor: info.color }} />
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      </div>
     </div>
   );
 }
