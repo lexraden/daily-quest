@@ -171,9 +171,8 @@ export default function Profile() {
             setMealHistory(newHistory);
             if (userDataId) {
               updateCachedUserData(userDataId, { meal_history: newHistory });
-              await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
-              invalidateCache();
               window.dispatchEvent(new CustomEvent('meal-history-updated', { detail: { meal_history: newHistory } }));
+              await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
             }
           }}
           onDeleteMeal={async (idx) => {
@@ -181,9 +180,8 @@ export default function Profile() {
             setMealHistory(newHistory);
             if (userDataId) {
               updateCachedUserData(userDataId, { meal_history: newHistory });
-              await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
-              invalidateCache();
               window.dispatchEvent(new CustomEvent('meal-history-updated', { detail: { meal_history: newHistory } }));
+              await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
             }
           }}
           theme={theme}
