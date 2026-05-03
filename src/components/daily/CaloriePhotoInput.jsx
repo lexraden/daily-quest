@@ -5,20 +5,27 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 
-export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
+const MAX_PHOTOS = 3;
+
+export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPhotosChange }) {
   const [photos, setPhotos] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
+  // Notify parent when photos change (to hide Voice button)
+  React.useEffect(() => {
+    onPhotosChange?.(photos.length > 0 || isAnalyzing);
+  }, [photos.length, isAnalyzing, onPhotosChange]);
+
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    const newPhotos = files.slice(0, 2 - photos.length).map(file => ({
+    const newPhotos = files.slice(0, MAX_PHOTOS - photos.length).map(file => ({
       file,
       preview: URL.createObjectURL(file)
     }));
-    setPhotos(prev => [...prev, ...newPhotos].slice(0, 2));
+    setPhotos(prev => [...prev, ...newPhotos].slice(0, MAX_PHOTOS));
     e.target.value = '';
   };
 
@@ -43,17 +50,21 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
 
       // Analyze with AI
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Ты — эксперт-нутрициолог. Проанализируй фото еды и определи:
-1. Что это за блюдо/продукты (название)
-2. Примерную порцию
-3. Калорийность (ккал)
-4. Белки (г)
-5. Жиры (г)
-6. Углеводы (г)
+        prompt: `Ты — эксперт-нутрициолог. Проанализируй ${uploadedUrls.length === 1 ? 'фото' : `${uploadedUrls.length} фото`} еды.
 
-Если на фото несколько блюд — суммируй всё вместе.
-Будь реалистичен в оценках. Если не можешь точно определить — дай наиболее вероятную оценку.
-Название блюда — коротко, до 40 символов.`,
+КРИТИЧЕСКИ ВАЖНО при анализе нескольких фото:
+- Если несколько фото показывают ОДНО И ТО ЖЕ блюдо/продукт с разных ракурсов (например, паста сверху и сбоку) — считай это ОДНИМ блюдом, НЕ удваивай порцию.
+- Если фото показывают РАЗНЫЕ блюда/продукты — суммируй их как один общий приём пищи.
+- Если фото — это скриншот этикетки/упаковки/меню/состава продукта — используй информацию оттуда для уточнения данных о соответствующем блюде на других фото, НЕ считай скриншот отдельным "блюдом".
+- Используй визуальные подсказки: окружение (тарелка, стол, фон), ракурс, размер — чтобы понять, одно ли это блюдо или разные.
+
+Определи для итогового приёма пищи:
+1. Название (коротко, до 40 символов) — общее описание того, что съедено
+2. Калорийность (ккал) — общая
+3. Белки, Жиры, Углеводы (г) — общие
+4. Краткое описание (что включено)
+
+Будь реалистичен. Если не можешь точно определить — дай наиболее вероятную оценку.`,
         file_urls: uploadedUrls,
         response_json_schema: {
           type: "object",
@@ -131,7 +142,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
           onClick={() => fileInputRef.current?.click()}
           size="icon"
           aria-label={t().calories.photoFood}
-          className={`h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600`}
+          className="h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
         >
           <Camera className="w-5 h-5" />
         </Button>
@@ -155,7 +166,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
             </button>
           </div>
         ))}
-        {photos.length < 2 && (
+        {photos.length < MAX_PHOTOS && (
           <button
             onClick={() => fileInputRef.current?.click()}
             aria-label={t().calories.addPhoto}
@@ -171,9 +182,9 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
       <Button
         onClick={analyzeMeal}
         aria-label={t().calories.analyze}
-        className="w-full h-11 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 font-medium"
+        className="w-full h-12 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 font-medium text-base"
       >
-        <Send className="w-4 h-4 mr-2" />
+        <Send className="w-5 h-5 mr-2" />
         {t().calories.analyze}
       </Button>
     </div>
