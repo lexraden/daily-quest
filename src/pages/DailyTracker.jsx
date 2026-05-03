@@ -29,6 +29,7 @@ const getConfetti = () => {
   return confettiModule;
 };
 import { toast } from 'sonner';
+import { useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
@@ -154,6 +155,7 @@ export default function DailyTracker() {
   const [isPremium, setIsPremium] = useState(false);
 
   const premiumStatus = usePremiumStatus({ isPremium, trialStartedAt });
+  const location = useLocation();
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -821,6 +823,24 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
       loadUserData();
       }
       }, [user]);
+
+  // Re-sync meal history & calories when this tab becomes active
+  // (after editing meals in Profile/History — they update the cache, we pick it up here)
+  useEffect(() => {
+    if (!user?.email || !isLoaded) return;
+    const isTrackerActive = location.pathname === '/' || location.pathname === '/DailyTracker';
+    if (!isTrackerActive) return;
+
+    let cancelled = false;
+    (async () => {
+      const { data } = await getCachedUserData(user.email);
+      if (cancelled || !data) return;
+      if (Array.isArray(data.meal_history)) setMealHistory(data.meal_history);
+      if (data.calories_burned) setCaloriesBurned(data.calories_burned);
+    })();
+
+    return () => { cancelled = true; };
+  }, [location.pathname, user, isLoaded]);
 
   // React Query optimistic save with debounce and rollback
   const getStateSnapshot = useCallback(() => ({
