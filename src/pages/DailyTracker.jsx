@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
+import CaloriesIndicators from '@/components/daily/CaloriesIndicators.jsx';
 import { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
 
 // Lazy-loaded modals — only fetched when actually shown (reduces initial bundle)
@@ -144,6 +145,7 @@ export default function DailyTracker() {
   const [pendingFreezeData, setPendingFreezeData] = useState(null);
   const [mealHistory, setMealHistory] = useState([]);
   const [pendingMeal, setPendingMeal] = useState(null);
+  const [caloriesBurned, setCaloriesBurned] = useState({}); // { "YYYY-MM-DD": number }
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -667,6 +669,11 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
     setMealHistory(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleCaloriesOutChange = useCallback((value) => {
+    const today = getTodayKey();
+    setCaloriesBurned(prev => ({ ...prev, [today]: value }));
+  }, []);
+
   // Загрузка данных из базы данных
   useEffect(() => {
     const loadUserData = async () => {
@@ -700,6 +707,11 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
           // Загрузка истории еды
           if (data.meal_history) {
             setMealHistory(data.meal_history);
+          }
+
+          // Загрузка сожжённых калорий
+          if (data.calories_burned) {
+            setCaloriesBurned(data.calories_burned);
           }
           
           // Инициализация уровней категорий
@@ -805,8 +817,9 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
     streak_freezes: streakFreezes,
     journal_entries: journalEntries,
     meal_history: mealHistory,
+    calories_burned: caloriesBurned,
     last_visit_date: getTodayKey()
-  }), [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completionHistory, streakFreezes, journalEntries, mealHistory]);
+  }), [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned]);
 
   const restoreSnapshot = useCallback((snapshot) => {
     setQuestData(snapshot.quest_data);
@@ -819,6 +832,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
     setStreakFreezes(snapshot.streak_freezes);
     setJournalEntries(snapshot.journal_entries);
     setMealHistory(snapshot.meal_history);
+    setCaloriesBurned(snapshot.calories_burned || {});
     const today = getTodayKey();
     const todayHistory = snapshot.completion_history?.[today] || [];
     const reverted = {};
@@ -837,7 +851,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
   useEffect(() => {
     if (!isLoaded || !userDataId) return;
     saveUserData();
-  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, isLoaded, userDataId, saveUserData]);
+  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned, isLoaded, userDataId, saveUserData]);
 
   // Экспорт данных
   const exportData = useCallback(() => {
@@ -1115,6 +1129,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
         setStreak(data.streak || 0);
         setMealHistory(data.meal_history || []);
         setJournalEntries(data.journal_entries || []);
+        setCaloriesBurned(data.calories_burned || {});
         setUserDataId(id);
       }
     }
@@ -1165,6 +1180,14 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
             </>
           )}
         </div>
+
+        {/* Calories IN / OUT */}
+        <CaloriesIndicators
+          mealHistory={mealHistory}
+          caloriesOut={caloriesBurned[getTodayKey()] || 0}
+          onCaloriesOutChange={handleCaloriesOutChange}
+          theme={theme}
+        />
 
         {/* Level Progress Bar */}
         <div className="space-y-2">
