@@ -1056,20 +1056,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
         [category]: newLevel
       }));
       
-      // Обновить streak
-      // Обновляем lastCompletedDate при первом выполнении за день
-      if (lastCompletedDate !== today) {
-        setLastCompletedDate(today);
-        // Увеличиваем streak при первом квесте за день
-        const newStreak = streak + 1;
-        setStreak(newStreak);
-        if (getStreakMilestone(newStreak)) {
-          setTimeout(() => {
-            setShowStreakCelebration(true);
-            fireConfetti();
-          }, 1000);
-        }
-      }
+      // Streak теперь засчитывается только при загрузке фото еды (см. handleMealAnalyzed → onSave)
     }
   }, [questData, completedToday, categoryLevels, categoryTotalCompleted, completionHistory, lastCompletedDate, streak]);
 
@@ -1191,15 +1178,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
             onCaloriesOutChange={handleCaloriesOutChange}
             theme={theme}
           />
-          {streakFreezes > 0 && (
-            <>
-              <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
-              <div className="flex items-center gap-1">
-                <Shield className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="text-xs text-cyan-400">{streakFreezes}</span>
-              </div>
-            </>
-          )}
+
         </div>
 
         {/* Level Progress Bar */}
@@ -1256,7 +1235,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
           onMealAnalyzed={handleMealAnalyzed}
           theme={theme}
           questData={questData}
-          hasAccess={premiumStatus.hasAccess}
+          hasAccess={true}
           onLocked={() => setShowPremium(true)}
         />
 
@@ -1346,6 +1325,20 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
             setMealHistory(prev => [pendingMeal, ...prev]);
             setPendingMeal(null);
             toast.success(i.calories.mealSaved);
+
+            // Streak засчитывается только при загрузке фото еды, один раз в день
+            const today = getTodayKey();
+            if (lastCompletedDate !== today) {
+              setLastCompletedDate(today);
+              const newStreak = streak + 1;
+              setStreak(newStreak);
+              if (getStreakMilestone(newStreak)) {
+                setTimeout(() => {
+                  setShowStreakCelebration(true);
+                  fireConfetti();
+                }, 1000);
+              }
+            }
           }}
           onDiscard={handleDiscardMeal}
           theme={theme}
