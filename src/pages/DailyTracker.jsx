@@ -1228,7 +1228,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
         </div>
 
         {/* Stats Row */}
-        <div className="flex items-center gap-3 mb-3 text-sm">
+        <div className="flex items-center gap-2 mb-3 text-sm">
           <div className="flex items-center gap-1.5">
             <span className="text-lg">{currentLevel.icon}</span>
             <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{i.levels[currentLevel.level] || currentLevel.name}</span>
