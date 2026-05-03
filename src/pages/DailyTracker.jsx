@@ -845,18 +845,21 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
       // and prevents stale-snapshot races with the debounced save.
       setMealHistory(prev => {
         if (JSON.stringify(prev) === JSON.stringify(incomingMeals)) return prev;
+        // Cancel any pending save with stale data, then mark this update as "from server"
+        cancelPendingSave();
         skipNextSaveRef.current = true;
         return incomingMeals;
       });
       setCaloriesBurned(prev => {
         if (JSON.stringify(prev) === JSON.stringify(incomingBurned)) return prev;
+        cancelPendingSave();
         skipNextSaveRef.current = true;
         return incomingBurned;
       });
     })();
 
     return () => { cancelled = true; };
-  }, [location.pathname, user, isLoaded]);
+  }, [location.pathname, user, isLoaded, cancelPendingSave]);
 
   // React Query optimistic save with debounce and rollback
   const getStateSnapshot = useCallback(() => ({
@@ -895,7 +898,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
     setCompletedToday(reverted);
   }, []);
 
-  const { save: saveUserData } = useSaveUserData({
+  const { save: saveUserData, cancelPendingSave } = useSaveUserData({
     userDataId,
     isLoaded,
     getStateSnapshot,

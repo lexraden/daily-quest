@@ -9,6 +9,7 @@ import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import NotificationSettings from '@/components/profile/NotificationSettings';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData } from '@/components/UserDataCache';
+
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 import CategoryLevelsCard from '@/components/profile/CategoryLevelsCard';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
@@ -148,26 +149,25 @@ export default function Profile() {
         {/* Daily Calories */}
         <DailyCaloriesCard
           mealHistory={mealHistory}
-          onEditMeal={(idx, updated) => {
+          onEditMeal={async (idx, updated) => {
             const newHistory = [...mealHistory];
             newHistory[idx] = updated;
             setMealHistory(newHistory);
-            getCachedUserData(user.email).then(({ id }) => {
-              if (id) {
-                updateCachedUserData(id, { meal_history: newHistory });
-                base44.entities.UserQuestData.update(id, { meal_history: newHistory });
-              }
-            });
+            if (userDataId) {
+              updateCachedUserData(userDataId, { meal_history: newHistory });
+              await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
+              // Invalidate so DailyTracker re-fetches fresh data when it becomes active
+              invalidateCache();
+            }
           }}
-          onDeleteMeal={(idx) => {
+          onDeleteMeal={async (idx) => {
             const newHistory = mealHistory.filter((_, i) => i !== idx);
             setMealHistory(newHistory);
-            getCachedUserData(user.email).then(({ id }) => {
-              if (id) {
-                updateCachedUserData(id, { meal_history: newHistory });
-                base44.entities.UserQuestData.update(id, { meal_history: newHistory });
-              }
-            });
+            if (userDataId) {
+              updateCachedUserData(userDataId, { meal_history: newHistory });
+              await base44.entities.UserQuestData.update(userDataId, { meal_history: newHistory });
+              invalidateCache();
+            }
           }}
           theme={theme}
         />

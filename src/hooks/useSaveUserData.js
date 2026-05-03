@@ -66,6 +66,14 @@ export default function useSaveUserData({
     }, DEBOUNCE_MS);
   }, [isLoaded, mutation]);
 
+  // Cancel any pending debounced save (used when external code overwrites local state)
+  const cancelPendingSave = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
@@ -73,5 +81,5 @@ export default function useSaveUserData({
     };
   }, []);
 
-  return { save, isSaving: mutation.isPending };
+  return { save, cancelPendingSave, isSaving: mutation.isPending };
 }
