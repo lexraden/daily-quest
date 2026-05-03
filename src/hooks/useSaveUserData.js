@@ -51,6 +51,10 @@ export default function useSaveUserData({
     },
   });
 
+  // Keep mutate in a ref so `save` callback identity stays stable across renders
+  const mutateRef = useRef(mutation.mutate);
+  useEffect(() => { mutateRef.current = mutation.mutate; }, [mutation.mutate]);
+
   // Stable save function that reads latest state via refs
   const save = useCallback(() => {
     if (!isLoaded || !userDataIdRef.current) return;
@@ -62,9 +66,12 @@ export default function useSaveUserData({
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       const toSave = getSnapshotRef.current();
-      mutation.mutate({ id: userDataIdRef.current, data: toSave });
+      mutateRef.current({ id: userDataIdRef.current, data: toSave });
     }, DEBOUNCE_MS);
-  }, [isLoaded, mutation]);
+  }, [isLoaded]);
+
+  // Expose whether a save is queued or in-flight
+  const hasPendingWrite = () => timerRef.current !== null || mutation.isPending;
 
   // Cancel any pending debounced save (used when external code overwrites local state)
   const cancelPendingSave = useCallback(() => {
@@ -81,5 +88,5 @@ export default function useSaveUserData({
     };
   }, []);
 
-  return { save, cancelPendingSave, isSaving: mutation.isPending };
+  return { save, cancelPendingSave, isSaving: mutation.isPending, hasPendingWrite };
 }

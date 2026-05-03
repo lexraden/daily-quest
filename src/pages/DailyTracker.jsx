@@ -862,12 +862,18 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
     setCompletedToday(reverted);
   }, []);
 
-  const { save: saveUserData, cancelPendingSave } = useSaveUserData({
+  const { save: saveUserData, cancelPendingSave, hasPendingWrite } = useSaveUserData({
     userDataId,
     isLoaded,
     getStateSnapshot,
     restoreSnapshot,
   });
+
+  // Stable refs so the re-sync effect doesn't re-run when these identities change
+  const cancelPendingSaveRef = useRef(cancelPendingSave);
+  const hasPendingWriteRef = useRef(hasPendingWrite);
+  useEffect(() => { cancelPendingSaveRef.current = cancelPendingSave; }, [cancelPendingSave]);
+  useEffect(() => { hasPendingWriteRef.current = hasPendingWrite; }, [hasPendingWrite]);
 
   // Re-sync meal history & calories when this tab becomes active
   // (after editing meals in Profile/History — they update the cache, we pick it up here)
@@ -876,30 +882,37 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
     const isTrackerActive = location.pathname === '/' || location.pathname === '/DailyTracker';
     if (!isTrackerActive) return;
 
+    // CRITICAL: don't overwrite local state if we have unsaved changes pending —
+    // otherwise just-added items (like a 2nd meal) get clobbered by stale DB data.
+    if (hasPendingWriteRef.current?.()) return;
+
     let cancelled = false;
     (async () => {
       invalidateCache();
       const { data } = await getCachedUserData(user.email);
       if (cancelled || !data) return;
+      // Re-check after async fetch in case a save was queued meanwhile
+      if (hasPendingWriteRef.current?.()) return;
+
       const incomingMeals = Array.isArray(data.meal_history) ? data.meal_history : [];
       const incomingBurned = data.calories_burned || {};
 
       setMealHistory(prev => {
         if (JSON.stringify(prev) === JSON.stringify(incomingMeals)) return prev;
-        cancelPendingSave();
+        cancelPendingSaveRef.current?.();
         skipNextSaveRef.current = true;
         return incomingMeals;
       });
       setCaloriesBurned(prev => {
         if (JSON.stringify(prev) === JSON.stringify(incomingBurned)) return prev;
-        cancelPendingSave();
+        cancelPendingSaveRef.current?.();
         skipNextSaveRef.current = true;
         return incomingBurned;
       });
     })();
 
     return () => { cancelled = true; };
-  }, [location.pathname, user, isLoaded, cancelPendingSave]);
+  }, [location.pathname, user, isLoaded]);
 
   // Trigger debounced save whenever data changes
   useEffect(() => {
