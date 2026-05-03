@@ -65,15 +65,17 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
           />
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          aria-label="Edit calories out"
-          className="flex items-center gap-2 flex-1 pr-8 -mr-4 active:scale-95 transition-transform"
-        >
+        <div className="flex items-center gap-2">
           <span className="text-xs font-bold text-orange-500">OUT</span>
-          <span className={`font-semibold ${valueClass}`}>{Math.round(caloriesOut || 0)}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            aria-label="Edit calories out"
+            className={`font-semibold pr-8 -mr-4 active:scale-95 transition-transform ${valueClass}`}
+          >
+            {Math.round(caloriesOut || 0)}
+          </button>
+        </div>
       )}
     </>
   );
