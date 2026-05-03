@@ -36,15 +36,16 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
   return (
     <>
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-green-500">IN</span>
-        <span className={`font-semibold ${valueClass}`}>{Math.round(caloriesIn)}</span>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-xs font-extrabold text-green-500 leading-none">IN</span>
+        <span className={`font-semibold leading-none tabular-nums ${valueClass}`}>{Math.round(caloriesIn)}</span>
+        <span className={`text-[10px] font-medium leading-none ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>kcal</span>
       </div>
 
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
       {editing ? (
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-orange-500">OUT</span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-xs font-extrabold text-orange-500 leading-none">OUT</span>
           <input
             ref={inputRef}
             type="number"
@@ -57,25 +58,25 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
               if (e.key === 'Escape') setEditing(false);
             }}
             placeholder="0"
-            className={`w-14 h-5 px-1 text-sm font-semibold rounded outline-none border ${
+            className={`w-14 h-5 px-1 text-sm font-semibold leading-none tabular-nums rounded outline-none border ${
               theme === 'light'
                 ? 'bg-white border-gray-300 text-gray-900'
                 : 'bg-white/10 border-white/20 text-white'
             }`}
           />
+          <span className={`text-[10px] font-medium leading-none ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>kcal</span>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-orange-500">OUT</span>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            aria-label="Edit calories out"
-            className={`font-semibold pr-8 -mr-4 active:scale-95 transition-transform ${valueClass}`}
-          >
-            {Math.round(caloriesOut || 0)}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          aria-label="Edit calories out"
+          className="flex items-baseline gap-1.5 active:scale-95 transition-transform"
+        >
+          <span className="text-xs font-extrabold text-orange-500 leading-none">OUT</span>
+          <span className={`font-semibold leading-none tabular-nums ${valueClass}`}>{Math.round(caloriesOut || 0)}</span>
+          <span className={`text-[10px] font-medium leading-none ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>kcal</span>
+        </button>
       )}
     </>
   );
