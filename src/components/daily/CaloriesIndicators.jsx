@@ -37,7 +37,7 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
     <>
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
       <div className="flex items-baseline gap-1.5">
-        <span className="text-xs font-extrabold text-green-500 leading-none">IN</span>
+        <span className="text-sm font-bold text-green-500 leading-none">IN</span>
         <span className={`font-semibold leading-none tabular-nums ${valueClass}`}>{Math.round(caloriesIn)}</span>
         <span className={`text-[10px] font-medium leading-none ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>kcal</span>
       </div>
@@ -45,7 +45,7 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
       {editing ? (
         <div className="flex items-baseline gap-1.5">
-          <span className="text-xs font-extrabold text-orange-500 leading-none">OUT</span>
+          <span className="text-sm font-bold text-orange-500 leading-none">OUT</span>
           <input
             ref={inputRef}
             type="number"
@@ -73,7 +73,7 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
           aria-label="Edit calories out"
           className="flex items-baseline gap-1.5 active:scale-95 transition-transform"
         >
-          <span className="text-xs font-extrabold text-orange-500 leading-none">OUT</span>
+          <span className="text-sm font-bold text-orange-500 leading-none">OUT</span>
           <span className={`font-semibold leading-none tabular-nums ${valueClass}`}>{Math.round(caloriesOut || 0)}</span>
           <span className={`text-[10px] font-medium leading-none ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>kcal</span>
         </button>
