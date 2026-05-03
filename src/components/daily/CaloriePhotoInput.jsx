@@ -6,6 +6,46 @@ import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 
 const MAX_PHOTOS = 3;
+const MAX_DIMENSION = 1280; // px — max width/height after compression
+const JPEG_QUALITY = 0.85;
+
+// Compress image client-side: resize to fit MAX_DIMENSION and re-encode as JPEG.
+// Falls back to original file on any failure.
+async function compressImage(file) {
+  try {
+    if (!file.type.startsWith('image/')) return file;
+
+    const bitmap = await createImageBitmap(file).catch(() => null);
+    if (!bitmap) return file;
+
+    let { width, height } = bitmap;
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY)
+    );
+    if (!blob) return file;
+
+    // Use original blob if compression made it bigger
+    if (blob.size >= file.size) return file;
+
+    return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+  } catch {
+    return file;
+  }
+}
 
 export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme = 'dark' }) {
   const [photos, setPhotos] = useState([]);
@@ -57,12 +97,14 @@ export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme
     setStepIndex(0);
 
     try {
-      // Upload photos
-      const uploadedUrls = [];
-      for (const photo of photos) {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: photo.file });
-        uploadedUrls.push(file_url);
-      }
+      // Compress + upload all photos in parallel
+      const uploadedUrls = await Promise.all(
+        photos.map(async (photo) => {
+          const compressed = await compressImage(photo.file);
+          const { file_url } = await base44.integrations.Core.UploadFile({ file: compressed });
+          return file_url;
+        })
+      );
 
       // Analyze with AI
       const result = await base44.integrations.Core.InvokeLLM({
