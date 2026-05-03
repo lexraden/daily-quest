@@ -6,7 +6,6 @@ import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
 import CaloriesIndicators from '@/components/daily/CaloriesIndicators.jsx';
-import IntegrationsPopover from '@/components/daily/IntegrationsPopover.jsx';
 import { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
 
 // Lazy-loaded modals — only fetched when actually shown (reduces initial bundle)
@@ -1201,7 +1200,6 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
               </div>
             </>
           )}
-          <IntegrationsPopover theme={theme} />
         </div>
 
         {/* Level Progress Bar */}

@@ -36,15 +36,15 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
   return (
     <>
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs font-bold text-green-500">IN</span>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-medium tracking-wider text-green-500">IN</span>
         <span className={`font-semibold ${valueClass}`}>{Math.round(caloriesIn)}</span>
       </div>
 
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
       {editing ? (
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-orange-500">OUT</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium tracking-wider text-orange-500">OUT</span>
           <input
             ref={inputRef}
             type="number"
@@ -69,9 +69,9 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
           type="button"
           onClick={() => setEditing(true)}
           aria-label="Edit calories out"
-          className="flex items-center gap-1.5 active:scale-95 transition-transform"
+          className="flex items-center gap-2 flex-1 pr-8 -mr-4 active:scale-95 transition-transform"
         >
-          <span className="text-xs font-bold text-orange-500">OUT</span>
+          <span className="text-[11px] font-medium tracking-wider text-orange-500">OUT</span>
           <span className={`font-semibold ${valueClass}`}>{Math.round(caloriesOut || 0)}</span>
         </button>
       )}
