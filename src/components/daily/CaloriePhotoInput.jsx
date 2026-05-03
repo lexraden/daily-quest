@@ -94,13 +94,13 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
 
   if (isAnalyzing) {
     return (
-      <div className={`h-12 rounded-2xl flex items-center justify-center gap-3 ${
+      <div className={`h-12 px-3 rounded-2xl flex items-center justify-center gap-2 flex-1 min-w-0 ${
         theme === 'light'
           ? 'bg-gradient-to-r from-orange-100 to-yellow-100'
           : 'bg-gradient-to-r from-orange-500/20 to-yellow-500/20'
       }`}>
-        <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
-        <span className={`text-sm font-medium ${theme === 'light' ? 'text-orange-700' : 'text-orange-300'}`}>
+        <Loader2 className="w-4 h-4 animate-spin text-orange-500 flex-shrink-0" />
+        <span className={`text-sm font-medium truncate ${theme === 'light' ? 'text-orange-700' : 'text-orange-300'}`}>
           {t().calories.analyzing}
         </span>
       </div>
