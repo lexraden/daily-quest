@@ -1,44 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Camera, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 
-const MAX_PHOTOS = 3;
-
-export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPhotosChange }) {
+export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark' }) {
   const [photos, setPhotos] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzingStepIdx, setAnalyzingStepIdx] = useState(0);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
-
-  // Notify parent when photos change (to hide Voice button)
-  useEffect(() => {
-    onPhotosChange?.(photos.length > 0 || isAnalyzing);
-  }, [photos.length, isAnalyzing, onPhotosChange]);
-
-  // Rotate analyzing step texts
-  useEffect(() => {
-    if (!isAnalyzing) return;
-    const steps = t().calories.analyzingSteps || [];
-    if (steps.length === 0) return;
-    setAnalyzingStepIdx(0);
-    const interval = setInterval(() => {
-      setAnalyzingStepIdx(prev => (prev + 1) % steps.length);
-    }, 1800);
-    return () => clearInterval(interval);
-  }, [isAnalyzing]);
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    const newPhotos = files.slice(0, MAX_PHOTOS - photos.length).map(file => ({
+    const newPhotos = files.slice(0, 2 - photos.length).map(file => ({
       file,
       preview: URL.createObjectURL(file)
     }));
-    setPhotos(prev => [...prev, ...newPhotos].slice(0, MAX_PHOTOS));
+    setPhotos(prev => [...prev, ...newPhotos].slice(0, 2));
     e.target.value = '';
   };
 
@@ -61,7 +41,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
         uploadedUrls.push(file_url);
       }
 
-      // Analyze with AI — original prompt
+      // Analyze with AI
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Ты — эксперт-нутрициолог. Проанализируй фото еды и определи:
 1. Что это за блюдо/продукты (название)
@@ -86,7 +66,8 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
             description: { type: "string" }
           },
           required: ["meal_name", "calories", "protein", "fat", "carbs"]
-        }
+        },
+        model: "gemini_3_flash"
       });
 
       onMealAnalyzed({
@@ -112,20 +93,15 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
   };
 
   if (isAnalyzing) {
-    const steps = t().calories.analyzingSteps || [];
-    const currentStepText = steps[analyzingStepIdx] || t().calories.analyzing;
     return (
-      <div className={`h-12 px-4 rounded-2xl flex items-center justify-center gap-2 flex-1 min-w-0 w-full ${
+      <div className={`h-12 rounded-2xl flex items-center justify-center gap-3 ${
         theme === 'light'
           ? 'bg-gradient-to-r from-orange-100 to-yellow-100'
           : 'bg-gradient-to-r from-orange-500/20 to-yellow-500/20'
       }`}>
-        <Loader2 className="w-4 h-4 animate-spin text-orange-500 flex-shrink-0" />
-        <span
-          key={analyzingStepIdx}
-          className={`text-sm font-medium truncate animate-in fade-in duration-300 ${theme === 'light' ? 'text-orange-700' : 'text-orange-300'}`}
-        >
-          {currentStepText}
+        <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
+        <span className={`text-sm font-medium ${theme === 'light' ? 'text-orange-700' : 'text-orange-300'}`}>
+          {t().calories.analyzing}
         </span>
       </div>
     );
@@ -155,7 +131,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
           onClick={() => fileInputRef.current?.click()}
           size="icon"
           aria-label={t().calories.photoFood}
-          className="h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
+          className={`h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600`}
         >
           <Camera className="w-5 h-5" />
         </Button>
@@ -179,7 +155,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
             </button>
           </div>
         ))}
-        {photos.length < MAX_PHOTOS && (
+        {photos.length < 2 && (
           <button
             onClick={() => fileInputRef.current?.click()}
             aria-label={t().calories.addPhoto}
@@ -195,9 +171,9 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
       <Button
         onClick={analyzeMeal}
         aria-label={t().calories.analyze}
-        className="w-full h-12 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 font-medium text-base"
+        className="w-full h-11 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 font-medium"
       >
-        <Send className="w-5 h-5 mr-2" />
+        <Send className="w-4 h-4 mr-2" />
         {t().calories.analyze}
       </Button>
     </div>

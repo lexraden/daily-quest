@@ -16,7 +16,6 @@ const OnboardingModal = React.lazy(() => import('@/components/daily/OnboardingMo
 const StreakCelebrationModal = React.lazy(() => import('@/components/daily/StreakCelebrationModal.jsx'));
 const StreakFreezeModal = React.lazy(() => import('@/components/daily/StreakFreezeModal.jsx'));
 const MealReportModal = React.lazy(() => import('@/components/daily/MealReportModal.jsx'));
-import CaloriesHeader from '@/components/daily/CaloriesHeader.jsx';
 
 // Dynamic import for confetti — only loaded on first quest completion
 let confettiModule = null;
@@ -1165,9 +1164,6 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
               </div>
             </>
           )}
-          <div className="ml-auto">
-            <CaloriesHeader mealHistory={mealHistory} theme={theme} />
-          </div>
         </div>
 
         {/* Level Progress Bar */}
