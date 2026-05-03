@@ -61,11 +61,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
         uploadedUrls.push(file_url);
       }
 
-      // Analyze with AI (old prompt restored, faster default model)
-      const multiPhotoNote = uploadedUrls.length > 1
-        ? `\n\nВАЖНО: получено ${uploadedUrls.length} фото. Если это одно и то же блюдо с разных ракурсов — считай как ОДНО блюдо, не удваивай. Если разные блюда — суммируй. Если скриншот этикетки — используй для уточнения, не считай отдельно.`
-        : '';
-
+      // Analyze with AI — original prompt
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `Ты — эксперт-нутрициолог. Проанализируй фото еды и определи:
 1. Что это за блюдо/продукты (название)
@@ -77,7 +73,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
 
 Если на фото несколько блюд — суммируй всё вместе.
 Будь реалистичен в оценках. Если не можешь точно определить — дай наиболее вероятную оценку.
-Название блюда — коротко, до 40 символов.${multiPhotoNote}`,
+Название блюда — коротко, до 40 символов.`,
         file_urls: uploadedUrls,
         response_json_schema: {
           type: "object",
