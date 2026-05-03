@@ -825,42 +825,6 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
       }
       }, [user]);
 
-  // Re-sync meal history & calories when this tab becomes active
-  // (after editing meals in Profile/History — they update the cache, we pick it up here)
-  useEffect(() => {
-    if (!user?.email || !isLoaded) return;
-    const isTrackerActive = location.pathname === '/' || location.pathname === '/DailyTracker';
-    if (!isTrackerActive) return;
-
-    let cancelled = false;
-    (async () => {
-      // Force a fresh read from DB to avoid stale local cache
-      invalidateCache();
-      const { data } = await getCachedUserData(user.email);
-      if (cancelled || !data) return;
-      const incomingMeals = Array.isArray(data.meal_history) ? data.meal_history : [];
-      const incomingBurned = data.calories_burned || {};
-
-      // Only update state if data actually differs — prevents redundant saves
-      // and prevents stale-snapshot races with the debounced save.
-      setMealHistory(prev => {
-        if (JSON.stringify(prev) === JSON.stringify(incomingMeals)) return prev;
-        // Cancel any pending save with stale data, then mark this update as "from server"
-        cancelPendingSave();
-        skipNextSaveRef.current = true;
-        return incomingMeals;
-      });
-      setCaloriesBurned(prev => {
-        if (JSON.stringify(prev) === JSON.stringify(incomingBurned)) return prev;
-        cancelPendingSave();
-        skipNextSaveRef.current = true;
-        return incomingBurned;
-      });
-    })();
-
-    return () => { cancelled = true; };
-  }, [location.pathname, user, isLoaded, cancelPendingSave]);
-
   // React Query optimistic save with debounce and rollback
   const getStateSnapshot = useCallback(() => ({
     quest_data: questData,
@@ -904,6 +868,38 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
     getStateSnapshot,
     restoreSnapshot,
   });
+
+  // Re-sync meal history & calories when this tab becomes active
+  // (after editing meals in Profile/History — they update the cache, we pick it up here)
+  useEffect(() => {
+    if (!user?.email || !isLoaded) return;
+    const isTrackerActive = location.pathname === '/' || location.pathname === '/DailyTracker';
+    if (!isTrackerActive) return;
+
+    let cancelled = false;
+    (async () => {
+      invalidateCache();
+      const { data } = await getCachedUserData(user.email);
+      if (cancelled || !data) return;
+      const incomingMeals = Array.isArray(data.meal_history) ? data.meal_history : [];
+      const incomingBurned = data.calories_burned || {};
+
+      setMealHistory(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(incomingMeals)) return prev;
+        cancelPendingSave();
+        skipNextSaveRef.current = true;
+        return incomingMeals;
+      });
+      setCaloriesBurned(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(incomingBurned)) return prev;
+        cancelPendingSave();
+        skipNextSaveRef.current = true;
+        return incomingBurned;
+      });
+    })();
+
+    return () => { cancelled = true; };
+  }, [location.pathname, user, isLoaded, cancelPendingSave]);
 
   // Trigger debounced save whenever data changes
   useEffect(() => {
