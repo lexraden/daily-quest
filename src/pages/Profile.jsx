@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Trash2 } from 'lucide-react';
+import { RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import { base44 } from '@/api/base44Client';
@@ -200,7 +200,7 @@ export default function Profile() {
           aria-label={i.profilePage.updateQuests}
           className="w-full h-11 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
         >
-          <RefreshCw className="w-4 h-4 mr-2" />
+          <RotateCcw className="w-4 h-4 mr-2" />
           {i.profilePage.updateQuests}
         </Button>
 
