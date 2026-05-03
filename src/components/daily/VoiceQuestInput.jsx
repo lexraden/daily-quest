@@ -10,6 +10,7 @@ import { t, getLang, getSpeechLang } from '@/lib/i18n';
 const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark', questData }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [photoState, setPhotoState] = useState({ hasPhotos: false, isAnalyzing: false });
   const { recognition } = useSpeechRecognition();
   const accumulatedTextRef = useRef('');
   const silenceTimerRef = useRef(null);
@@ -241,32 +242,43 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
     );
   }
 
+  // Hide Voice button when user is working with photos (selected or analyzing)
+  const hideVoice = photoState.hasPhotos || photoState.isAnalyzing;
+
   return (
     <div className="px-5 mb-4">
       <div className="flex gap-2">
-        <Button
-          onClick={startRecording}
-          disabled={isProcessing}
-          aria-label={isRecording ? t().voice.listening : t().voice.voiceInput}
-          className={`h-12 rounded-2xl font-medium transition-all flex-1 ${
-            isRecording
-              ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-              : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
-          }`}
-        >
-          {isRecording ? (
-            <>
-              <Mic className="w-5 h-5 mr-2 animate-pulse" />
-              {t().voice.listening}
-            </>
-          ) : (
-            <>
-              <Mic className="w-5 h-5 mr-2" />
-              {t().voice.voice}
-            </>
-          )}
-        </Button>
-        <CaloriePhotoInput onMealAnalyzed={onMealAnalyzed} theme={theme} />
+        {!hideVoice && (
+          <Button
+            onClick={startRecording}
+            disabled={isProcessing}
+            aria-label={isRecording ? t().voice.listening : t().voice.voiceInput}
+            className={`h-12 rounded-2xl font-medium transition-all flex-1 ${
+              isRecording
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
+            }`}
+          >
+            {isRecording ? (
+              <>
+                <Mic className="w-5 h-5 mr-2 animate-pulse" />
+                {t().voice.listening}
+              </>
+            ) : (
+              <>
+                <Mic className="w-5 h-5 mr-2" />
+                {t().voice.voice}
+              </>
+            )}
+          </Button>
+        )}
+        <div className={hideVoice ? 'flex-1' : ''}>
+          <CaloriePhotoInput
+            onMealAnalyzed={onMealAnalyzed}
+            onStateChange={setPhotoState}
+            theme={theme}
+          />
+        </div>
       </div>
     </div>
   );
