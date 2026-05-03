@@ -201,6 +201,7 @@ export default function History() {
       journalEntries={journalEntries}
       viewMode={statsViewMode}
       hideTabs
+      referenceDate={currentDate}
     />
   );
 
@@ -412,10 +413,10 @@ export default function History() {
             <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{hp.title}</h1>
           </div>
           <Tabs value={viewMode} onValueChange={setViewMode}>
-            <TabsList className={`w-full ${theme === 'light' ? 'bg-black/5' : 'bg-white/5'}`}>
-              <TabsTrigger value="day" className="flex-1 min-h-[44px]">{hp.day}</TabsTrigger>
-              <TabsTrigger value="week" className="flex-1 min-h-[44px]">{hp.week}</TabsTrigger>
-              <TabsTrigger value="month" className="flex-1 min-h-[44px]">{hp.month}</TabsTrigger>
+            <TabsList className={`w-full h-9 ${theme === 'light' ? 'bg-blue-50' : 'bg-blue-500/10'}`}>
+              <TabsTrigger value="day" className="flex-1 min-h-[32px] text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">{hp.day}</TabsTrigger>
+              <TabsTrigger value="week" className="flex-1 min-h-[32px] text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">{hp.week}</TabsTrigger>
+              <TabsTrigger value="month" className="flex-1 min-h-[32px] text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-500 data-[state=active]:text-white">{hp.month}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -435,15 +436,6 @@ export default function History() {
             <ChevronRight className="w-5 h-5" />
           </Button>
         </div>
-
-        {!isToday(currentDate) && (
-          <div className="flex justify-center">
-            <Button onClick={() => setCurrentDate(new Date())} variant="outline" size="sm" aria-label={hp.goToToday}
-              className={`min-h-[44px] ${theme === 'light' ? 'border-purple-400 text-purple-600 hover:bg-purple-50 text-xs' : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10 text-xs'}`}>
-              {i.common.today}
-            </Button>
-          </div>
-        )}
 
         {viewMode === 'day' && renderDayView()}
         {viewMode === 'week' && renderWeekView()}

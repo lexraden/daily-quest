@@ -12,7 +12,7 @@ const CATEGORIES = {
   friends: { name: "Friends", icon: "👥", color: "#fd79a8" }
 };
 
-export default function StatsSection({ completionHistory, categoryTotalCompleted, totalCompleted, streak, categoryLevels, theme, journalEntries = [], viewMode: viewModeProp, hideTabs = false }) {
+export default function StatsSection({ completionHistory, categoryTotalCompleted, totalCompleted, streak, categoryLevels, theme, journalEntries = [], viewMode: viewModeProp, hideTabs = false, referenceDate }) {
   const [internalViewMode, setInternalViewMode] = useState('daily');
   const viewMode = viewModeProp || internalViewMode;
   const setViewMode = setInternalViewMode;
@@ -49,7 +49,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
   }, [completionHistory, journalEntries]);
 
   const chartData = useMemo(() => {
-    const today = new Date();
+    const today = referenceDate ? new Date(referenceDate) : new Date();
     const data = [];
 
     if (viewMode === 'daily') {
@@ -114,7 +114,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
       }
     }
     return data;
-  }, [mergedHistory, viewMode]);
+  }, [mergedHistory, viewMode, referenceDate]);
 
   // Compute actual total counts from mergedHistory (includes voice quests)
   const mergedCategoryCounts = useMemo(() => {
