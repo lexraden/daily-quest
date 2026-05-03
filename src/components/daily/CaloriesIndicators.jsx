@@ -37,14 +37,14 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
     <>
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
       <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-green-500">IN</span>
-        <span className={`font-semibold text-sm ${valueClass}`}>{Math.round(caloriesIn)} <span className={`text-xs font-normal ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>ккал</span></span>
+        <span className="text-xs font-bold text-green-500">IN</span>
+        <span className={`font-semibold ${valueClass}`}>{Math.round(caloriesIn)}</span>
       </div>
 
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
       {editing ? (
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-orange-500">OUT</span>
+          <span className="text-xs font-bold text-orange-500">OUT</span>
           <input
             ref={inputRef}
             type="number"
@@ -71,8 +71,8 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
           aria-label="Edit calories out"
           className="flex items-center gap-2 flex-1 pr-8 -mr-4 active:scale-95 transition-transform"
         >
-          <span className="text-xs font-semibold text-orange-500">OUT</span>
-          <span className={`font-semibold text-sm ${valueClass}`}>{Math.round(caloriesOut || 0)} <span className={`text-xs font-normal ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>ккал</span></span>
+          <span className="text-xs font-bold text-orange-500">OUT</span>
+          <span className={`font-semibold ${valueClass}`}>{Math.round(caloriesOut || 0)}</span>
         </button>
       )}
     </>
