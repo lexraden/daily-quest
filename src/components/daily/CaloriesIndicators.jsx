@@ -37,14 +37,14 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
   return (
     <>
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <Apple className="w-4 h-4 text-green-500" fill="currentColor" />
         <span className={`font-semibold ${valueClass}`}>{Math.round(caloriesIn)}</span>
       </div>
 
       <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
       {editing ? (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-cyan-500" fill="currentColor" />
           <input
             ref={inputRef}
@@ -70,7 +70,7 @@ export default function CaloriesIndicators({ mealHistory, caloriesOut, onCalorie
           type="button"
           onClick={() => setEditing(true)}
           aria-label="Edit calories out"
-          className="flex items-center gap-1 active:scale-95 transition-transform"
+          className="flex items-center gap-2 active:scale-95 transition-transform"
         >
           <Zap className="w-4 h-4 text-cyan-500" fill="currentColor" />
           <span className={`font-semibold ${valueClass}`}>{Math.round(caloriesOut || 0)}</span>
