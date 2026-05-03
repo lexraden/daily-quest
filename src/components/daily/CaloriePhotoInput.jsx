@@ -47,7 +47,7 @@ async function compressImage(file) {
   }
 }
 
-export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme = 'dark' }) {
+export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme = 'dark', hasAccess = true, onLocked }) {
   const [photos, setPhotos] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -178,7 +178,13 @@ export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme
           className="hidden"
         />
         <Button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            if (!hasAccess) {
+              onLocked?.();
+              return;
+            }
+            fileInputRef.current?.click();
+          }}
           size="icon"
           aria-label={t().calories.photoFood}
           className={`h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600`}

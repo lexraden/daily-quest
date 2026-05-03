@@ -7,7 +7,7 @@ import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 import CaloriePhotoInput from './CaloriePhotoInput';
 import { t, getLang, getSpeechLang } from '@/lib/i18n';
 
-const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark', questData }) {
+const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark', questData, hasAccess = true, onLocked }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [photoState, setPhotoState] = useState({ hasPhotos: false, isAnalyzing: false });
@@ -84,6 +84,10 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
   }, [recognition]);
 
   const startRecording = useCallback(() => {
+    if (!hasAccess) {
+      onLocked?.();
+      return;
+    }
     if (!recognition) {
       toast.error(t().voice.notSupported);
       return;
@@ -277,6 +281,8 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
             onMealAnalyzed={onMealAnalyzed}
             onStateChange={setPhotoState}
             theme={theme}
+            hasAccess={hasAccess}
+            onLocked={onLocked}
           />
         </div>
       </div>

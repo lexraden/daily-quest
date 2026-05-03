@@ -31,6 +31,7 @@ import { base44 } from '@/api/base44Client';
 import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import useSaveUserData from '@/hooks/useSaveUserData';
+import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { t, getLang } from '@/lib/i18n';
 import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
 
@@ -146,6 +147,10 @@ export default function DailyTracker() {
   const [mealHistory, setMealHistory] = useState([]);
   const [pendingMeal, setPendingMeal] = useState(null);
   const [caloriesBurned, setCaloriesBurned] = useState({}); // { "YYYY-MM-DD": number }
+  const [trialStartedAt, setTrialStartedAt] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
+
+  const premiumStatus = usePremiumStatus({ isPremium, trialStartedAt });
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -586,7 +591,8 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
         await base44.asServiceRole.entities.UserQuestData.delete(userDataList[0].id);
         }
 
-        // Create new user data record after onboarding
+        // Create new user data record after onboarding — start 3-day free trial
+        const trialStart = new Date().toISOString();
         const newUserData = await base44.entities.UserQuestData.create({
         quest_data: sanitizedResult,
         onboarding_answers: answers,
@@ -597,9 +603,13 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
         completion_history: {},
         streak_freezes: 1,
         journal_entries: [],
-        last_visit_date: getTodayKey()
+        last_visit_date: getTodayKey(),
+        trial_started_at: trialStart,
+        is_premium: false
         });
         setUserDataId(newUserData.id);
+        setTrialStartedAt(trialStart);
+        setIsPremium(false);
 
         setShowOnboarding(false);
         toast.success(t().onboarding.questsReady);
@@ -713,6 +723,10 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
           if (data.calories_burned) {
             setCaloriesBurned(data.calories_burned);
           }
+
+          // Trial / Premium status
+          setTrialStartedAt(data.trial_started_at || null);
+          setIsPremium(!!data.is_premium);
           
           // Инициализация уровней категорий
           const levels = {};
@@ -818,8 +832,10 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
     journal_entries: journalEntries,
     meal_history: mealHistory,
     calories_burned: caloriesBurned,
+    trial_started_at: trialStartedAt,
+    is_premium: isPremium,
     last_visit_date: getTodayKey()
-  }), [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned]);
+  }), [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned, trialStartedAt, isPremium]);
 
   const restoreSnapshot = useCallback((snapshot) => {
     setQuestData(snapshot.quest_data);
@@ -1240,6 +1256,8 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
           onMealAnalyzed={handleMealAnalyzed}
           theme={theme}
           questData={questData}
+          hasAccess={premiumStatus.hasAccess}
+          onLocked={() => setShowPremium(true)}
         />
 
         {/* Quest Categories */}
@@ -1268,37 +1286,28 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Premium Button */}
       <div className="px-5 mt-6 pb-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={exportData}
-            variant="outline"
-            aria-label={i.common.export}
-            className={`min-h-[44px] ${theme === 'light' 
-              ? 'border-gray-200 hover:bg-gray-50 text-gray-700'
-              : 'border-white/10 hover:bg-white/5 text-gray-300'
-            }`}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            {i.common.export}
-          </Button>
-          <Button
-            onClick={() => setShowPremium(true)}
-            aria-label="Открыть Premium"
-            className="min-h-[44px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
-          >
-            <Lock className="w-4 h-4 mr-2" />
-            Premium
-          </Button>
-        </div>
+        <Button
+          onClick={() => setShowPremium(true)}
+          aria-label="Открыть Premium"
+          className="w-full min-h-[52px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-base font-semibold"
+        >
+          <Lock className="w-5 h-5 mr-2" />
+          Premium
+          {premiumStatus.inTrial && !premiumStatus.isPremium && (
+            <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+              {premiumStatus.daysLeft}d
+            </span>
+          )}
+        </Button>
       </div>
 
       {/* Lazy-loaded Modals wrapped in Suspense */}
       <React.Suspense fallback={null}>
       {/* Premium Modal */}
       {showPremium && (
-        <PremiumModal onClose={() => setShowPremium(false)} theme={theme} />
+        <PremiumModal onClose={() => setShowPremium(false)} theme={theme} premiumStatus={premiumStatus} />
       )}
 
       {/* Category Progress Modal */}
