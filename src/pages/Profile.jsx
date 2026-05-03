@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
-import StatsSection from '@/components/profile/StatsSection';
 import NotificationSettings from '@/components/profile/NotificationSettings';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData } from '@/components/UserDataCache';
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
@@ -179,17 +178,6 @@ export default function Profile() {
           journalEntries={journalEntries}
           categoryLevels={stats.categoryLevels}
           theme={theme}
-        />
-
-        {/* Stats */}
-        <StatsSection
-          completionHistory={stats.completionHistory}
-          categoryTotalCompleted={stats.categoryTotalCompleted}
-          totalCompleted={stats.totalCompleted}
-          streak={stats.streak}
-          categoryLevels={stats.categoryLevels}
-          theme={theme}
-          journalEntries={journalEntries}
         />
 
         {/* Notification Settings */}

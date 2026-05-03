@@ -10,6 +10,7 @@ import EntryCard from '@/components/history/EntryCard';
 import VirtualizedEntryList from '@/components/history/VirtualizedEntryList';
 import MealEditModal from '@/components/daily/MealEditModal';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
+import StatsSection from '@/components/profile/StatsSection';
 
 export default function History() {
   const i = t();
@@ -23,6 +24,10 @@ export default function History() {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [editingMeal, setEditingMeal] = useState(null);
   const [userDataId, setUserDataId] = useState(null);
+  const [categoryTotalCompleted, setCategoryTotalCompleted] = useState({});
+  const [categoryLevels, setCategoryLevels] = useState({});
+  const [totalCompleted, setTotalCompleted] = useState(0);
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
     setTheme(localStorage.getItem('dailyQuestsTheme') || 'light');
@@ -34,11 +39,17 @@ export default function History() {
         setCompletionHistory(data.completion_history || {});
         setJournalEntries(data.journal_entries || []);
         setMealHistory(data.meal_history || []);
+        setCategoryTotalCompleted(data.category_total_completed || {});
+        setCategoryLevels(data.category_levels || {});
+        setTotalCompleted(data.total_completed || 0);
+        setStreak(data.streak || 0);
         setUserDataId(id);
       }
     };
     loadData();
   }, []);
+
+  const statsViewMode = viewMode === 'day' ? 'daily' : viewMode === 'week' ? 'weekly' : 'monthly';
 
   const formatDateKey = (date) => date.toISOString().split('T')[0];
 
@@ -179,6 +190,20 @@ export default function History() {
   // ========== DAY VIEW ==========
   const dayEntries = useMemo(() => getEntriesForDate(formatDateKey(currentDate)), [currentDate, getEntriesForDate]);
 
+  const renderStats = () => (
+    <StatsSection
+      completionHistory={completionHistory}
+      categoryTotalCompleted={categoryTotalCompleted}
+      totalCompleted={totalCompleted}
+      streak={streak}
+      categoryLevels={categoryLevels}
+      theme={theme}
+      journalEntries={journalEntries}
+      viewMode={statsViewMode}
+      hideTabs
+    />
+  );
+
   const renderDayView = () => {
     if (dayEntries.length === 0) return renderEmpty();
     const questCount = dayEntries.filter(e => e.type === 'quest_completed').length;
@@ -186,6 +211,7 @@ export default function History() {
     return (
       <div className="space-y-3">
         {renderSummary(questCount, noteCount, dayEntries.length)}
+        {renderStats()}
         {dayEntries.map(entry => (
           <EntryCard key={entry.id} entry={entry} onSelect={handleSelectEntry} theme={theme} />
         ))}
@@ -217,6 +243,7 @@ export default function History() {
           allEntries.filter(e => e.type === 'journal').length,
           allEntries.length
         )}
+        {renderStats()}
         {days.map((date) => {
           const dateKey = formatDateKey(date);
           const entries = getEntriesForDate(dateKey);
@@ -299,6 +326,7 @@ export default function History() {
     return (
       <div className="space-y-3">
         {allEntries.length > 0 && renderSummary(monthQuestCount, monthNoteCount, allEntries.length)}
+        {renderStats()}
 
         {/* Day names header */}
         <div className="grid grid-cols-7 gap-1">

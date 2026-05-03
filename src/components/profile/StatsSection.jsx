@@ -12,8 +12,10 @@ const CATEGORIES = {
   friends: { name: "Friends", icon: "👥", color: "#fd79a8" }
 };
 
-export default function StatsSection({ completionHistory, categoryTotalCompleted, totalCompleted, streak, categoryLevels, theme, journalEntries = [] }) {
-  const [viewMode, setViewMode] = useState('daily');
+export default function StatsSection({ completionHistory, categoryTotalCompleted, totalCompleted, streak, categoryLevels, theme, journalEntries = [], viewMode: viewModeProp, hideTabs = false }) {
+  const [internalViewMode, setInternalViewMode] = useState('daily');
+  const viewMode = viewModeProp || internalViewMode;
+  const setViewMode = setInternalViewMode;
   const i = t();
   const s = i.stats;
   const locale = getLocale();
@@ -153,6 +155,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
 
 
       {/* Period tabs */}
+      {!hideTabs && (
       <div className="flex gap-2">
         {[
           { key: 'daily', label: s.dayPeriod },
@@ -177,6 +180,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
           </button>
         ))}
       </div>
+      )}
 
       {/* Line chart */}
       <div className={`rounded-2xl p-4 border ${theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'}`}>
