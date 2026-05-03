@@ -3,7 +3,7 @@ import { Camera, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { t } from '@/lib/i18n';
+import { t, getLang } from '@/lib/i18n';
 
 const MAX_PHOTOS = 3;
 const MAX_DIMENSION = 1280; // px — max width/height after compression
@@ -106,9 +106,11 @@ export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme
         })
       );
 
-      // Analyze with AI
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Ты — эксперт-нутрициолог. Проанализируй фото еды и определи:
+      // Analyze with AI — match the app's current language
+      const lang = getLang();
+      const isRu = lang === 'ru';
+      const prompt = isRu
+        ? `Ты — эксперт-нутрициолог. Проанализируй фото еды и определи:
 1. Что это за блюдо/продукты (название)
 2. Примерную порцию
 3. Калорийность (ккал)
@@ -118,7 +120,25 @@ export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme
 
 Если на фото несколько блюд — суммируй всё вместе.
 Будь реалистичен в оценках. Если не можешь точно определить — дай наиболее вероятную оценку.
-Название блюда — коротко, до 40 символов.`,
+Название блюда — коротко, до 40 символов.
+
+ВАЖНО: Все текстовые поля (meal_name, description) должны быть СТРОГО на РУССКОМ языке.`
+        : `You are an expert nutritionist. Analyze the food photo and determine:
+1. What dish/products it is (name)
+2. Approximate portion size
+3. Calories (kcal)
+4. Protein (g)
+5. Fat (g)
+6. Carbs (g)
+
+If there are several dishes — sum everything together.
+Be realistic in your estimates. If you can't determine exactly — give the most probable estimate.
+Dish name — short, up to 40 characters.
+
+IMPORTANT: All text fields (meal_name, description) MUST be STRICTLY in ENGLISH.`;
+
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt,
         file_urls: uploadedUrls,
         response_json_schema: {
           type: "object",

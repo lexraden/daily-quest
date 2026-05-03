@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { t } from '@/lib/i18n';
+import { t, getLang } from '@/lib/i18n';
 
 export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClose, theme = 'dark' }) {
   const i = t();
@@ -24,8 +24,9 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
     }
     setIsRecalculating(true);
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Ты — эксперт-нутрициолог. У пользователя был приём пищи:
+      const isRu = getLang() === 'ru';
+      const prompt = isRu
+        ? `Ты — эксперт-нутрициолог. У пользователя был приём пищи:
 Название: ${meal.meal_name}
 Калории: ${Math.round(meal.calories)} ккал
 Белки: ${Math.round(meal.protein)} г
@@ -35,7 +36,24 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
 Пользователь просит внести изменения: "${correction}"
 
 Пересчитай калории и нутриенты с учётом изменений. Обнови название блюда если нужно.
-Будь реалистичен в оценках.`,
+Будь реалистичен в оценках.
+
+ВАЖНО: Поле meal_name должно быть СТРОГО на РУССКОМ языке.`
+        : `You are an expert nutritionist. The user had a meal:
+Name: ${meal.meal_name}
+Calories: ${Math.round(meal.calories)} kcal
+Protein: ${Math.round(meal.protein)} g
+Fat: ${Math.round(meal.fat)} g
+Carbs: ${Math.round(meal.carbs)} g
+
+The user requests changes: "${correction}"
+
+Recalculate calories and nutrients accounting for the changes. Update the dish name if needed.
+Be realistic in your estimates.
+
+IMPORTANT: The meal_name field MUST be STRICTLY in ENGLISH.`;
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt,
         response_json_schema: {
           type: "object",
           properties: {
