@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Camera, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
@@ -10,13 +10,26 @@ const MAX_PHOTOS = 3;
 export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPhotosChange }) {
   const [photos, setPhotos] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzingStepIdx, setAnalyzingStepIdx] = useState(0);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
   // Notify parent when photos change (to hide Voice button)
-  React.useEffect(() => {
+  useEffect(() => {
     onPhotosChange?.(photos.length > 0 || isAnalyzing);
   }, [photos.length, isAnalyzing, onPhotosChange]);
+
+  // Rotate analyzing step texts
+  useEffect(() => {
+    if (!isAnalyzing) return;
+    const steps = t().calories.analyzingSteps || [];
+    if (steps.length === 0) return;
+    setAnalyzingStepIdx(0);
+    const interval = setInterval(() => {
+      setAnalyzingStepIdx(prev => (prev + 1) % steps.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [isAnalyzing]);
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
@@ -48,23 +61,23 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
         uploadedUrls.push(file_url);
       }
 
-      // Analyze with AI
+      // Analyze with AI (old prompt restored, faster default model)
+      const multiPhotoNote = uploadedUrls.length > 1
+        ? `\n\nВАЖНО: получено ${uploadedUrls.length} фото. Если это одно и то же блюдо с разных ракурсов — считай как ОДНО блюдо, не удваивай. Если разные блюда — суммируй. Если скриншот этикетки — используй для уточнения, не считай отдельно.`
+        : '';
+
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Ты — эксперт-нутрициолог. Проанализируй ${uploadedUrls.length === 1 ? 'фото' : `${uploadedUrls.length} фото`} еды.
+        prompt: `Ты — эксперт-нутрициолог. Проанализируй фото еды и определи:
+1. Что это за блюдо/продукты (название)
+2. Примерную порцию
+3. Калорийность (ккал)
+4. Белки (г)
+5. Жиры (г)
+6. Углеводы (г)
 
-КРИТИЧЕСКИ ВАЖНО при анализе нескольких фото:
-- Если несколько фото показывают ОДНО И ТО ЖЕ блюдо/продукт с разных ракурсов (например, паста сверху и сбоку) — считай это ОДНИМ блюдом, НЕ удваивай порцию.
-- Если фото показывают РАЗНЫЕ блюда/продукты — суммируй их как один общий приём пищи.
-- Если фото — это скриншот этикетки/упаковки/меню/состава продукта — используй информацию оттуда для уточнения данных о соответствующем блюде на других фото, НЕ считай скриншот отдельным "блюдом".
-- Используй визуальные подсказки: окружение (тарелка, стол, фон), ракурс, размер — чтобы понять, одно ли это блюдо или разные.
-
-Определи для итогового приёма пищи:
-1. Название (коротко, до 40 символов) — общее описание того, что съедено
-2. Калорийность (ккал) — общая
-3. Белки, Жиры, Углеводы (г) — общие
-4. Краткое описание (что включено)
-
-Будь реалистичен. Если не можешь точно определить — дай наиболее вероятную оценку.`,
+Если на фото несколько блюд — суммируй всё вместе.
+Будь реалистичен в оценках. Если не можешь точно определить — дай наиболее вероятную оценку.
+Название блюда — коротко, до 40 символов.${multiPhotoNote}`,
         file_urls: uploadedUrls,
         response_json_schema: {
           type: "object",
@@ -77,8 +90,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
             description: { type: "string" }
           },
           required: ["meal_name", "calories", "protein", "fat", "carbs"]
-        },
-        model: "gemini_3_flash"
+        }
       });
 
       onMealAnalyzed({
@@ -104,15 +116,20 @@ export default function CaloriePhotoInput({ onMealAnalyzed, theme = 'dark', onPh
   };
 
   if (isAnalyzing) {
+    const steps = t().calories.analyzingSteps || [];
+    const currentStepText = steps[analyzingStepIdx] || t().calories.analyzing;
     return (
-      <div className={`h-12 px-3 rounded-2xl flex items-center justify-center gap-2 flex-1 min-w-0 ${
+      <div className={`h-12 px-4 rounded-2xl flex items-center justify-center gap-2 flex-1 min-w-0 w-full ${
         theme === 'light'
           ? 'bg-gradient-to-r from-orange-100 to-yellow-100'
           : 'bg-gradient-to-r from-orange-500/20 to-yellow-500/20'
       }`}>
         <Loader2 className="w-4 h-4 animate-spin text-orange-500 flex-shrink-0" />
-        <span className={`text-sm font-medium truncate ${theme === 'light' ? 'text-orange-700' : 'text-orange-300'}`}>
-          {t().calories.analyzing}
+        <span
+          key={analyzingStepIdx}
+          className={`text-sm font-medium truncate animate-in fade-in duration-300 ${theme === 'light' ? 'text-orange-700' : 'text-orange-300'}`}
+        >
+          {currentStepText}
         </span>
       </div>
     );
