@@ -1166,10 +1166,15 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
           </div>
           <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
           <div className="flex items-center gap-1.5">
-            <Flame className="w-4 h-4 text-orange-400" />
+            <Flame className="w-4 h-4 text-orange-500" fill="currentColor" />
             <span className={`font-semibold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{streak}</span>
-            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{i.common.days}</span>
           </div>
+          <CaloriesIndicators
+            mealHistory={mealHistory}
+            caloriesOut={caloriesBurned[getTodayKey()] || 0}
+            onCaloriesOutChange={handleCaloriesOutChange}
+            theme={theme}
+          />
           {streakFreezes > 0 && (
             <>
               <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
@@ -1180,14 +1185,6 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
             </>
           )}
         </div>
-
-        {/* Calories IN / OUT */}
-        <CaloriesIndicators
-          mealHistory={mealHistory}
-          caloriesOut={caloriesBurned[getTodayKey()] || 0}
-          onCaloriesOutChange={handleCaloriesOutChange}
-          theme={theme}
-        />
 
         {/* Level Progress Bar */}
         <div className="space-y-2">
