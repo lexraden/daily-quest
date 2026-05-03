@@ -840,10 +840,19 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
       if (cancelled || !data) return;
       const incomingMeals = Array.isArray(data.meal_history) ? data.meal_history : [];
       const incomingBurned = data.calories_burned || {};
-      // Skip the auto-save triggered by these setStates — they came FROM the DB, no need to write back
-      skipNextSaveRef.current = true;
-      setMealHistory(incomingMeals);
-      setCaloriesBurned(incomingBurned);
+
+      // Only update state if data actually differs — prevents redundant saves
+      // and prevents stale-snapshot races with the debounced save.
+      setMealHistory(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(incomingMeals)) return prev;
+        skipNextSaveRef.current = true;
+        return incomingMeals;
+      });
+      setCaloriesBurned(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(incomingBurned)) return prev;
+        skipNextSaveRef.current = true;
+        return incomingBurned;
+      });
     })();
 
     return () => { cancelled = true; };
