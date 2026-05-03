@@ -6,6 +6,7 @@ import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
 import CaloriesIndicators from '@/components/daily/CaloriesIndicators.jsx';
+import IntegrationsPopover from '@/components/daily/IntegrationsPopover.jsx';
 import { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
 
 // Lazy-loaded modals — only fetched when actually shown (reduces initial bundle)
@@ -1200,6 +1201,7 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
               </div>
             </>
           )}
+          <IntegrationsPopover theme={theme} />
         </div>
 
         {/* Level Progress Bar */}
@@ -1284,23 +1286,6 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
             );
           })}
         </div>
-      </div>
-
-      {/* Premium Button */}
-      <div className="px-5 mt-6 pb-4">
-        <Button
-          onClick={() => setShowPremium(true)}
-          aria-label="Открыть Premium"
-          className="w-full min-h-[52px] bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-base font-semibold"
-        >
-          <Lock className="w-5 h-5 mr-2" />
-          Premium
-          {premiumStatus.inTrial && !premiumStatus.isPremium && (
-            <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
-              {premiumStatus.daysLeft}d
-            </span>
-          )}
-        </Button>
       </div>
 
       {/* Lazy-loaded Modals wrapped in Suspense */}
