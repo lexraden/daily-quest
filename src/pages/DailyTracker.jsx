@@ -156,6 +156,7 @@ export default function DailyTracker() {
 
   const premiumStatus = usePremiumStatus({ isPremium, trialStartedAt });
   const location = useLocation();
+  const skipNextSaveRef = useRef(false);
 
   const getTodayKey = () => new Date().toISOString().split('T')[0];
 
@@ -833,10 +834,16 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
 
     let cancelled = false;
     (async () => {
+      // Force a fresh read from DB to avoid stale local cache
+      invalidateCache();
       const { data } = await getCachedUserData(user.email);
       if (cancelled || !data) return;
-      if (Array.isArray(data.meal_history)) setMealHistory(data.meal_history);
-      if (data.calories_burned) setCaloriesBurned(data.calories_burned);
+      const incomingMeals = Array.isArray(data.meal_history) ? data.meal_history : [];
+      const incomingBurned = data.calories_burned || {};
+      // Skip the auto-save triggered by these setStates — they came FROM the DB, no need to write back
+      skipNextSaveRef.current = true;
+      setMealHistory(incomingMeals);
+      setCaloriesBurned(incomingBurned);
     })();
 
     return () => { cancelled = true; };
@@ -889,6 +896,12 @@ Pick appropriate emojis for each quest (emoji separate, not in the name).`,
   // Trigger debounced save whenever data changes
   useEffect(() => {
     if (!isLoaded || !userDataId) return;
+    if (skipNextSaveRef.current) {
+      // This change originated from a re-sync (cache → state), not a user action.
+      // Don't write the same data back to the DB.
+      skipNextSaveRef.current = false;
+      return;
+    }
     saveUserData();
   }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned, isLoaded, userDataId, saveUserData]);
 
