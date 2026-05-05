@@ -107,6 +107,50 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
     }
   }, [recognition, isRecording, isProcessing]);
 
+  const analyzeMealFromText = async (text) => {
+    const isRu = getLang() === 'ru';
+    const prompt = isRu
+      ? `Ты — эксперт-нутрициолог. Пользователь рассказал, что он съел/выпил: "${text}"
+
+Оцени калорийность и нутриенты этого приёма пищи. Если порция не указана — прикинь среднюю/стандартную.
+Будь реалистичен в оценках.
+
+ВАЖНО: Поле meal_name должно быть СТРОГО на РУССКОМ языке, кратко (например: "Шаверма с курицей 500г").`
+      : `You are an expert nutritionist. The user described what they ate/drank: "${text}"
+
+Estimate the calories and nutrients of this meal. If the portion is not specified — assume an average/standard portion.
+Be realistic in your estimates.
+
+IMPORTANT: The meal_name field MUST be STRICTLY in ENGLISH, short (e.g.: "Chicken shawarma 500g").`;
+
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          meal_name: { type: "string" },
+          calories: { type: "number" },
+          protein: { type: "number" },
+          fat: { type: "number" },
+          carbs: { type: "number" }
+        },
+        required: ["meal_name", "calories", "protein", "fat", "carbs"]
+      },
+      model: "gemini_3_flash"
+    });
+
+    onMealAnalyzed({
+      meal_name: result.meal_name,
+      calories: result.calories,
+      protein: result.protein,
+      fat: result.fat,
+      carbs: result.carbs,
+      photo_urls: [],
+      date: new Date().toISOString().split('T')[0],
+      timestamp: new Date().toISOString()
+    });
+  };
+
   const processVoiceInput = async (text) => {
     setIsProcessing(true);
 
@@ -130,7 +174,8 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       2. ADD_QUEST - хочет добавить новый квест в трекер
       3. DELETE_QUEST - хочет удалить существующий квест
       4. EDIT_QUEST - хочет изменить/переименовать существующий квест
-      5. JOURNAL - просто делится заметкой/мыслями о дне
+      5. MEAL_LOG - сообщает о приёме пищи (что-то съел, выпил, перекусил). Например: "съел шаверму с курицей 500 грамм", "выпил кофе с молоком", "обед: борщ и хлеб"
+      6. JOURNAL - просто делится заметкой/мыслями о дне
 
       Для DELETE_QUEST, EDIT_QUEST и COMPLETED_QUEST:
       - ОБЯЗАТЕЛЬНО найди ТОЧНОЕ совпадение с существующим квестом из списка выше
@@ -160,7 +205,8 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       2. ADD_QUEST - wants to add a new quest to the tracker
       3. DELETE_QUEST - wants to delete an existing quest
       4. EDIT_QUEST - wants to change/rename an existing quest
-      5. JOURNAL - just sharing a note/thought about the day
+      5. MEAL_LOG - reporting a meal/food/drink intake. Example: "ate chicken shawarma 500g", "had coffee with milk", "lunch: borscht and bread"
+      6. JOURNAL - just sharing a note/thought about the day
 
       For DELETE_QUEST, EDIT_QUEST and COMPLETED_QUEST:
       - You MUST find an EXACT match from the existing quests list above
@@ -188,7 +234,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
           properties: {
             intent: {
               type: "string",
-              enum: ["COMPLETED_QUEST", "ADD_QUEST", "DELETE_QUEST", "EDIT_QUEST", "JOURNAL"]
+              enum: ["COMPLETED_QUEST", "ADD_QUEST", "DELETE_QUEST", "EDIT_QUEST", "MEAL_LOG", "JOURNAL"]
             },
             category: {
               type: "string",
@@ -208,6 +254,13 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
           required: ["intent", "category", "emoji", "name", "action", "message"]
         }
       });
+
+      // If user described a meal — analyze it as nutrition (same workflow as photo)
+      if (result.intent === 'MEAL_LOG') {
+        await analyzeMealFromText(text);
+        if (navigator.vibrate) navigator.vibrate(50);
+        return;
+      }
 
       onQuestSuggestion({
         ...result,
