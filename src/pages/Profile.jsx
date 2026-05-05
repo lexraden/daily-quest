@@ -160,7 +160,7 @@ export default function Profile() {
 
       <div className="px-5 py-3 space-y-3 max-w-2xl mx-auto pb-6">
         {/* Profile header - compact */}
-        <ProfileHeader user={user} stats={stats} levelProgress={levelProgress} theme={theme} />
+        <ProfileHeader user={user} stats={stats} levelProgress={levelProgress} theme={theme} onUserUpdate={setUser} />
 
         {/* Daily Calories */}
         <DailyCaloriesCard

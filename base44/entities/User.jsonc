@@ -20,6 +20,10 @@
       "type": "boolean",
       "default": true,
       "description": "Whether to receive daily quest reminders"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "URL of the user's avatar photo"
     }
   },
   "required": []
