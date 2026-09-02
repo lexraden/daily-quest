@@ -53,6 +53,8 @@ model QuestData {
   // { "YYYY-MM-DD": [questId, ...] } in the user's local dates.
   completionHistory      Json @default("{}") @map("completion_history")
   caloriesBurned         Json @default("{}") @map("calories_burned")
+  // Daily mood check-in: { "YYYY-MM-DD": { score: 1-5, note?: string, at: ISO } }
+  moodLog                Json @default("{}") @map("mood_log")
   onboardingAnswers      Json @default("{}") @map("onboarding_answers")
   // { enabled, reminder_time, timezone, streak_warning, push_token }
   notificationSettings   Json @default("{}") @map("notification_settings")

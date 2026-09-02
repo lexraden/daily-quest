@@ -78,6 +78,13 @@ each time. The trial clock starts at the first AI call rather than at onboarding
 completion, because generating the opening quests happens before any quest data
 exists, and because never onboarding must not buy an unexpiring trial.
 
+**Mood.** A daily check-in (1-5, optional note) is stored on
+`quest_data.mood_log`, keyed by local date like `completion_history` and
+`calories_burned` are. The Statistics page reads both and shows average mood by
+how many quests were completed that day — the app already recorded what you
+*did*, and this records how it *felt*, which is the pairing that makes the
+history worth looking at.
+
 **Files.** Meal photos and avatars are written to the Railway volume at
 `/data/uploads/<userId>/`, with the type sniffed from the bytes rather than
 trusted from the upload header. Since a browser cannot put an `Authorization`
@@ -154,6 +161,9 @@ S3/R2 behind the existing `/api/files` contract.
 | `GET/DELETE /api/files/:id` | Serve or remove an owned file |
 | `GET /api/health` | Liveness plus a database round-trip |
 
+`quest_data.mood_log` is written through the same `PATCH /api/quest-data`
+allowlist as every other field; there is no separate mood endpoint.
+
 ## Known limitations
 
 - **Billing is not built.** `is_premium` is a flag with no payment path behind
@@ -166,5 +176,7 @@ S3/R2 behind the existing `/api/files` contract.
 - **`meal_history` and `journal_entries` are unbounded arrays** rewritten
   wholesale on every save. Fine at current scale; normalise into their own
   tables when they get long.
+- **The Statistics page needs three check-ins** before it shows charts; below
+  that it explains what to do instead of drawing an empty axis.
 - **Push notifications are stubbed.** `notification_settings.push_token` exists
   and the reminders job has the hook for it, but delivery is email only.

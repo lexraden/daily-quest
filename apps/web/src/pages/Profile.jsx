@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { RotateCcw, Trash2 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { RotateCcw, Trash2, BarChart3, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import { api } from '@/api/client';
@@ -51,6 +51,7 @@ export default function Profile() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
@@ -189,6 +190,24 @@ export default function Profile() {
           categoryLevels={stats.categoryLevels}
           theme={theme}
         />
+
+        {/* Statistics — mood and quest trends */}
+        <button
+          onClick={() => navigate('/Statistics')}
+          className={`w-full flex items-center justify-between rounded-2xl p-4 transition-colors ${
+            theme === 'light'
+              ? 'bg-white border border-gray-200 hover:bg-gray-50'
+              : 'bg-white/5 border border-white/10 hover:bg-white/10'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <BarChart3 className={`w-4 h-4 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
+            <span className={`text-sm font-medium ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+              {t().statsPage.title}
+            </span>
+          </span>
+          <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
+        </button>
 
         {/* Notification Settings */}
         <NotificationSettings

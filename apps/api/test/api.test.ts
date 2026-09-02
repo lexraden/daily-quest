@@ -76,6 +76,7 @@ const AUTOSAVE_PAYLOAD = {
   journal_entries: [],
   meal_history: [],
   calories_burned: {},
+  mood_log: { '2026-09-02': { score: 4, note: 'good day', at: '2026-09-02T09:00:00Z' } },
   last_visit_date: '2026-09-02',
 };
 
@@ -169,6 +170,25 @@ describe('quest data', () => {
       const res = await call('/api/quest-data', { token: alice.token, method: 'PATCH', body });
       assert.equal(res.status, 400, `${JSON.stringify(body)} must be rejected`);
     }
+  });
+
+  test('persists mood check-ins', async () => {
+    const moods = {
+      '2026-09-01': { score: 2, at: '2026-09-01T09:00:00Z' },
+      '2026-09-02': { score: 5, note: 'great', at: '2026-09-02T09:00:00Z' },
+    };
+    const res = await call('/api/quest-data', {
+      token: alice.token, method: 'PATCH', body: { mood_log: moods },
+    });
+    assert.equal(res.status, 200);
+    const row = await res.json();
+    assert.deepEqual(row.mood_log, moods);
+
+    // A later partial save must not wipe the mood history.
+    const after = await (await call('/api/quest-data', {
+      token: alice.token, method: 'PATCH', body: { streak: 9 },
+    })).json();
+    assert.deepEqual(after.mood_log, moods);
   });
 
   test('validates date shape', async () => {

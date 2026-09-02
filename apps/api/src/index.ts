@@ -86,10 +86,16 @@ const webDist = join(here, '../../web/dist');
 if (existsSync(webDist)) {
   await app.register(import('@fastify/static'), { root: webDist, wildcard: false });
 
-  // Client-side routing: anything that isn't an API call or a real file is the
-  // app shell. An unmatched /api/* path must still 404 as JSON.
+  // Client-side routing: an unmatched path is the app shell. Two things must
+  // NOT get the shell — an /api/* path, which answers as JSON, and anything
+  // that looks like a file. A stale index.html asking for a chunk that a later
+  // deploy removed should fail cleanly as 404 rather than receive HTML under a
+  // .js URL, which surfaces as an opaque MIME error in the browser.
+  const looksLikeAFile = /\.[a-z0-9]{2,5}$/i;
+
   app.setNotFoundHandler((request, reply) => {
-    if (request.url.startsWith('/api/')) {
+    const path = request.url.split('?')[0] ?? '';
+    if (path.startsWith('/api/') || looksLikeAFile.test(path)) {
       return reply.code(404).send({ error: 'Not found', code: 'not_found' });
     }
     return reply.sendFile('index.html');

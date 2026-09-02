@@ -29,6 +29,7 @@ const patchBody = z
     category_total_completed: jsonObject,
     completion_history: jsonObject,
     calories_burned: jsonObject,
+    mood_log: jsonObject,
     onboarding_answers: jsonObject,
     notification_settings: jsonObject,
     journal_entries: jsonArray,
@@ -58,6 +59,7 @@ const toWire = (row: {
   categoryTotalCompleted: unknown;
   completionHistory: unknown;
   caloriesBurned: unknown;
+  moodLog: unknown;
   onboardingAnswers: unknown;
   notificationSettings: unknown;
   journalEntries: unknown;
@@ -77,6 +79,7 @@ const toWire = (row: {
   category_total_completed: row.categoryTotalCompleted,
   completion_history: row.completionHistory,
   calories_burned: row.caloriesBurned,
+  mood_log: row.moodLog,
   onboarding_answers: row.onboardingAnswers,
   notification_settings: row.notificationSettings,
   journal_entries: row.journalEntries,
@@ -124,6 +127,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
         categoryTotalCompleted: zeroedByCategory(),
         completionHistory: {},
         caloriesBurned: {},
+        moodLog: {},
         notificationSettings: {},
         journalEntries: [],
         mealHistory: [],
@@ -176,6 +180,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
           ? { completionHistory: toJson(b.completion_history) }
           : {}),
         ...(b.calories_burned !== undefined ? { caloriesBurned: toJson(b.calories_burned) } : {}),
+        ...(b.mood_log !== undefined ? { moodLog: toJson(b.mood_log) } : {}),
         ...(b.onboarding_answers !== undefined
           ? { onboardingAnswers: toJson(b.onboarding_answers) }
           : {}),
