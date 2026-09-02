@@ -1,0 +1,40 @@
+{
+  "name": "@dailyq/api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "prisma generate && tsc -p tsconfig.json",
+    "start": "prisma migrate deploy && node dist/index.js",
+    "reminders": "node dist/jobs/reminders.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^10.0.2",
+    "@fastify/multipart": "^9.0.3",
+    "@fastify/rate-limit": "^10.2.2",
+    "@fastify/static": "^8.0.4",
+    "@prisma/client": "^6.3.1",
+    "fastify": "^5.2.1",
+    "google-auth-library": "^9.15.1",
+    "openai": "^4.83.0",
+    "resend": "^4.1.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "prisma": "^6.3.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

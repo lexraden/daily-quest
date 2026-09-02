@@ -28,4 +28,10 @@ dist-ssr
 *.sw?
 
 .env
-base44/.app.jsonc
+
+# build output
+apps/*/dist
+apps/api/dist
+
+# prisma
+apps/api/prisma/*.db

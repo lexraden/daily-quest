@@ -1,0 +1,112 @@
+// DailyQ data model.
+//
+// The JSON columns mirror the shape the React app already reads and writes, so
+// the frontend needed no reshaping during the Base44 cutover. `mealHistory` and
+// `journalEntries` are unbounded arrays rewritten wholesale on every save —
+// fine at current scale, worth normalising into their own tables later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  googleSub String   @unique @map("google_sub")
+  fullName  String?  @map("full_name")
+  avatarUrl String?  @map("avatar_url")
+  role      Role     @default(user)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  questData     QuestData?
+  files         File[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model QuestData {
+  id     String @id @default(cuid())
+  userId String @unique @map("user_id")
+
+  // Six categories x three levels, keyed by category name.
+  questData              Json @default("{}") @map("quest_data")
+  categoryLevels         Json @default("{}") @map("category_levels")
+  categoryTotalCompleted Json @default("{}") @map("category_total_completed")
+  // { "YYYY-MM-DD": [questId, ...] } in the user's local dates.
+  completionHistory      Json @default("{}") @map("completion_history")
+  caloriesBurned         Json @default("{}") @map("calories_burned")
+  onboardingAnswers      Json @default("{}") @map("onboarding_answers")
+  // { enabled, reminder_time, timezone, streak_warning, push_token }
+  notificationSettings   Json @default("{}") @map("notification_settings")
+  journalEntries         Json @default("[]") @map("journal_entries")
+  mealHistory            Json @default("[]") @map("meal_history")
+
+  totalCompleted Int @default(0) @map("total_completed")
+  streak         Int @default(0)
+  streakFreezes  Int @default(1) @map("streak_freezes")
+
+  // "YYYY-MM-DD" strings: these are local calendar days, not instants.
+  lastCompletedDate String? @map("last_completed_date")
+  lastVisitDate     String? @map("last_visit_date")
+
+  trialStartedAt DateTime? @map("trial_started_at")
+  isPremium      Boolean   @default(false) @map("is_premium")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quest_data")
+}
+
+model File {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  path      String // relative to UPLOAD_DIR
+  mimeType  String   @map("mime_type")
+  bytes     Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("files")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// Per-user monthly AI spend guard. Rows are cheap; one per user per period.
+model AiUsage {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  period String // "YYYY-MM"
+  calls  Int    @default(0)
+
+  @@unique([userId, period])
+  @@map("ai_usage")
+}

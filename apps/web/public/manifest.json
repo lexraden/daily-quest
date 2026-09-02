@@ -1,0 +1,12 @@
+{
+  "name": "DailyQ",
+  "short_name": "DailyQ",
+  "description": "Daily quests, streaks and habits",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#f9fafb",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
