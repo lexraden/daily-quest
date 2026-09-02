@@ -49,6 +49,7 @@ export async function getCachedUserData() {
     return { data: cache.userData, id: cache.userDataId };
   }
 
+
   cache.fetching = (async () => {
     // null means signed in but not yet onboarded.
     const row = await withRetry(() => api.questData.get());
@@ -57,8 +58,12 @@ export async function getCachedUserData() {
     cache.lastFetch = Date.now();
   })();
 
-  await cache.fetching;
-  cache.fetching = null;
+  try {
+    await cache.fetching;
+  } finally {
+    // Clear on failure too, so one failed load does not poison every later one.
+    cache.fetching = null;
+  }
   return { data: cache.userData, id: cache.userDataId };
 }
 

@@ -1,8 +1,8 @@
 import OpenAI from 'openai';
-import { env } from '../env.js';
+import { apiEnv } from '../env.api.js';
 import { HttpError } from '../lib/errors.js';
 
-const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+const client = new OpenAI({ apiKey: apiEnv.OPENAI_API_KEY });
 
 export interface ImagePart {
   mimeType: string;

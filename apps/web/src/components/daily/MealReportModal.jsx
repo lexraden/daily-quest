@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Flame, Beef, Droplets, Wheat } from 'lucide-react';
+import { Flame, Beef, Droplets, Wheat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { t } from '@/lib/i18n';

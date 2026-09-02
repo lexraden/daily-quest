@@ -7,16 +7,16 @@ import {
   readSignedFile,
   deleteFileForUser,
 } from '../lib/storage.js';
-import { env } from '../env.js';
+import { apiEnv } from '../env.api.js';
 
 const tooLarge = () =>
-  payloadTooLarge(`Images must be under ${Math.floor(env.MAX_UPLOAD_BYTES / 1024 / 1024)} MB`);
+  payloadTooLarge(`Images must be under ${Math.floor(apiEnv.MAX_UPLOAD_BYTES / 1024 / 1024)} MB`);
 
 export default async function fileRoutes(app: FastifyInstance) {
   app.post('/', { preHandler: requireAuth }, async (request, reply) => {
     if (!request.isMultipart()) throw badRequest('Send the image as multipart form data');
 
-    const part = await request.file({ limits: { fileSize: env.MAX_UPLOAD_BYTES } });
+    const part = await request.file({ limits: { fileSize: apiEnv.MAX_UPLOAD_BYTES } });
     if (!part) throw badRequest('No file was attached');
 
     let bytes: Buffer;

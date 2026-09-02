@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { CheckCircle2, Circle, Flame, Trophy, Target, Sparkles, Heart, Brain, Briefcase, DollarSign, Users, Activity, Lock, Download, Shield, TrendingUp, Camera, Footprints, Sun, Moon, BarChart3 } from 'lucide-react';
+import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 // CalendarView replaced by History page
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
@@ -31,7 +31,7 @@ const getConfetti = () => {
 import { toast } from 'sonner';
 import { useLocation } from 'react-router-dom';
 import { api } from '@/api/client';
-import { getCachedUser, getCachedUserData, updateCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
+import { getCachedUser, getCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import useSaveUserData from '@/hooks/useSaveUserData';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
@@ -658,10 +658,10 @@ export default function DailyTracker() {
     journal_entries: journalEntries,
     meal_history: mealHistory,
     calories_burned: caloriesBurned,
-    trial_started_at: trialStartedAt,
-    is_premium: isPremium,
+    // trial_started_at and is_premium are owned by the server and rejected by
+    // the API's field allowlist — they are read from responses, never sent.
     last_visit_date: getTodayKey()
-  }), [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned, trialStartedAt, isPremium]);
+  }), [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned]);
 
   const restoreSnapshot = useCallback((snapshot) => {
     setQuestData(snapshot.quest_data);

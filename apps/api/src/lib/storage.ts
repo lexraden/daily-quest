@@ -1,7 +1,7 @@
 import { mkdir, writeFile, readFile, unlink } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
-import { env } from '../env.js';
+import { apiEnv } from '../env.api.js';
 import { prisma } from '../db.js';
 import { badRequest } from './errors.js';
 
@@ -43,7 +43,7 @@ function sniffMimeType(buf: Buffer): string | null {
  * are persisted inside meal_history), and is only ever minted by us.
  */
 export function signFileId(fileId: string, userId: string): string {
-  return createHmac('sha256', env.FILE_SIGNING_SECRET)
+  return createHmac('sha256', apiEnv.FILE_SIGNING_SECRET)
     .update(`${fileId}:${userId}`)
     .digest('base64url')
     .slice(0, 32);
@@ -67,9 +67,9 @@ export async function storeUpload(
   bytes: Buffer,
 ): Promise<{ id: string; url: string; mimeType: string; bytes: number }> {
   if (bytes.length === 0) throw badRequest('That file is empty');
-  if (bytes.length > env.MAX_UPLOAD_BYTES) {
+  if (bytes.length > apiEnv.MAX_UPLOAD_BYTES) {
     throw badRequest(
-      `Images must be under ${Math.floor(env.MAX_UPLOAD_BYTES / 1024 / 1024)} MB`,
+      `Images must be under ${Math.floor(apiEnv.MAX_UPLOAD_BYTES / 1024 / 1024)} MB`,
     );
   }
 
@@ -82,7 +82,7 @@ export async function storeUpload(
   // the client sends, so there is no traversal to defend against.
   const name = `${randomBytes(16).toString('hex')}.${ALLOWED.get(mimeType)}`;
   const relative = join(userId, name);
-  const absolute = join(env.UPLOAD_DIR, relative);
+  const absolute = join(apiEnv.UPLOAD_DIR, relative);
 
   await mkdir(dirname(absolute), { recursive: true });
   await writeFile(absolute, bytes);
@@ -126,7 +126,7 @@ async function readRecord(record: {
 }): Promise<{ bytes: Buffer; mimeType: string } | null> {
 
   try {
-    const bytes = await readFile(join(env.UPLOAD_DIR, record.path));
+    const bytes = await readFile(join(apiEnv.UPLOAD_DIR, record.path));
     return { bytes, mimeType: record.mimeType };
   } catch {
     return null;
@@ -138,8 +138,8 @@ export async function deleteFileForUser(fileId: string, userId: string): Promise
   if (!record) return false;
 
   await prisma.file.delete({ where: { id: record.id } });
-  await unlink(join(env.UPLOAD_DIR, record.path)).catch(() => {});
+  await unlink(join(apiEnv.UPLOAD_DIR, record.path)).catch(() => {});
   return true;
 }
 
-export const ensureUploadDir = () => mkdir(env.UPLOAD_DIR, { recursive: true });
+export const ensureUploadDir = () => mkdir(apiEnv.UPLOAD_DIR, { recursive: true });

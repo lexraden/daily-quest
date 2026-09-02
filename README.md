@@ -68,9 +68,15 @@ caller-supplied prompt would put an authenticated, billable OpenAI proxy on the
 public internet.
 
 Access is gated server-side on trial or premium status read from the database,
-with a per-minute rate limit and a monthly per-user ceiling. The client-side
-`usePremiumStatus` hook decides what the UI *offers*; the server decides what
-actually runs.
+with a per-minute rate limit and a monthly per-user ceiling charged only on
+success. The client-side `usePremiumStatus` hook decides what the UI *offers*;
+the server decides what actually runs.
+
+Entitlement lives on the **user** row, not on `quest_data` — that row is deleted
+when someone resets onboarding, which would otherwise hand out a fresh trial
+each time. The trial clock starts at the first AI call rather than at onboarding
+completion, because generating the opening quests happens before any quest data
+exists, and because never onboarding must not buy an unexpiring trial.
 
 **Files.** Meal photos and avatars are written to the Railway volume at
 `/data/uploads/<userId>/`, with the type sniffed from the bytes rather than
@@ -82,6 +88,21 @@ stable for the file's lifetime, because these URLs are persisted inside
 
 Photos are sent to OpenAI inline as base64 — the model has no credentials to
 fetch a URL on our volume.
+
+## Tests
+
+```bash
+npm test          # end-to-end API tests, needs a running API + Postgres
+npm run lint
+npm run typecheck
+```
+
+See `apps/api/test/README.md` for the database setup. The suite runs against
+real HTTP and a real database rather than mocks: every case in it corresponds
+to something that was genuinely broken or exploitable at some point — the
+autosave payload the client actually sends, cross-user isolation on rows and
+files, refresh-token replay, signed image URLs, the trial gate. CI
+(`.github/workflows/ci.yml`) runs all of it on every push and pull request.
 
 ## Deploying to Railway
 
@@ -101,7 +122,9 @@ and no cookie `SameSite` problems.
 **`dailyq-reminders`** — same repo, same root directory, with the start command
 `npm run reminders --workspace apps/api` and a cron schedule (every 30 minutes
 matches the reminder window logic). It needs `DATABASE_URL`, `RESEND_API_KEY`
-and `REMINDER_FROM`; it does not need the volume. The job checks each user's
+and `REMINDER_FROM`, plus `APP_ORIGIN` for the link in the email. It does not
+need the volume, and deliberately does not load the API's signing secrets or
+the OpenAI key — its environment is validated separately in `src/env.job.ts`. The job checks each user's
 local reminder time against their timezone, skips anyone who has already
 completed a quest today, and exits.
 

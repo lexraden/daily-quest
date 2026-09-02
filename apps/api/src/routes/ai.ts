@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { env } from '../env.js';
+import { apiEnv } from '../env.api.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
 import { badRequest, notFound } from '../lib/errors.js';
-import { requireAiAccess, countAiCall } from '../lib/access.js';
+import { requireAiAccess, assertAiQuota, recordAiCall } from '../lib/access.js';
 import { completeJson, strictSchema, nullable, type ImagePart } from '../ai/openai.js';
 import * as prompts from '../ai/prompts.js';
 import { CATEGORIES, sanitizeQuestData, sortByLevel } from '../lib/questData.js';
@@ -71,19 +71,30 @@ interface MealResult {
 }
 
 export default async function aiRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', requireAuth);
+  // Authenticate on onRequest, not preHandler: @fastify/rate-limit also hooks
+  // onRequest, and its keyGenerator would otherwise run before request.userId
+  // was set and silently fall back to limiting per IP.
+  app.addHook('onRequest', requireAuth);
 
-  // Burst protection. The monthly ceiling in countAiCall is the spend backstop;
-  // this stops one user hammering the endpoint in a loop.
+  // Burst protection. The monthly ceiling is the spend backstop; this stops one
+  // user hammering an endpoint in a loop.
   await app.register(import('@fastify/rate-limit'), {
     max: 30,
     timeWindow: '1 minute',
     keyGenerator: (request) => request.userId ?? request.ip,
   });
 
-  const gate = async (userId: string) => {
+  /**
+   * Runs an AI call under the access gate and the monthly quota. The quota is
+   * charged only once the call succeeds, so an OpenAI outage costs the user
+   * nothing and a failing request cannot inflate the counter.
+   */
+  const guarded = async <T>(userId: string, run: () => Promise<T>): Promise<T> => {
     await requireAiAccess(userId);
-    await countAiCall(userId);
+    await assertAiQuota(userId);
+    const result = await run();
+    await recordAiCall(userId);
+    return result;
   };
 
   app.post('/quests/generate', async (request) => {
@@ -97,16 +108,15 @@ export default async function aiRoutes(app: FastifyInstance) {
       .safeParse(request.body);
     if (!body.success) throw badRequest(body.error.issues[0]?.message ?? 'Invalid request');
 
-    const userId = currentUserId(request);
-    await gate(userId);
-
-    const result = await completeJson<Record<string, unknown>>({
-      model: env.OPENAI_MODEL_QUESTS,
-      prompt: prompts.questGeneration(body.data.lang, body.data.answers),
-      schemaName: 'quest_set',
-      schema: questSchema,
-      maxTokens: 3000,
-    });
+    const result = await guarded(currentUserId(request), () =>
+      completeJson<Record<string, unknown>>({
+        model: apiEnv.OPENAI_MODEL_QUESTS,
+        prompt: prompts.questGeneration(body.data.lang, body.data.answers),
+        schemaName: 'quest_set',
+        schema: questSchema,
+        maxTokens: 3000,
+      }),
+    );
 
     // Sanitised and level-ordered here so a bad generation can't reach the UI,
     // even though POST /quest-data would sanitise it again on the way in.
@@ -124,7 +134,6 @@ export default async function aiRoutes(app: FastifyInstance) {
     if (!body.success) throw badRequest('Say or type something first');
 
     const userId = currentUserId(request);
-    await gate(userId);
 
     // The existing-quest list is rebuilt server-side in the exact format the
     // prompt expects, from the caller's own saved quests.
@@ -143,12 +152,14 @@ export default async function aiRoutes(app: FastifyInstance) {
       .filter(Boolean)
       .join('\n');
 
-    return completeJson({
-      model: env.OPENAI_MODEL_MEAL,
-      prompt: prompts.voiceIntent(body.data.lang, body.data.text, existingQuestsList),
-      schemaName: 'voice_intent',
-      schema: intentSchema,
-    });
+    return guarded(userId, () =>
+      completeJson({
+        model: apiEnv.OPENAI_MODEL_MEAL,
+        prompt: prompts.voiceIntent(body.data.lang, body.data.text, existingQuestsList),
+        schemaName: 'voice_intent',
+        schema: intentSchema,
+      }),
+    );
   });
 
   // Cleans up a voice transcript during onboarding. Cheapest model: this is a
@@ -163,15 +174,14 @@ export default async function aiRoutes(app: FastifyInstance) {
       .safeParse(request.body);
     if (!body.success) throw badRequest('Nothing to clean up');
 
-    const userId = currentUserId(request);
-    await gate(userId);
-
-    return completeJson<{ cleaned_text: string }>({
-      model: env.OPENAI_MODEL_MEAL,
-      prompt: prompts.transcriptCleanup(body.data.lang, body.data.question, body.data.text),
-      schemaName: 'cleaned_text',
-      schema: strictSchema({ cleaned_text: { type: 'string' } }),
-    });
+    return guarded(currentUserId(request), () =>
+      completeJson<{ cleaned_text: string }>({
+        model: apiEnv.OPENAI_MODEL_MEAL,
+        prompt: prompts.transcriptCleanup(body.data.lang, body.data.question, body.data.text),
+        schemaName: 'cleaned_text',
+        schema: strictSchema({ cleaned_text: { type: 'string' } }),
+      }),
+    );
   });
 
   app.post('/meal/text', async (request) => {
@@ -180,15 +190,14 @@ export default async function aiRoutes(app: FastifyInstance) {
       .safeParse(request.body);
     if (!body.success) throw badRequest('Describe what you ate');
 
-    const userId = currentUserId(request);
-    await gate(userId);
-
-    return completeJson<MealResult>({
-      model: env.OPENAI_MODEL_MEAL,
-      prompt: prompts.mealFromText(body.data.lang, body.data.text),
-      schemaName: 'meal',
-      schema: mealSchema,
-    });
+    return guarded(currentUserId(request), () =>
+      completeJson<MealResult>({
+        model: apiEnv.OPENAI_MODEL_MEAL,
+        prompt: prompts.mealFromText(body.data.lang, body.data.text),
+        schemaName: 'meal',
+        schema: mealSchema,
+      }),
+    );
   });
 
   app.post('/meal/correct', async (request) => {
@@ -205,15 +214,14 @@ export default async function aiRoutes(app: FastifyInstance) {
       .safeParse(request.body);
     if (!body.success) throw badRequest('Describe the correction you want');
 
-    const userId = currentUserId(request);
-    await gate(userId);
-
-    return completeJson<MealResult>({
-      model: env.OPENAI_MODEL_MEAL,
-      prompt: prompts.mealCorrection(body.data.lang, body.data),
-      schemaName: 'meal',
-      schema: mealSchema,
-    });
+    return guarded(currentUserId(request), () =>
+      completeJson<MealResult>({
+        model: apiEnv.OPENAI_MODEL_MEAL,
+        prompt: prompts.mealCorrection(body.data.lang, body.data),
+        schemaName: 'meal',
+        schema: mealSchema,
+      }),
+    );
   });
 
   app.post('/meal/photo', async (request) => {
@@ -223,7 +231,8 @@ export default async function aiRoutes(app: FastifyInstance) {
     if (!body.success) throw badRequest('Attach at least one photo');
 
     const userId = currentUserId(request);
-    await gate(userId);
+    await requireAiAccess(userId);
+    await assertAiQuota(userId);
 
     const images: ImagePart[] = [];
     for (const id of body.data.file_ids) {
@@ -232,12 +241,14 @@ export default async function aiRoutes(app: FastifyInstance) {
       images.push({ mimeType: file.mimeType, base64: file.bytes.toString('base64') });
     }
 
-    return completeJson<MealResult>({
-      model: env.OPENAI_MODEL_VISION,
+    const result = await completeJson<MealResult>({
+      model: apiEnv.OPENAI_MODEL_VISION,
       prompt: prompts.mealFromPhoto(body.data.lang),
       schemaName: 'meal',
       schema: mealSchema,
       images,
     });
+    await recordAiCall(userId);
+    return result;
   });
 }

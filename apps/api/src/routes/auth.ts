@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { prisma } from '../db.js';
-import { env } from '../env.js';
+import { apiEnv } from '../env.api.js';
 import { verifyGoogleIdToken } from '../auth/google.js';
 import {
   issueAccessToken,
@@ -14,15 +14,24 @@ import {
   refreshCookieOptions,
 } from '../auth/tokens.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
-import { badRequest, unauthorized, notFound } from '../lib/errors.js';
+import { badRequest, unauthorized, notFound, HttpError } from '../lib/errors.js';
 
 const googleBody = z.object({
   id_token: z.string().min(1),
 });
 
+// Avatars are stored on our own volume, so the URL is the relative signed path
+// /api/files/<id>?sig=… that POST /api/files returns — not an absolute URL.
+const avatarUrl = z
+  .string()
+  .max(2048)
+  .refine((v) => /^\/api\/files\/[A-Za-z0-9_-]+\?sig=[A-Za-z0-9_-]+$/.test(v), {
+    message: 'must be a URL returned by the file upload endpoint',
+  });
+
 const updateMeBody = z.object({
   full_name: z.string().trim().min(1).max(120).optional(),
-  avatar_url: z.string().url().max(2048).nullable().optional(),
+  avatar_url: avatarUrl.nullable().optional(),
 });
 
 const publicUser = (u: {
@@ -31,6 +40,8 @@ const publicUser = (u: {
   fullName: string | null;
   avatarUrl: string | null;
   role: string;
+  trialStartedAt: Date | null;
+  isPremium: boolean;
 }) => ({
   id: u.id,
   email: u.email,
@@ -38,6 +49,8 @@ const publicUser = (u: {
   full_name: u.fullName,
   avatar_url: u.avatarUrl,
   role: u.role,
+  trial_started_at: u.trialStartedAt?.toISOString() ?? null,
+  is_premium: u.isPremium,
 });
 
 export default async function authRoutes(app: FastifyInstance) {
@@ -49,16 +62,29 @@ export default async function authRoutes(app: FastifyInstance) {
 
     // Match on the Google account id, but keep the email in sync — it is the
     // human-facing key and can change on the Google side.
-    const user = await prisma.user.upsert({
-      where: { googleSub: identity.sub },
-      create: {
-        googleSub: identity.sub,
-        email: identity.email,
-        fullName: identity.name ?? null,
-        avatarUrl: identity.picture ?? null,
-      },
-      update: { email: identity.email },
-    });
+    let user;
+    try {
+      user = await prisma.user.upsert({
+        where: { googleSub: identity.sub },
+        create: {
+          googleSub: identity.sub,
+          email: identity.email,
+          fullName: identity.name ?? null,
+          avatarUrl: identity.picture ?? null,
+        },
+        update: { email: identity.email },
+      });
+    } catch (err) {
+      // Unique violation on email: a different Google account already owns it.
+      if ((err as { code?: string }).code === 'P2002') {
+        throw new HttpError(
+          409,
+          'That email is already linked to a different Google account',
+          'email_taken',
+        );
+      }
+      throw err;
+    }
 
     const { token, expiresIn } = issueAccessToken(user);
     const refresh = await issueRefreshToken(user.id);
@@ -98,7 +124,10 @@ export default async function authRoutes(app: FastifyInstance) {
 
   app.patch('/me', { preHandler: requireAuth }, async (request) => {
     const parsed = updateMeBody.safeParse(request.body);
-    if (!parsed.success) throw badRequest('Name must be 1-120 characters');
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw badRequest(`Cannot update ${issue?.path.join('.') || 'profile'}: ${issue?.message}`);
+    }
 
     const { full_name, avatar_url } = parsed.data;
     const user = await prisma.user.update({
@@ -118,7 +147,7 @@ export default async function authRoutes(app: FastifyInstance) {
     // disk are ours to remove — do it after the row delete succeeds so a failed
     // transaction never leaves the account without its photos.
     await prisma.user.delete({ where: { id: userId } });
-    await rm(join(env.UPLOAD_DIR, userId), { recursive: true, force: true }).catch(
+    await rm(join(apiEnv.UPLOAD_DIR, userId), { recursive: true, force: true }).catch(
       (err) => request.log.warn({ err, userId }, 'could not remove upload directory'),
     );
 

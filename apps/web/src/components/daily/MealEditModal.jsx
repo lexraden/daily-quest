@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Trash2, Save, Loader2, Flame, Beef, Droplets, Wheat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/api/client';
 import { toast } from 'sonner';

@@ -11,7 +11,7 @@
 
 import { Resend } from 'resend';
 import { prisma } from '../db.js';
-import { env } from '../env.js';
+import { jobEnv } from '../env.job.js';
 
 const WINDOW_MINUTES = 30;
 
@@ -54,22 +54,29 @@ function localTime(tz: string): { hour: number; minute: number; dayKey: string }
   }
 }
 
+/**
+ * Minutes between two times of day, taking the shorter way round the clock.
+ * A plain subtraction made 23:55 look 23 hours away from a 00:10 reminder
+ * rather than 15 minutes, so reminders near midnight never fired.
+ */
+function minutesApart(a: number, b: number): number {
+  const diff = Math.abs(a - b);
+  return Math.min(diff, 24 * 60 - diff);
+}
+
 function body(type: 'reminder' | 'streak_warning', streak: number, total: number, time: string) {
+  const cta = `<p><a href="${jobEnv.APP_ORIGIN}">Open DailyQ</a></p>`;
   return type === 'streak_warning'
     ? `<h2>🔥 Don't lose your ${streak}-day streak!</h2>
        <p>You haven't completed any quests today. Complete at least one to keep your streak going!</p>
-       <p>Total XP: <strong>${total}</strong></p>`
+       <p>Total XP: <strong>${total}</strong></p>${cta}`
     : `<h2>⚡ Your daily quests are waiting!</h2>
        <p>It's ${time} — time to level up!</p>
-       <p>Current streak: <strong>${streak} days</strong></p>`;
+       <p>Current streak: <strong>${streak} days</strong></p>${cta}`;
 }
 
 async function main() {
-  if (!env.RESEND_API_KEY) {
-    console.error('RESEND_API_KEY is not set — cannot send reminders');
-    process.exit(1);
-  }
-  const resend = new Resend(env.RESEND_API_KEY);
+  const resend = new Resend(jobEnv.RESEND_API_KEY);
 
   // Only rows that opted in. The Base44 version listed every record and
   // filtered in memory, which stopped scaling the moment the table grew.
@@ -102,7 +109,7 @@ async function main() {
       continue;
     }
 
-    if (Math.abs(hour * 60 + minute - (remH * 60 + remM)) > WINDOW_MINUTES) {
+    if (minutesApart(hour * 60 + minute, remH * 60 + remM) > WINDOW_MINUTES) {
       results.skipped++;
       continue;
     }
@@ -124,7 +131,7 @@ async function main() {
     // TODO: send a push notification instead once settings.push_token is populated.
     try {
       await resend.emails.send({
-        from: env.REMINDER_FROM,
+        from: jobEnv.REMINDER_FROM,
         to: row.user.email,
         subject,
         html: body(type, row.streak, row.totalCompleted, settings.reminder_time),

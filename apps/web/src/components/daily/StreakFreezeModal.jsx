@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Flame, X, AlertTriangle } from 'lucide-react';
+import { Shield, Flame, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 

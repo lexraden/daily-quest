@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, User, Flame, Trophy, Calendar, TrendingUp } from 'lucide-react';
+import { X, User, Flame, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ProfileModal({ 

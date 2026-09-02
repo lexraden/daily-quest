@@ -26,6 +26,12 @@ model User {
   fullName  String?  @map("full_name")
   avatarUrl String?  @map("avatar_url")
   role      Role     @default(user)
+
+  // Entitlement lives on the account: quest_data is deleted when a user resets
+  // onboarding, which would otherwise hand out a fresh trial each time.
+  trialStartedAt DateTime? @map("trial_started_at")
+  isPremium      Boolean   @default(false) @map("is_premium")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -60,9 +66,6 @@ model QuestData {
   // "YYYY-MM-DD" strings: these are local calendar days, not instants.
   lastCompletedDate String? @map("last_completed_date")
   lastVisitDate     String? @map("last_visit_date")
-
-  trialStartedAt DateTime? @map("trial_started_at")
-  isPremium      Boolean   @default(false) @map("is_premium")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -2,7 +2,8 @@ import Fastify from 'fastify';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { env, isProd, corsOrigins } from './env.js';
+import { isProd } from './env.js';
+import { apiEnv, corsOrigins } from './env.api.js';
 import { prisma } from './db.js';
 import { HttpError } from './lib/errors.js';
 import { ensureUploadDir } from './lib/storage.js';
@@ -22,7 +23,7 @@ const app = Fastify({
 
 await app.register(import('@fastify/cookie'));
 await app.register(import('@fastify/multipart'), {
-  limits: { fileSize: env.MAX_UPLOAD_BYTES, files: 1 },
+  limits: { fileSize: apiEnv.MAX_UPLOAD_BYTES, files: 1 },
 });
 
 // Production serves the SPA from this same origin, so no CORS is needed there.
@@ -107,4 +108,4 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
 await ensureUploadDir();
-await app.listen({ port: env.PORT, host: env.HOST });
+await app.listen({ port: apiEnv.PORT, host: apiEnv.HOST });

@@ -49,8 +49,6 @@ const createBody = z
   })
   .strict();
 
-const TRIAL_DAYS = 3;
-
 // snake_case over the wire, camelCase in the database. The frontend was built
 // against Base44's snake_case entity and there was no reason to churn it.
 const toWire = (row: {
@@ -69,8 +67,9 @@ const toWire = (row: {
   streakFreezes: number;
   lastCompletedDate: string | null;
   lastVisitDate: string | null;
-  trialStartedAt: Date | null;
-  isPremium: boolean;
+  // Entitlement lives on the user row; it is echoed here because the app reads
+  // both off the quest-data payload.
+  user: { trialStartedAt: Date | null; isPremium: boolean };
 }) => ({
   id: row.id,
   quest_data: row.questData,
@@ -87,8 +86,8 @@ const toWire = (row: {
   streak_freezes: row.streakFreezes,
   last_completed_date: row.lastCompletedDate,
   last_visit_date: row.lastVisitDate,
-  trial_started_at: row.trialStartedAt?.toISOString() ?? null,
-  is_premium: row.isPremium,
+  trial_started_at: row.user.trialStartedAt?.toISOString() ?? null,
+  is_premium: row.user.isPremium,
 });
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -101,6 +100,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
   app.get('/', async (request, reply) => {
     const row = await prisma.questData.findUnique({
       where: { userId: currentUserId(request) },
+      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
     });
     if (!row) return reply.code(204).send();
     return toWire(row);
@@ -131,8 +131,6 @@ export default async function questDataRoutes(app: FastifyInstance) {
         streak: 0,
         streakFreezes: 1,
         lastVisitDate: today(),
-        trialStartedAt: new Date(),
-        isPremium: false,
       },
       // Re-onboarding replaces the quests and answers but must not reset a
       // paid subscription, or restart an already-spent trial.
@@ -141,8 +139,11 @@ export default async function questDataRoutes(app: FastifyInstance) {
         onboardingAnswers: toJson(parsed.data.onboarding_answers ?? {}),
         lastVisitDate: today(),
       },
+      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
     });
 
+    // The trial clock is started by the first AI call (see requireAiAccess),
+    // which onboarding always makes before reaching here.
     return reply.code(201).send(toWire(row));
   });
 
@@ -191,6 +192,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
           : {}),
         ...(b.last_visit_date !== undefined ? { lastVisitDate: b.last_visit_date } : {}),
       },
+      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
     });
 
     return toWire(row);
@@ -202,5 +204,3 @@ export default async function questDataRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 }
-
-export { TRIAL_DAYS };

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Flame, Trophy, TrendingUp, Calendar, Target } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
 import { t, getLocale } from '@/lib/i18n';
 
 const CATEGORIES = {

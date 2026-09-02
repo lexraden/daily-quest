@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dailyq_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dailyq_test
+      # Test-only values. The API refuses to boot without them, which is the
+      # point — a missing secret should fail here rather than in production.
+      JWT_ACCESS_SECRET: ci_access_secret_at_least_32_characters_long
+      JWT_REFRESH_SECRET: ci_refresh_secret_at_least_32_characters_long
+      FILE_SIGNING_SECRET: ci_file_signing_secret_at_least_32_chars_ok
+      GOOGLE_CLIENT_ID: ci-client-id.apps.googleusercontent.com
+      # Deliberately invalid: the AI tests assert on the gate and the quota
+      # accounting around a failing provider call, and must never spend credit.
+      OPENAI_API_KEY: sk-ci-placeholder-not-a-real-key
+      UPLOAD_DIR: /tmp/dailyq-uploads
+      APP_ORIGIN: http://localhost:3000
+      PORT: '3000'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck API
+        run: npm run typecheck --workspace apps/api
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+
+      - name: Build
+        run: npm run build
+
+      - name: Start API
+        run: |
+          node apps/api/dist/index.js &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/api/health && break
+            sleep 1
+          done
+
+      - name: Test
+        run: npm test --workspace apps/api
+        env:
+          TEST_API_URL: http://localhost:3000

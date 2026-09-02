@@ -18,6 +18,8 @@
     "build:api": "npm run build --workspace apps/api",
     "lint": "npm run lint --workspace apps/web",
     "start": "npm run start --workspace apps/api",
-    "reminders": "npm run reminders --workspace apps/api"
+    "reminders": "npm run reminders --workspace apps/api",
+    "test": "npm test --workspace apps/api",
+    "typecheck": "npm run typecheck --workspace apps/api"
   }
 }

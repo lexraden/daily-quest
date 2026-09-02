@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { BookOpen, Calendar } from 'lucide-react';
 import { t, getLocale } from '@/lib/i18n';
 
 const CATEGORIES = {

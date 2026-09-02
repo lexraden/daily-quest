@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { ChevronRight, Sparkles, Loader2, Mic, Check } from 'lucide-react';
+import { ChevronRight, Sparkles, Loader2, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';

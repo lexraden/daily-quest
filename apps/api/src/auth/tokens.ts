@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
-import { env } from '../env.js';
+import { apiEnv } from '../env.api.js';
+import { isProd } from '../env.js';
 import { prisma } from '../db.js';
 import { unauthorized } from '../lib/errors.js';
 
@@ -68,17 +69,17 @@ export function issueAccessToken(user: { id: string; email: string }): {
   const now = Math.floor(Date.now() / 1000);
   const token = sign(
     { sub: user.id, email: user.email, iat: now, exp: now + ACCESS_TTL_SECONDS },
-    env.JWT_ACCESS_SECRET,
+    apiEnv.JWT_ACCESS_SECRET,
   );
   return { token, expiresIn: ACCESS_TTL_SECONDS };
 }
 
 export function verifyAccessToken(token: string): AccessClaims {
-  return verify<AccessClaims>(token, env.JWT_ACCESS_SECRET);
+  return verify<AccessClaims>(token, apiEnv.JWT_ACCESS_SECRET);
 }
 
 const hashToken = (raw: string) =>
-  createHash('sha256').update(`${raw}${env.JWT_REFRESH_SECRET}`).digest('hex');
+  createHash('sha256').update(`${raw}${apiEnv.JWT_REFRESH_SECRET}`).digest('hex');
 
 /** Refresh tokens are opaque random strings; only their hash is stored. */
 export async function issueRefreshToken(userId: string): Promise<string> {
@@ -126,7 +127,7 @@ export const REFRESH_COOKIE = 'dq_refresh';
 
 export const refreshCookieOptions = {
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
+  secure: isProd,
   sameSite: 'lax' as const,
   path: '/api/auth',
   maxAge: REFRESH_TTL_DAYS * 24 * 60 * 60,

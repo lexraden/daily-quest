@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getCachedUser, getCachedUserData, updateCachedUserData, invalidateCache } from '@/components/UserDataCache';
 import { api } from '@/api/client';
-import { t, getLocale } from '@/lib/i18n';
+import { t } from '@/lib/i18n';
 import EntryDetailModal from '@/components/history/EntryDetailModal';
 import EntryCard from '@/components/history/EntryCard';
 import VirtualizedEntryList from '@/components/history/VirtualizedEntryList';

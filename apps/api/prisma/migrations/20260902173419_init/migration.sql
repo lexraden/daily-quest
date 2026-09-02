@@ -9,6 +9,8 @@ CREATE TABLE "users" (
     "full_name" TEXT,
     "avatar_url" TEXT,
     "role" "Role" NOT NULL DEFAULT 'user',
+    "trial_started_at" TIMESTAMP(3),
+    "is_premium" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -33,8 +35,6 @@ CREATE TABLE "quest_data" (
     "streak_freezes" INTEGER NOT NULL DEFAULT 1,
     "last_completed_date" TEXT,
     "last_visit_date" TEXT,
-    "trial_started_at" TIMESTAMP(3),
-    "is_premium" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
