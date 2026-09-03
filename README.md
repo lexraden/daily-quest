@@ -117,8 +117,13 @@ One project, three services.
 
 **Postgres** — add the database plugin. Enable scheduled backups.
 
-**`dailyq-api`** — deploy from this repo with root directory `apps/api`.
-Attach a volume mounted at `/data`. Set the variables from `.env.example`,
+**`dailyq-api`** — deploy from this repo with **Root Directory left at the repo
+root**, not `apps/api`. This is an npm workspace: `npm ci` has to run at the root
+where the single lockfile lives, and the build has to produce `apps/web/dist`
+for the API to serve. `railway.json` at the root sets the build and start
+commands. Attach a volume mounted at `/data`.
+
+There is no separate web service — this one serves the SPA too. Set the variables from `.env.example`,
 referencing the database as `${{Postgres.DATABASE_URL}}`. `npm start` runs
 `prisma migrate deploy` before booting, so deploys migrate themselves. Health
 check is `/api/health`, which does a real database round-trip.
@@ -126,8 +131,8 @@ check is `/api/health`, which does a real database round-trip.
 This service serves the SPA as well as the API, so there is one domain, no CORS,
 and no cookie `SameSite` problems.
 
-**`dailyq-reminders`** — same repo, same root directory, with the start command
-`npm run reminders --workspace apps/api` and a cron schedule (every 30 minutes
+**`dailyq-reminders`** — same repo, also at the repo root, but override the
+start command to `npm run reminders` and set a cron schedule (every 30 minutes
 matches the reminder window logic). It needs `DATABASE_URL`, `RESEND_API_KEY`
 and `REMINDER_FROM`, plus `APP_ORIGIN` for the link in the email. It does not
 need the volume, and deliberately does not load the API's signing secrets or
