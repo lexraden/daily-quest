@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
 import { t, getLocale } from '@/lib/i18n';
+import { dayKey } from '@/lib/dates';
 
 const CATEGORIES = {
   health: { name: "Health", icon: "💪", color: "#00b894" },
@@ -55,7 +56,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        const dateKey = date.toISOString().split('T')[0];
+        const dateKey = dayKey(date);
         const dayData = mergedHistory[dateKey] || [];
         data.push({
           date: date.toLocaleDateString(locale, { day: 'numeric', month: 'short' }),
@@ -77,7 +78,7 @@ export default function StatsSection({ completionHistory, categoryTotalCompleted
         for (let d = 0; d < 7; d++) {
           const date = new Date(weekStart);
           date.setDate(weekStart.getDate() + d);
-          const dateKey = date.toISOString().split('T')[0];
+          const dateKey = dayKey(date);
           const dayData = mergedHistory[dateKey] || [];
           weekQuests += dayData.length;
           Object.keys(CATEGORIES).forEach(cat => {

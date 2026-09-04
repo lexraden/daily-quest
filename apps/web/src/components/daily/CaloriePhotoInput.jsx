@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/api/client';
 import { toast } from 'sonner';
 import { t, getLang } from '@/lib/i18n';
+import { todayKey } from '@/lib/dates';
 
 const MAX_PHOTOS = 3;
 const MAX_DIMENSION = 1280; // px — max width/height after compression
@@ -113,7 +114,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme
         ...result,
         photo_urls: uploaded.map((u) => u.file_url),
         timestamp: new Date().toISOString(),
-        date: new Date().toISOString().split('T')[0]
+        date: todayKey()
       });
 
       // Cleanup

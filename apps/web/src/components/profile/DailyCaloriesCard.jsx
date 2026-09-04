@@ -2,16 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { Flame, Beef, Droplets, Wheat, Pencil } from 'lucide-react';
 import MealEditModal from '@/components/daily/MealEditModal';
 import { t } from '@/lib/i18n';
+import { todayKey } from '@/lib/dates';
 
 export default function DailyCaloriesCard({ mealHistory = [], onEditMeal, onDeleteMeal, theme = 'light' }) {
-  const todayKey = new Date().toISOString().split('T')[0];
   const [editingMeal, setEditingMeal] = useState(null);
 
   const todayMeals = useMemo(() => {
     return mealHistory
       .map((m, idx) => ({ ...m, _originalIndex: idx }))
-      .filter(m => m.date === todayKey);
-  }, [mealHistory, todayKey]);
+      .filter(m => m.date === todayKey());
+  }, [mealHistory]);
 
   const todayTotals = useMemo(() => ({
     calories: todayMeals.reduce((s, m) => s + (m.calories || 0), 0),

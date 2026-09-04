@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { todayKey } from '@/lib/dates';
 
 /**
  * Two compact inline chips matching the player-status row size:
@@ -6,7 +7,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
  * - OUT: burned calories — tap to enter manually (from watch/tracker)
  */
 export default function CaloriesIndicators({ mealHistory, caloriesOut, onCaloriesOutChange, theme = 'light' }) {
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const today = useMemo(() => todayKey(), []);
 
   const caloriesIn = useMemo(() => {
     return (mealHistory || [])

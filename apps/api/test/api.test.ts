@@ -147,6 +147,28 @@ describe('quest data', () => {
     assert.equal((await call('/api/quest-data', { token: alice.token })).status, 204);
   });
 
+  // The server has no idea what timezone the caller is in. It used to seed
+  // last_visit_date from its own UTC clock, which disagreed with the local key
+  // DailyTracker compares it against — east of Greenwich that made the app
+  // think a new day had started on the very first load after onboarding.
+  test('onboarding keeps the local day the client sends', async () => {
+    const res = await call('/api/quest-data', {
+      token: alice.token, method: 'POST',
+      body: { quest_data: QUESTS, last_visit_date: '2031-07-09' },
+    });
+    assert.equal(res.status, 201);
+    assert.equal((await res.json()).last_visit_date, '2031-07-09');
+    await prisma.questData.deleteMany({ where: { userId: alice.id } });
+  });
+
+  test('rejects a malformed day', async () => {
+    const res = await call('/api/quest-data', {
+      token: alice.token, method: 'POST',
+      body: { quest_data: QUESTS, last_visit_date: '09/07/2031' },
+    });
+    assert.equal(res.status, 400);
+  });
+
   test('create sorts quests by level', async () => {
     const res = await call('/api/quest-data', {
       token: alice.token, method: 'POST',

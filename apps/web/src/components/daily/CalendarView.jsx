@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { dayKey } from '@/lib/dates';
 
 export default function CalendarView({ completionHistory, onClose, categories, theme = 'dark', journalEntries = [] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -78,7 +79,7 @@ export default function CalendarView({ completionHistory, onClose, categories, t
   // Форматирование даты
   const formatDateKey = (date) => {
     if (!date) return '';
-    return date.toISOString().split('T')[0];
+    return dayKey(date);
   };
 
   const formatMonthYear = () => {

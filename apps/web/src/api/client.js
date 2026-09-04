@@ -6,6 +6,8 @@
  * where a script injection could read it.
  */
 
+import { todayKey } from '@/lib/dates';
+
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 let accessToken = null;
@@ -153,7 +155,13 @@ export const api = {
   questData: {
     /** null means signed in but not yet onboarded. */
     get: () => request('/api/quest-data'),
-    create: (payload) => request('/api/quest-data', { method: 'POST', body: payload }),
+    // The caller's local day travels with the row: the server cannot know the
+    // timezone, and DailyTracker compares this against a locally computed key.
+    create: (payload) =>
+      request('/api/quest-data', {
+        method: 'POST',
+        body: { last_visit_date: todayKey(), ...payload },
+      }),
     update: (patch) => request('/api/quest-data', { method: 'PATCH', body: patch }),
     reset: () => request('/api/quest-data', { method: 'DELETE' }),
   },

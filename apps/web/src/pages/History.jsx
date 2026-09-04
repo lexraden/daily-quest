@@ -12,6 +12,7 @@ import VirtualizedEntryList from '@/components/history/VirtualizedEntryList';
 import MealEditModal from '@/components/daily/MealEditModal';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import StatsSection from '@/components/profile/StatsSection';
+import { dayKey } from '@/lib/dates';
 
 export default function History() {
   const i = t();
@@ -69,7 +70,7 @@ export default function History() {
 
   const statsViewMode = viewMode === 'day' ? 'daily' : viewMode === 'week' ? 'weekly' : 'monthly';
 
-  const formatDateKey = (date) => date.toISOString().split('T')[0];
+  const formatDateKey = (date) => dayKey(date);
 
   const isToday = (date) => {
     const today = new Date();

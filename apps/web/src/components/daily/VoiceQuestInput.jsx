@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 import CaloriePhotoInput from './CaloriePhotoInput';
 import { t, getLang, getSpeechLang } from '@/lib/i18n';
+import { todayKey } from '@/lib/dates';
 
 const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark', questData, hasAccess = true, onLocked }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -118,7 +119,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       fat: result.fat,
       carbs: result.carbs,
       photo_urls: [],
-      date: new Date().toISOString().split('T')[0],
+      date: todayKey(),
       timestamp: new Date().toISOString()
     });
   };

@@ -47,6 +47,12 @@ const createBody = z
   .object({
     quest_data: jsonObject,
     onboarding_answers: jsonObject.optional(),
+    // The client's own local day. The server has no idea what timezone the
+    // caller is in, and DailyTracker compares this value against a locally
+    // computed key to decide whether a new day started — seeding it from the
+    // server's UTC clock made that comparison disagree for anyone east of
+    // Greenwich, on the very first load after onboarding.
+    last_visit_date: dayString.optional(),
   })
   .strict();
 
@@ -93,7 +99,8 @@ const toWire = (row: {
   is_premium: row.user.isPremium,
 });
 
-const today = () => new Date().toISOString().slice(0, 10);
+/** Fallback only — a client that sends its own local day is preferred. */
+const utcToday = () => new Date().toISOString().slice(0, 10);
 
 export default async function questDataRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
@@ -134,14 +141,14 @@ export default async function questDataRoutes(app: FastifyInstance) {
         totalCompleted: 0,
         streak: 0,
         streakFreezes: 1,
-        lastVisitDate: today(),
+        lastVisitDate: parsed.data.last_visit_date ?? utcToday(),
       },
       // Re-onboarding replaces the quests and answers but must not reset a
       // paid subscription, or restart an already-spent trial.
       update: {
         questData: toJson(quests),
         onboardingAnswers: toJson(parsed.data.onboarding_answers ?? {}),
-        lastVisitDate: today(),
+        lastVisitDate: parsed.data.last_visit_date ?? utcToday(),
       },
       include: { user: { select: { trialStartedAt: true, isPremium: true } } },
     });

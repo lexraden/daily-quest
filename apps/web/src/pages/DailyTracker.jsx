@@ -38,6 +38,7 @@ import useSaveUserData from '@/hooks/useSaveUserData';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { t, getLang } from '@/lib/i18n';
 import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
+import { todayKey } from '@/lib/dates';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -160,7 +161,7 @@ export default function DailyTracker() {
   const location = useLocation();
   const skipNextSaveRef = useRef(false);
 
-  const getTodayKey = () => new Date().toISOString().split('T')[0];
+  const getTodayKey = () => todayKey();
 
   // Инициализация Telegram Web App и темы
   useEffect(() => {

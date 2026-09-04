@@ -87,6 +87,16 @@ how many quests were completed that day — the app already recorded what you
 *did*, and this records how it *felt*, which is the pairing that makes the
 history worth looking at.
 
+**Days.** `completion_history`, `calories_burned`, `mood_log` and `meal_history`
+are all keyed by `YYYY-MM-DD` in the **viewer's own timezone**, built by
+`apps/web/src/lib/dates.js`. They used to be built with `toISOString()`, which
+is UTC: east of Greenwich the key rolled over early — at UTC+4 the day flipped
+at 04:00 local, so anything logged just after midnight landed on the previous
+day. It was not only cosmetic, because DailyTracker compares `last_visit_date`
+against today's key to decide whether a new day started, and the streak follows
+from that. The server never invents a day: it cannot know the caller's
+timezone, so `POST /api/quest-data` takes `last_visit_date` from the client.
+
 **Files.** Meal photos and avatars are written to the Railway volume at
 `/data/uploads/<userId>/`, with the type sniffed from the bytes rather than
 trusted from the upload header. Since a browser cannot put an `Authorization`

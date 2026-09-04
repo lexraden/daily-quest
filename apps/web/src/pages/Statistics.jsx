@@ -8,6 +8,7 @@ import { getCachedUserData } from '@/components/UserDataCache';
 import BackButton from '@/components/navigation/BackButton';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import { MOOD_LEVELS } from '@/components/daily/MoodCheckIn';
+import { dayKey } from '@/lib/dates';
 
 const CATEGORIES = {
   health: { icon: '💪', color: '#00b894' },
@@ -32,10 +33,6 @@ const MOOD_LINE = { light: '#7c3aed', dark: '#a78bfa' };
 const DAYS = 30;
 const MIN_CHECKINS = 3;
 
-const dayKey = (d) => {
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
-};
 
 function StatTile({ label, value, sub, theme }) {
   const light = theme === 'light';
