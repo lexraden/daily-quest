@@ -8,6 +8,8 @@ import { t } from '@/lib/i18n';
 export default function SignIn() {
   const { signInWithGoogleCredential, authError } = useAuth();
   const buttonRef = useRef(null);
+  // Held until the container is actually visible — see the second effect.
+  const renderButtonRef = useRef(null);
   const [status, setStatus] = useState('loading'); // loading | ready | signing-in
   const [error, setError] = useState('');
 
@@ -35,8 +37,8 @@ export default function SignIn() {
           }
         });
         if (cancelled) return;
+        renderButtonRef.current = renderButton;
         setStatus('ready');
-        renderButton(buttonRef.current);
       } catch (err) {
         if (!cancelled) {
           setStatus('ready');
@@ -49,6 +51,14 @@ export default function SignIn() {
       cancelled = true;
     };
   }, [signInWithGoogleCredential]);
+
+  // Google's renderButton measures its container, so it must run only once the
+  // container is on screen. Calling it right after setStatus('ready') drew into
+  // a still-hidden element and produced an empty sign-in card with no error.
+  useEffect(() => {
+    if (status !== 'ready' || !renderButtonRef.current || !buttonRef.current) return;
+    renderButtonRef.current(buttonRef.current);
+  }, [status]);
 
   const message = error || authError?.message;
 
