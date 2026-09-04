@@ -21,9 +21,5 @@
     "reminders": "npm run reminders --workspace apps/api",
     "test": "npm test --workspace apps/api",
     "typecheck": "npm run typecheck --workspace apps/api"
-  },
-  "dependencies": {
-    "@base44/sdk": "^0.8.46",
-    "@base44/vite-plugin": "^1.0.34"
   }
 }
