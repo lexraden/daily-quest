@@ -7,7 +7,29 @@
 const GSI_SRC = 'https://accounts.google.com/gsi/client';
 let loader = null;
 
-export const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const API_BASE = import.meta.env.VITE_API_URL || '';
+let configPromise = null;
+
+/**
+ * The client id comes from the API rather than a VITE_ build variable, so it
+ * cannot drift out of sync with the GOOGLE_CLIENT_ID the server verifies
+ * tokens against, and changing it does not mean rebuilding the bundle.
+ */
+export function fetchGoogleClientId() {
+  if (!configPromise) {
+    configPromise = fetch(`${API_BASE}/api/auth/config`, { credentials: 'omit' })
+      .then((r) => {
+        if (!r.ok) throw new Error('Could not load the sign-in configuration');
+        return r.json();
+      })
+      .then((c) => c.google_client_id || '')
+      .catch((err) => {
+        configPromise = null; // let a later attempt retry
+        throw err;
+      });
+  }
+  return configPromise;
+}
 
 export function loadGoogleScript() {
   if (window.google?.accounts?.id) return Promise.resolve();
@@ -40,13 +62,14 @@ export function loadGoogleScript() {
  * that renders the Google button into a container element.
  */
 export async function initGoogleSignIn(onCredential) {
-  if (!googleClientId) {
-    throw new Error('VITE_GOOGLE_CLIENT_ID is not set');
+  const clientId = await fetchGoogleClientId();
+  if (!clientId) {
+    throw new Error('Google sign-in is not configured for this deployment.');
   }
   await loadGoogleScript();
 
   window.google.accounts.id.initialize({
-    client_id: googleClientId,
+    client_id: clientId,
     callback: (response) => onCredential(response.credential),
     auto_select: false,
     cancel_on_tap_outside: true,

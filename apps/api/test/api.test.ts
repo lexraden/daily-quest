@@ -99,6 +99,21 @@ describe('authentication', () => {
     assert.equal((await call('/api/quest-data')).status, 401);
   });
 
+  // The SPA reads the Google client id from here instead of a VITE_ build
+  // variable, so this endpoint has to answer without a token — if it ever
+  // starts requiring auth, sign-in breaks for everyone with no way back in.
+  test('serves the sign-in config without a token', async () => {
+    const response = await call('/api/auth/config');
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.google_client_id, process.env.GOOGLE_CLIENT_ID);
+  });
+
+  test('the sign-in config leaks no other configuration', async () => {
+    const body = await (await call('/api/auth/config')).json();
+    assert.deepEqual(Object.keys(body), ['google_client_id']);
+  });
+
   test('rejects an alg:none forged token', async () => {
     const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
     const forged = `${b64({ alg: 'none', typ: 'JWT' })}.${b64({

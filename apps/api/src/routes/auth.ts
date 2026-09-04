@@ -54,6 +54,15 @@ const publicUser = (u: {
 });
 
 export default async function authRoutes(app: FastifyInstance) {
+  // The Google client id is public by design (it ships in every GIS request),
+  // so the browser fetches it at runtime instead of the build baking a second
+  // copy in. One VITE_ variable fewer to keep in sync with GOOGLE_CLIENT_ID —
+  // a mismatch between the two is invisible until sign-in fails with
+  // "invalid_client".
+  app.get('/config', async () => ({
+    google_client_id: apiEnv.GOOGLE_CLIENT_ID,
+  }));
+
   app.post('/google', async (request, reply) => {
     const parsed = googleBody.safeParse(request.body);
     if (!parsed.success) throw badRequest('Send a Google id_token to sign in');

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Swords, Loader2 } from 'lucide-react';
 import AuthLayout from '@/components/AuthLayout';
 import { useAuth } from '@/lib/AuthContext';
-import { initGoogleSignIn, googleClientId } from '@/lib/googleAuth';
+import { initGoogleSignIn } from '@/lib/googleAuth';
 import { t } from '@/lib/i18n';
 
 export default function SignIn() {
@@ -15,12 +15,6 @@ export default function SignIn() {
 
   useEffect(() => {
     let cancelled = false;
-
-    if (!googleClientId) {
-      setStatus('ready');
-      setError('Google sign-in is not configured for this deployment.');
-      return undefined;
-    }
 
     (async () => {
       try {

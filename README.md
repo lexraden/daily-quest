@@ -37,8 +37,10 @@ npm run dev
 ```
 
 For sign-in to work locally, the Google OAuth client needs
-`http://localhost:5173` in its authorised JavaScript origins, and
-`VITE_GOOGLE_CLIENT_ID` must be set when the web app builds.
+`http://localhost:5173` in its authorised JavaScript origins. The client id
+itself is only ever set as `GOOGLE_CLIENT_ID` on the API — the SPA fetches it
+from `GET /api/auth/config` at runtime, so there is no second copy to keep in
+sync and no rebuild when it changes.
 
 ## Architecture
 
@@ -148,6 +150,7 @@ S3/R2 behind the existing `/api/files` contract.
 
 | Endpoint | Purpose |
 | --- | --- |
+| `GET /api/auth/config` | Public sign-in config (the Google client id) |
 | `POST /api/auth/google` | Exchange a Google ID token for a session |
 | `POST /api/auth/refresh` | Rotate the refresh token, mint an access token |
 | `POST /api/auth/logout` | Revoke the refresh token |
