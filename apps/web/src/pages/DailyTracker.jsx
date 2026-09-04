@@ -137,6 +137,19 @@ export default function DailyTracker() {
   const [celebrationQuest, setCelebrationQuest] = useState(null);
   // showCalendar removed - using History page now
   const [streakFreezes, setStreakFreezes] = useState(1);
+
+  /** The progress endpoints return the whole row; the server's numbers win. */
+  const applyServerProgress = useCallback((row) => {
+    if (!row) return;
+    setTotalCompleted(row.total_completed ?? 0);
+    setCategoryTotalCompleted(row.category_total_completed || {});
+    setCategoryLevels(row.category_levels || {});
+    setCompletionHistory(row.completion_history || {});
+    if (row.streak !== undefined) setStreak(row.streak);
+    if (row.streak_freezes !== undefined) setStreakFreezes(row.streak_freezes);
+    if (row.last_completed_date !== undefined) setLastCompletedDate(row.last_completed_date);
+  }, []);
+
   const [showPremium, setShowPremium] = useState(false);
   const [theme, setTheme] = useState('light');
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -477,20 +490,27 @@ export default function DailyTracker() {
     setQuestSuggestion(null);
   }, []);
 
+  // Spending a freeze is guarded server-side by `streak_freezes > 0`, so two
+  // tabs cannot both spend the last one and drive the count negative.
   const handleUseFreeze = useCallback(() => {
-    // Сохраняем streak, тратим freeze
-    setStreakFreezes(prev => Math.max(prev - 1, 0));
     setShowStreakFreeze(false);
     setPendingFreezeData(null);
-    toast.success(t().streakFreeze.freezeUsed);
-  }, []);
+    api.questData
+      .streakFreeze('use')
+      .then(applyServerProgress)
+      .then(() => toast.success(t().streakFreeze.freezeUsed))
+      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
+  }, [applyServerProgress]);
 
   const handleLoseStreak = useCallback(() => {
-    setStreak(0);
     setShowStreakFreeze(false);
     setPendingFreezeData(null);
-    toast(t().streakFreeze.streakReset);
-  }, []);
+    api.questData
+      .streakFreeze('lose')
+      .then(applyServerProgress)
+      .then(() => toast(t().streakFreeze.streakReset))
+      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
+  }, [applyServerProgress]);
 
   const handleMealAnalyzed = useCallback((meal) => {
     setPendingMeal(meal);
@@ -658,15 +678,13 @@ export default function DailyTracker() {
     setMoodLog((prev) => ({ ...prev, [dayKey]: entry }));
   }, []);
 
+  // Progress — XP, category totals and levels, the completion history, the
+  // streak and its freezes — is no longer part of this snapshot. The server
+  // owns it and applies each change atomically through its own endpoints, so
+  // a debounced whole-document save can no longer overwrite a completion made
+  // in another tab with the numbers this one happened to load at mount.
   const getStateSnapshot = useCallback(() => ({
     quest_data: questData,
-    category_levels: categoryLevels,
-    category_total_completed: categoryTotalCompleted,
-    total_completed: totalCompleted,
-    streak,
-    last_completed_date: lastCompletedDate,
-    completion_history: completionHistory,
-    streak_freezes: streakFreezes,
     journal_entries: journalEntries,
     meal_history: mealHistory,
     calories_burned: caloriesBurned,
@@ -674,25 +692,13 @@ export default function DailyTracker() {
     // trial_started_at and is_premium are owned by the server and rejected by
     // the API's field allowlist — they are read from responses, never sent.
     last_visit_date: getTodayKey()
-  }), [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned, moodLog]);
+  }), [questData, journalEntries, mealHistory, caloriesBurned, moodLog]);
 
   const restoreSnapshot = useCallback((snapshot) => {
     setQuestData(snapshot.quest_data);
-    setCategoryLevels(snapshot.category_levels);
-    setCategoryTotalCompleted(snapshot.category_total_completed);
-    setTotalCompleted(snapshot.total_completed);
-    setStreak(snapshot.streak);
-    setLastCompletedDate(snapshot.last_completed_date);
-    setCompletionHistory(snapshot.completion_history);
-    setStreakFreezes(snapshot.streak_freezes);
     setJournalEntries(snapshot.journal_entries);
     setMealHistory(snapshot.meal_history);
     setCaloriesBurned(snapshot.calories_burned || {});
-    const today = getTodayKey();
-    const todayHistory = snapshot.completion_history?.[today] || [];
-    const reverted = {};
-    todayHistory.forEach(q => { reverted[`${q.category}_${q.level}`] = true; });
-    setCompletedToday(reverted);
   }, []);
 
   const { save: saveUserData, cancelPendingSave, hasPendingWrite } = useSaveUserData({
@@ -812,6 +818,22 @@ export default function DailyTracker() {
     const questKey = `${category}_${currentQuest.level}`;
     const wasCompleted = completedToday[questKey];
     const today = getTodayKey();
+
+    // The state updates below keep the UI instant; this is what actually
+    // counts. The server appends or removes the one completion under a row
+    // lock and recomputes the totals, so a sibling tab cannot erase it.
+    (wasCompleted
+      ? api.questData.completions.remove(today, category, currentQuest.level)
+      : api.questData.completions.add(today, {
+          category,
+          name: currentQuest.name,
+          level: currentQuest.level,
+          emoji: currentQuest.emoji,
+        })
+    )
+      .then(applyServerProgress)
+      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
+
     
     if (wasCompleted) {
       // Отменить выполнение
@@ -1206,19 +1228,22 @@ export default function DailyTracker() {
             setPendingMeal(null);
             toast.success(i.calories.mealSaved);
 
-            // Streak засчитывается только при загрузке фото еды, один раз в день
-            const today = getTodayKey();
-            if (lastCompletedDate !== today) {
-              setLastCompletedDate(today);
-              const newStreak = streak + 1;
-              setStreak(newStreak);
-              if (getStreakMilestone(newStreak)) {
-                setTimeout(() => {
-                  setShowStreakCelebration(true);
-                  fireConfetti();
-                }, 1000);
-              }
-            }
+            // Streak засчитывается только при загрузке фото еды, один раз в день.
+            // The day is counted by the server: its WHERE clause matches only a
+            // row whose last completed day differs, so a retry or a second tab
+            // adds nothing instead of incrementing twice.
+            api.questData
+              .countStreakDay(getTodayKey())
+              .then((row) => {
+                applyServerProgress(row);
+                if (row.counted && getStreakMilestone(row.streak)) {
+                  setTimeout(() => {
+                    setShowStreakCelebration(true);
+                    fireConfetti();
+                  }, 1000);
+                }
+              })
+              .catch(() => {});
           }}
           onDiscard={handleDiscardMeal}
           theme={theme}

@@ -164,6 +164,37 @@ export const api = {
       }),
     update: (patch) => request('/api/quest-data', { method: 'PATCH', body: patch }),
     reset: () => request('/api/quest-data', { method: 'DELETE' }),
+
+    /**
+     * Progress is applied by the server, which derives XP and category levels
+     * from the history it keeps. These all return the authoritative row.
+     */
+    completions: {
+      add: (day, quest) =>
+        request('/api/quest-data/completions', {
+          method: 'POST',
+          body: {
+            day,
+            category: quest.category,
+            quest_name: quest.name,
+            level: quest.level,
+            ...(quest.emoji ? { emoji: quest.emoji } : {}),
+          },
+        }),
+      remove: (day, category, level) =>
+        request('/api/quest-data/completions', {
+          method: 'DELETE',
+          body: { day, category, level },
+        }),
+    },
+
+    /** Counts `day` towards the streak; counting the same day twice is a no-op. */
+    countStreakDay: (day) =>
+      request('/api/quest-data/streak', { method: 'POST', body: { day } }),
+
+    /** action: 'use' spends a freeze, 'lose' resets the streak. */
+    streakFreeze: (action) =>
+      request('/api/quest-data/streak/freeze', { method: 'POST', body: { action } }),
   },
 
   ai: {

@@ -87,6 +87,23 @@ how many quests were completed that day — the app already recorded what you
 *did*, and this records how it *felt*, which is the pairing that makes the
 history worth looking at.
 
+**Progress.** XP, category totals and category levels are never taken from the
+request — the server derives them from `completion_history` (`src/lib/progress.ts`).
+Completions are applied one at a time by `POST`/`DELETE /api/quest-data/completions`,
+which lock the row for the transaction, so two tabs completing different quests
+queue up instead of one overwriting the other. They used to arrive as absolute
+integers computed in the browser, which lost an increment whenever two tabs
+saved inside the same window.
+
+The streak has its own endpoints for the same reason. `POST /api/quest-data/streak`
+counts a day with `WHERE last_completed_date IS DISTINCT FROM $day`, so a retry
+or a second tab adds nothing rather than incrementing twice; `POST
+/api/quest-data/streak/freeze` spends a freeze under `WHERE streak_freezes > 0`,
+so the last one cannot be spent twice. The debounced whole-document save no
+longer carries any of these fields. `PATCH` still *accepts* them, and ignores
+them, so an older bundle left open in a tab keeps saving instead of getting a
+400.
+
 **Days.** `completion_history`, `calories_burned`, `mood_log` and `meal_history`
 are all keyed by `YYYY-MM-DD` in the **viewer's own timezone**, built by
 `apps/web/src/lib/dates.js`. They used to be built with `toISOString()`, which
@@ -168,6 +185,9 @@ S3/R2 behind the existing `/api/files` contract.
 | `GET /api/quest-data` | The caller's row; `204` when onboarding is pending |
 | `POST /api/quest-data` | Create after onboarding; starts the trial |
 | `PATCH /api/quest-data` | Field-level merge — target of the debounced save |
+| `POST/DELETE /api/quest-data/completions` | Record or undo one quest; XP is derived |
+| `POST /api/quest-data/streak` | Count a day towards the streak, once |
+| `POST /api/quest-data/streak/freeze` | Spend a freeze, or let the streak go |
 | `DELETE /api/quest-data` | Reset onboarding |
 | `POST /api/ai/quests/generate` | Onboarding answers → 6 categories × 3 levels |
 | `POST /api/ai/quests/voice` | Voice transcript → intent and quest |
@@ -187,10 +207,10 @@ allowlist as every other field; there is no separate mood endpoint.
 - **Billing is not built.** `is_premium` is a flag with no payment path behind
   it. Stripe was listed as a dependency in the Base44 version but never
   imported; those packages have been removed.
-- **Last-write-wins across devices.** The debounced save writes a snapshot, so
-  two open tabs will overwrite each other. This was true on Base44 as well; the
-  field-level merge makes it less destructive. Add an `updatedAt` concurrency
-  check if it ever causes real data loss.
+- **Last-write-wins across devices, for the fields the client still owns.**
+  Quests, journal entries, meals, calories and mood are still sent as a
+  debounced snapshot, so two open tabs can overwrite each other there. Progress
+  no longer works that way — see **Progress** above.
 - **`meal_history` and `journal_entries` are unbounded arrays** rewritten
   wholesale on every save. Fine at current scale; normalise into their own
   tables when they get long.

@@ -188,11 +188,13 @@ describe('quest data', () => {
   });
 
   test('a partial patch leaves untouched columns alone', async () => {
+    // `streak` used to be the field probed here; it is server-owned now, so the
+    // check moved to one the client still writes.
     const res = await call('/api/quest-data', {
-      token: alice.token, method: 'PATCH', body: { streak: 7 },
+      token: alice.token, method: 'PATCH', body: { calories_burned: { '2031-01-01': 250 } },
     });
     const row = await res.json();
-    assert.equal(row.streak, 7);
+    assert.deepEqual(row.calories_burned, { '2031-01-01': 250 });
     assert.equal(row.quest_data.health.length, 3, 'quests must survive a partial save');
     assert.deepEqual(row.onboarding_answers, { health: 'run more' });
   });
@@ -237,6 +239,121 @@ describe('quest data', () => {
 
   test('one user cannot see another user\'s row', async () => {
     assert.equal((await call('/api/quest-data', { token: bob.token })).status, 204);
+  });
+});
+
+describe('progress is derived, not trusted', () => {
+  async function onboard(actor: Actor) {
+    await prisma.questData.deleteMany({ where: { userId: actor.id } });
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+  }
+
+  const complete = (actor: Actor, body: Record<string, unknown>) =>
+    call('/api/quest-data/completions', { token: actor.token, method: 'POST', body });
+
+  test('XP and category level follow the completion, not the client', async () => {
+    await onboard(alice);
+    const res = await complete(alice, {
+      day: '2031-03-01', category: 'health', quest_name: 'Run 3km', level: 3,
+    });
+    assert.equal(res.status, 201);
+    const row = await res.json();
+    assert.equal(row.total_completed, 3);
+    assert.equal(row.category_total_completed.health, 3);
+    assert.equal(row.category_levels.health, 1);
+  });
+
+  // The bug this replaces: two tabs each read the same total, each add their
+  // own XP, and the second save overwrites the first — one completion is gone.
+  test('concurrent completions do not lose an increment', async () => {
+    await onboard(alice);
+    const results = await Promise.all([
+      complete(alice, { day: '2031-03-02', category: 'health', quest_name: 'A', level: 1 }),
+      complete(alice, { day: '2031-03-02', category: 'mind', quest_name: 'B', level: 2 }),
+      complete(alice, { day: '2031-03-02', category: 'work', quest_name: 'C', level: 3 }),
+    ]);
+    for (const r of results) assert.equal(r.status, 201);
+
+    const row = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.equal(row.total_completed, 6, 'every completion must be counted');
+    assert.equal(row.completion_history['2031-03-02'].length, 3);
+  });
+
+  test('completing the same quest twice counts once', async () => {
+    await onboard(alice);
+    const body = { day: '2031-03-03', category: 'health', quest_name: 'Run', level: 2 };
+    await Promise.all([complete(alice, body), complete(alice, body)]);
+    const row = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.equal(row.total_completed, 2);
+  });
+
+  test('unchecking removes the XP again', async () => {
+    await onboard(alice);
+    await complete(alice, { day: '2031-03-04', category: 'health', quest_name: 'Run', level: 3 });
+    const res = await call('/api/quest-data/completions', {
+      token: alice.token, method: 'DELETE',
+      body: { day: '2031-03-04', category: 'health', level: 3 },
+    });
+    assert.equal(res.status, 200);
+    const row = await res.json();
+    assert.equal(row.total_completed, 0);
+    assert.equal(row.completion_history['2031-03-04'], undefined);
+  });
+
+  test('a PATCH cannot inflate the totals', async () => {
+    await onboard(alice);
+    await complete(alice, { day: '2031-03-05', category: 'health', quest_name: 'Run', level: 1 });
+    const res = await call('/api/quest-data', {
+      token: alice.token, method: 'PATCH',
+      body: { total_completed: 9999, streak: 500, streak_freezes: 99 },
+    });
+    assert.equal(res.status, 200);
+    const row = await res.json();
+    assert.equal(row.total_completed, 1, 'derived from history, not the request');
+    assert.equal(row.streak, 0);
+    assert.equal(row.streak_freezes, 1);
+  });
+
+  test('the streak counts a day once, however many calls arrive', async () => {
+    await onboard(alice);
+    const hit = () =>
+      call('/api/quest-data/streak', {
+        token: alice.token, method: 'POST', body: { day: '2031-03-06' },
+      });
+    const [a, b, c] = await Promise.all([hit(), hit(), hit()]);
+    for (const r of [a, b, c]) assert.equal(r.status, 200);
+
+    const row = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.equal(row.streak, 1, 'three calls for one day must add one');
+    assert.equal(row.last_completed_date, '2031-03-06');
+
+    const next = await (await call('/api/quest-data/streak', {
+      token: alice.token, method: 'POST', body: { day: '2031-03-07' },
+    })).json();
+    assert.equal(next.streak, 2);
+    assert.equal(next.counted, true);
+  });
+
+  test('the last freeze cannot be spent twice', async () => {
+    await onboard(alice);
+    const spend = () =>
+      call('/api/quest-data/streak/freeze', {
+        token: alice.token, method: 'POST', body: { action: 'use' },
+      });
+    await Promise.all([spend(), spend(), spend()]);
+    const row = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.equal(row.streak_freezes, 0, 'never negative');
+  });
+
+  test('one user cannot record a completion on another\'s row', async () => {
+    await onboard(alice);
+    await onboard(bob);
+    await complete(bob, { day: '2031-03-08', category: 'health', quest_name: 'X', level: 3 });
+    const mine = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.equal(mine.total_completed, 0);
   });
 });
 
