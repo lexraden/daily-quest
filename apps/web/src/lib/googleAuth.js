@@ -15,14 +15,14 @@ let configPromise = null;
  * cannot drift out of sync with the GOOGLE_CLIENT_ID the server verifies
  * tokens against, and changing it does not mean rebuilding the bundle.
  */
-export function fetchGoogleClientId() {
+export function fetchAuthConfig() {
   if (!configPromise) {
     configPromise = fetch(`${API_BASE}/api/auth/config`, { credentials: 'omit' })
       .then((r) => {
         if (!r.ok) throw new Error('Could not load the sign-in configuration');
         return r.json();
       })
-      .then((c) => c.google_client_id || '')
+      .then((c) => c || {})
       .catch((err) => {
         configPromise = null; // let a later attempt retry
         throw err;
@@ -62,7 +62,7 @@ export function loadGoogleScript() {
  * that renders the Google button into a container element.
  */
 export async function initGoogleSignIn(onCredential) {
-  const clientId = await fetchGoogleClientId();
+  const { google_client_id: clientId } = await fetchAuthConfig();
   if (!clientId) {
     throw new Error('Google sign-in is not configured for this deployment.');
   }

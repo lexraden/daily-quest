@@ -123,6 +123,13 @@ export const api = {
       return data.user;
     },
 
+    /** A throwaway account; only works when the server has guest login on. */
+    async signInAsGuest() {
+      const data = await request('/api/auth/guest', { method: 'POST', retry: false });
+      accessToken = data.access_token;
+      return data.user;
+    },
+
     /** Restore a session from the refresh cookie. Returns null when signed out. */
     async restore() {
       try {

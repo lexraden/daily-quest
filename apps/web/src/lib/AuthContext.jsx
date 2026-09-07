@@ -51,6 +51,20 @@ export const AuthProvider = ({ children }) => {
     [],
   );
 
+  const signInAsGuest = useCallback(async () => {
+    setAuthError(null);
+    try {
+      const signedIn = await api.auth.signInAsGuest();
+      setUser(signedIn);
+      setCachedUser(signedIn);
+      setIsAuthenticated(true);
+      return signedIn;
+    } catch (error) {
+      setAuthError({ type: 'sign_in_failed', message: error.message });
+      throw error;
+    }
+  }, []);
+
   const signInWithGoogleCredential = useCallback(async (idToken) => {
     setAuthError(null);
     try {
@@ -92,6 +106,7 @@ export const AuthProvider = ({ children }) => {
         isLoadingAuth,
         authError,
         signInWithGoogleCredential,
+        signInAsGuest,
         logout,
         refreshUser,
       }}

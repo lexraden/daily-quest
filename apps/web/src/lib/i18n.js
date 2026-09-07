@@ -45,6 +45,7 @@ const translations = {
       footer: 'Твои квесты, серии и журнал видишь только ты.',
       loading: 'Загружаем вход…',
       signingIn: 'Входим…',
+      guest: 'Продолжить как гость',
       signOut: 'Выйти',
     },
     // Navigation
@@ -467,6 +468,7 @@ const translations = {
       footer: 'Your quests, streaks and journal stay private to you.',
       loading: 'Loading sign-in…',
       signingIn: 'Signing you in…',
+      guest: 'Continue as guest',
       signOut: 'Sign out',
     },
     nav: {

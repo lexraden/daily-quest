@@ -54,6 +54,18 @@ Every route derives the user from that token. No endpoint accepts a user id or
 email in a request body — that was the authorisation hole in the Base44 version,
 where the client chose its own `created_by` filter.
 
+**Guest accounts.** `POST /api/auth/guest` mints a throwaway account, for
+testing somewhere Google sign-in cannot be reached. It is off unless
+`GUEST_LOGIN_ENABLED` is `1`, and returns 404 otherwise; `GET /api/auth/config`
+reports whether it is on, and the sign-in screen only offers it where it is. A
+guest is an ordinary user — own row, own data, same trial, same per-user AI
+quota — so nothing about the isolation other routes rely on changes. What it
+removes is the identity proof, which is why it is rate limited to five per hour
+per IP: every new guest is a fresh trial, and a fresh trial can spend money on
+OpenAI. Leave it off in production once testing is done. Guests are identifiable
+by their `guest:` subject prefix and `@guest.invalid` email, so they are easy to
+delete later.
+
 **Data.** One `quest_data` row per user, keyed by user id. The JSON columns keep
 the shape the React app already read and wrote, so components did not need
 reshaping. `PATCH /api/quest-data` merges only the fields it is given, against an
@@ -179,6 +191,7 @@ S3/R2 behind the existing `/api/files` contract.
 | --- | --- |
 | `GET /api/auth/config` | Public sign-in config (the Google client id) |
 | `POST /api/auth/google` | Exchange a Google ID token for a session |
+| `POST /api/auth/guest` | Throwaway account; 404 unless enabled |
 | `POST /api/auth/refresh` | Rotate the refresh token, mint an access token |
 | `POST /api/auth/logout` | Revoke the refresh token |
 | `GET/PATCH/DELETE /api/auth/me` | Read, update, or delete the account |

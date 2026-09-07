@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { prisma } from '../db.js';
@@ -61,7 +62,48 @@ export default async function authRoutes(app: FastifyInstance) {
   // "invalid_client".
   app.get('/config', async () => ({
     google_client_id: apiEnv.GOOGLE_CLIENT_ID,
+    guest_login: apiEnv.GUEST_LOGIN_ENABLED,
   }));
+
+  // Scoped to this plugin and off by default, so only the route that opts in
+  // below is limited — the rest of /api/auth is untouched.
+  await app.register(import('@fastify/rate-limit'), { global: false });
+
+  /**
+   * A throwaway account, for testing where Google sign-in is not reachable.
+   *
+   * Guests are ordinary users: their own row, their own quest data, the same
+   * trial and the same per-user AI quota. Nothing here weakens the isolation
+   * every other route relies on — it only removes the identity proof, which is
+   * why it stays behind GUEST_LOGIN_ENABLED and is rate limited: each new guest
+   * is a fresh trial, and a fresh trial can spend money on OpenAI.
+   */
+  app.post(
+    '/guest',
+    { config: { rateLimit: { max: 5, timeWindow: '1 hour' } } },
+    async (request, reply) => {
+      if (!apiEnv.GUEST_LOGIN_ENABLED) {
+        throw notFound('Guest access is not enabled');
+      }
+
+      const id = randomUUID();
+      const user = await prisma.user.create({
+        data: {
+          // Namespaced so a guest can never collide with a real Google subject,
+          // and so guests are easy to find and delete later.
+          googleSub: `guest:${id}`,
+          email: `guest-${id}@guest.invalid`,
+          fullName: 'Guest',
+        },
+      });
+
+      const { token, expiresIn } = issueAccessToken(user);
+      const refresh = await issueRefreshToken(user.id);
+      reply.setCookie(REFRESH_COOKIE, refresh, refreshCookieOptions);
+      reply.code(201);
+      return { access_token: token, expires_in: expiresIn, user: publicUser(user) };
+    },
+  );
 
   app.post('/google', async (request, reply) => {
     const parsed = googleBody.safeParse(request.body);

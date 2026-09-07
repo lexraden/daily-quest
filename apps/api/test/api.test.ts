@@ -111,7 +111,29 @@ describe('authentication', () => {
 
   test('the sign-in config leaks no other configuration', async () => {
     const body = await (await call('/api/auth/config')).json();
-    assert.deepEqual(Object.keys(body), ['google_client_id']);
+    assert.deepEqual(Object.keys(body).sort(), ['google_client_id', 'guest_login']);
+  });
+
+  // Guest login is a deliberate hole in the identity proof, so the flag being
+  // off has to mean off. The suite runs without GUEST_LOGIN_ENABLED set.
+  test('guest sign-in is closed unless the server enables it', async () => {
+    const res = await call('/api/auth/guest', { method: 'POST' });
+    const body = await (await call('/api/auth/config')).json();
+    if (body.guest_login) {
+      assert.equal(res.status, 201, 'enabled: must issue a session');
+      const session = await res.json();
+      assert.ok(session.access_token);
+      assert.equal(session.user.full_name, 'Guest');
+
+      // A second guest must be a different account, not a shared one.
+      const other = await (await call('/api/auth/guest', { method: 'POST' })).json();
+      assert.notEqual(other.user.id, session.user.id);
+
+      const mine = await call('/api/quest-data', { token: session.access_token });
+      assert.equal(mine.status, 204, 'a fresh guest owns nothing yet');
+    } else {
+      assert.equal(res.status, 404, 'disabled: must not issue a session');
+    }
   });
 
   test('rejects an alg:none forged token', async () => {

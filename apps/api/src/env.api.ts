@@ -11,6 +11,14 @@ const schema = z.object({
 
   GOOGLE_CLIENT_ID: z.string().min(1),
 
+  // Lets anyone with the URL create a throwaway account — for testing when
+  // Google sign-in is not available. Parsed explicitly rather than with
+  // z.coerce.boolean(), which turns the string "false" into true.
+  GUEST_LOGIN_ENABLED: z
+    .string()
+    .default('false')
+    .transform((v) => v === '1' || v.toLowerCase() === 'true'),
+
   // Signs image URLs so <img> tags work without a bearer header. Rotating this
   // invalidates every previously issued photo URL, so treat it as permanent.
   FILE_SIGNING_SECRET: z.string().min(32, 'must be at least 32 characters'),
