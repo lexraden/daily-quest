@@ -49,6 +49,12 @@ export async function completeJson<T>(opts: {
     });
   } catch (err) {
     const status = (err as { status?: number }).status;
+    // The caller only ever sees "unavailable", so without this line a failing
+    // deploy leaves nothing to diagnose from: a rejected key, a blocked egress
+    // and a genuine outage all look identical in the logs. The message and
+    // status come from the SDK's error, never the request or the key.
+    console.error('[ai] %s failed: status=%s %s', opts.model, status ?? 'none',
+      err instanceof Error ? err.message : String(err));
     if (status === 429) {
       throw new HttpError(503, 'The assistant is busy, try again in a moment', 'ai_busy');
     }
