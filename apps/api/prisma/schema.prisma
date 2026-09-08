@@ -69,6 +69,11 @@ model QuestData {
   lastCompletedDate String? @map("last_completed_date")
   lastVisitDate     String? @map("last_visit_date")
 
+  // The local day a reminder was last claimed for. The reminders job claims it
+  // with a conditional UPDATE before sending, so a run that overlaps another —
+  // a retry, a manual trigger, a second replica — sends nothing.
+  lastReminderDay String? @map("last_reminder_day")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

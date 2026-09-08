@@ -12,6 +12,7 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
+import { isDue, minutesSince } from '../src/jobs/window.js';
 import {
   issueAccessToken,
   issueRefreshToken,
@@ -597,6 +598,57 @@ describe('profile', () => {
     assert.equal(await prisma.questData.count({ where: { userId: doomed.id } }), 0);
     assert.equal(await prisma.file.count({ where: { userId: doomed.id } }), 0);
     assert.equal(await prisma.refreshToken.count({ where: { userId: doomed.id } }), 0);
+  });
+});
+
+describe('reminders', () => {
+  // The old window was minutesApart(...) <= 30, i.e. 61 minutes wide, against a
+  // 30-minute cron: a 09:00 reminder matched 08:30, 09:00 and 09:30, so every
+  // user who had not completed a quest got three identical emails a day.
+  test('a reminder is due exactly once per 30-minute cron day', async () => {
+    const reminder = 9 * 60;
+    const due: number[] = [];
+    for (let m = 0; m < 24 * 60; m += 30) {
+      if (isDue(m, reminder)) due.push(m);
+    }
+    assert.equal(due.length, 2, 'the window may span runs; the claim dedupes');
+    assert.deepEqual(due, [9 * 60, 9 * 60 + 30], 'and never before the time itself');
+  });
+
+  test('the window wraps midnight', async () => {
+    assert.equal(minutesSince(10, 23 * 60 + 55), 15, '00:10 is 15 minutes after 23:55');
+    assert.ok(isDue(10, 23 * 60 + 55));
+    assert.ok(!isDue(23 * 60 + 50, 10), 'and does not fire the day before');
+  });
+
+  // The claim, which is what actually makes delivery at-most-once. A NULL
+  // last_reminder_day has to count as "not claimed" — with Prisma's NOT filter
+  // it did not, and nobody would ever have been sent anything.
+  test('a day can be claimed once, by one run only', async () => {
+    await prisma.questData.deleteMany({ where: { userId: alice.id } });
+    await prisma.questData.create({ data: { userId: alice.id, questData: {} } });
+
+    const claim = () => prisma.$executeRaw`
+      UPDATE quest_data
+         SET last_reminder_day = ${'2031-05-04'}, updated_at = now()
+       WHERE user_id = ${alice.id}
+         AND last_reminder_day IS DISTINCT FROM ${'2031-05-04'}`;
+
+    const results = await Promise.all([claim(), claim(), claim()]);
+    assert.equal(results.filter((n) => n === 1).length, 1, 'exactly one run may send');
+
+    const next = await claim();
+    assert.equal(next, 0, 'and a later run that day sends nothing');
+
+    // A new day is claimable again.
+    const tomorrow = await prisma.$executeRaw`
+      UPDATE quest_data
+         SET last_reminder_day = ${'2031-05-05'}, updated_at = now()
+       WHERE user_id = ${alice.id}
+         AND last_reminder_day IS DISTINCT FROM ${'2031-05-05'}`;
+    assert.equal(tomorrow, 1);
+
+    await prisma.questData.deleteMany({ where: { userId: alice.id } });
   });
 });
 

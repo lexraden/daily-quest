@@ -182,8 +182,29 @@ This service serves the SPA as well as the API, so there is one domain, no CORS,
 and no cookie `SameSite` problems.
 
 **`dailyq-reminders`** — same repo, also at the repo root, but override the
-start command to `npm run reminders` and set a cron schedule (every 30 minutes
-matches the reminder window logic). It needs `DATABASE_URL`, `RESEND_API_KEY`
+start command to `npm run reminders` and set a cron schedule; every 30 minutes
+is a good default, and the job no longer depends on the period being exact.
+
+Delivery is at-most-once per local day. The job claims the day with a
+conditional `UPDATE ... WHERE last_reminder_day IS DISTINCT FROM $day` and only
+sends if that claimed a row, so a retry after a crash, a manual trigger running
+beside the schedule, or a second replica all send nothing. Recording after
+sending would be the wrong way round — a crash in between leaves no record and
+the retry emails everyone again. If the send itself fails the day is given back,
+so a provider outage costs a retry rather than everyone's reminder; the residual
+risk is a send that succeeded but reported failure, and one duplicate beats
+silently dropping a day.
+
+The window is one-sided — the reminder time has to have passed — and wider than
+the cron period so a late run still delivers. It used to be plus-or-minus 30
+minutes, which is 61 minutes wide: against a 30-minute cron a 09:00 reminder
+matched the 08:30, 09:00 and 09:30 runs, so everyone who had not completed a
+quest got three identical emails a day, the first of them half an hour before
+the time it announced.
+
+Note that Resend reports API failures in its result rather than by throwing, so
+the result is inspected: without that a rejected API key counted every address
+as sent and the run logged a clean summary while delivering nothing. It needs `DATABASE_URL`, `RESEND_API_KEY`
 and `REMINDER_FROM`, plus `APP_ORIGIN` for the link in the email. It does not
 need the volume, and deliberately does not load the API's signing secrets or
 the OpenAI key — its environment is validated separately in `src/env.job.ts`. The job checks each user's

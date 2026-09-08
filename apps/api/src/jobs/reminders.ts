@@ -12,8 +12,8 @@
 import { Resend } from 'resend';
 import { prisma } from '../db.js';
 import { jobEnv } from '../env.job.js';
+import { isDue } from './window.js';
 
-const WINDOW_MINUTES = 30;
 
 interface NotificationSettings {
   enabled?: boolean;
@@ -54,15 +54,6 @@ function localTime(tz: string): { hour: number; minute: number; dayKey: string }
   }
 }
 
-/**
- * Minutes between two times of day, taking the shorter way round the clock.
- * A plain subtraction made 23:55 look 23 hours away from a 00:10 reminder
- * rather than 15 minutes, so reminders near midnight never fired.
- */
-function minutesApart(a: number, b: number): number {
-  const diff = Math.abs(a - b);
-  return Math.min(diff, 24 * 60 - diff);
-}
 
 function body(type: 'reminder' | 'streak_warning', streak: number, total: number, time: string) {
   const cta = `<p><a href="${jobEnv.APP_ORIGIN}">Open DailyQ</a></p>`;
@@ -83,6 +74,7 @@ async function main() {
   const rows = await prisma.questData.findMany({
     where: { notificationSettings: { path: ['enabled'], equals: true } },
     select: {
+      userId: true,
       streak: true,
       totalCompleted: true,
       completionHistory: true,
@@ -109,7 +101,7 @@ async function main() {
       continue;
     }
 
-    if (minutesApart(hour * 60 + minute, remH * 60 + remM) > WINDOW_MINUTES) {
+    if (!isDue(hour * 60 + minute, remH * 60 + remM)) {
       results.skipped++;
       continue;
     }
@@ -128,19 +120,65 @@ async function main() {
         ? `🔥 Your ${row.streak}-day streak is at risk!`
         : '⚡ Time for your daily quests!';
 
+    // Claim the day before sending, not after. The predicate is the whole
+    // mechanism: `IS DISTINCT FROM` matches a row whose last reminder is null or
+    // some other day, so whichever run gets there first is the only one that
+    // sends. A retry after a crash, a manual trigger running beside the
+    // schedule, or a second replica all update nothing and move on.
+    //
+    // Recording after sending instead would be the wrong way round: a crash
+    // between the two leaves no record and the retry emails everyone again.
+    // Raw SQL for `IS DISTINCT FROM`: Prisma's `NOT: { lastReminderDay: day }`
+    // compiles to `NOT (last_reminder_day = $day)`, which is NULL — and so no
+    // match — for a row that has never been claimed. That is every row on the
+    // first run, so the filter would have quietly claimed nothing and nobody
+    // would ever receive a reminder again.
+    const claimed = await prisma.$executeRaw`
+      UPDATE quest_data
+         SET last_reminder_day = ${dayKey}, updated_at = now()
+       WHERE user_id = ${row.userId}
+         AND last_reminder_day IS DISTINCT FROM ${dayKey}`;
+    if (claimed === 0) {
+      results.skipped++;
+      continue;
+    }
+
     // TODO: send a push notification instead once settings.push_token is populated.
+    let failure: unknown = null;
     try {
-      await resend.emails.send({
+      // Resend reports API failures in the result rather than by throwing, so
+      // the catch below never saw them: a rejected key counted every address as
+      // sent, and the run logged a clean summary while delivering nothing.
+      const { error } = await resend.emails.send({
         from: jobEnv.REMINDER_FROM,
         to: row.user.email,
         subject,
         html: body(type, row.streak, row.totalCompleted, settings.reminder_time),
       });
-      results.sent++;
+      if (error) failure = error;
     } catch (err) {
+      // A thrown error still means the transport itself failed.
+      failure = err;
+    }
+
+    if (!failure) {
+      results.sent++;
+    } else {
       // One bad address must not stop the rest of the run.
-      console.error(`failed to send to ${row.user.email}:`, err);
+      console.error(`failed to send to ${row.user.email}:`, failure);
       results.failed++;
+
+      // Nothing was delivered, so give the day back and let a later run try
+      // again — a provider outage should not cost everyone their reminder. The
+      // residual risk is a send that succeeded but reported failure, which
+      // would send twice; that is rarer than an outage, and one duplicate is a
+      // better trade than silently dropping every reminder for a day.
+      await prisma.questData
+        .updateMany({
+          where: { userId: row.userId, lastReminderDay: dayKey },
+          data: { lastReminderDay: null },
+        })
+        .catch(() => {});
     }
   }
 
