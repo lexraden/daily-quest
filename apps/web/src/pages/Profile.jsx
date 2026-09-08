@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RotateCcw, Trash2, BarChart3, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { t, getLang } from '@/lib/i18n';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import NotificationSettings from '@/components/profile/NotificationSettings';
-import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData } from '@/components/UserDataCache';
+import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData, setCachedUser } from '@/components/UserDataCache';
 
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 import CategoryLevelsCard from '@/components/profile/CategoryLevelsCard';
@@ -35,6 +35,14 @@ export default function Profile() {
   const i = t();
   const [theme, setTheme] = useState('light');
   const [user, setUser] = useState(null);
+
+  // The shared cache has to move with the profile, not just this page's state:
+  // DailyTracker re-checks the cached user on every focus and would otherwise
+  // overwrite a freshly chosen name with the email-derived default.
+  const handleUserUpdate = useCallback((next) => {
+    setUser(next);
+    setCachedUser(next);
+  }, []);
   const [stats, setStats] = useState({
     streak: 0,
     totalCompleted: 0,
@@ -156,7 +164,7 @@ export default function Profile() {
 
       <div className="px-5 py-3 space-y-3 max-w-2xl mx-auto pb-6">
         {/* Profile header - compact */}
-        <ProfileHeader user={user} stats={stats} levelProgress={levelProgress} theme={theme} onUserUpdate={setUser} />
+        <ProfileHeader user={user} stats={stats} levelProgress={levelProgress} theme={theme} onUserUpdate={handleUserUpdate} />
 
         {/* Daily Calories */}
         <DailyCaloriesCard

@@ -192,12 +192,21 @@ export default function DailyTracker() {
               setCachedUser(authUser);
               setUser(authUser);
 
-              // Auto-save user name on first login if not set
+              // Auto-save user name on first login if not set. The result has
+              // to go back into the cache: this runs again on every focus, and
+              // a cache still holding full_name: null would keep overwriting a
+              // name the user has since chosen on the profile page.
               if (!authUser.full_name) {
                 const name = authUser.email?.split('@')[0] || t().profilePage.user;
-                await api.auth.updateMe({ full_name: name }).catch(err => {
+                try {
+                  const updated = await api.auth.updateMe({ full_name: name });
+                  if (updated) {
+                    setUser(updated);
+                    setCachedUser(updated);
+                  }
+                } catch (err) {
                   console.log('Failed to save user name:', err);
-                });
+                }
               }
             } else {
               // No user returned but no error — unblock the UI

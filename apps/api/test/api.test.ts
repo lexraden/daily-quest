@@ -12,7 +12,12 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
-import { issueAccessToken, issueRefreshToken } from '../src/auth/tokens.js';
+import {
+  issueAccessToken,
+  issueRefreshToken,
+  rotateRefreshToken,
+  revokeRefreshToken,
+} from '../src/auth/tokens.js';
 
 const BASE = process.env.TEST_API_URL ?? 'http://localhost:3111';
 const prisma = new PrismaClient();
@@ -161,6 +166,43 @@ describe('authentication', () => {
       method: 'POST', headers: { Cookie: `dq_refresh=${raw}` },
     });
     assert.equal(replay.status, 401, 'a used refresh token must not work twice');
+  });
+
+  // The sequential case above passed even when the validity check happened in
+  // JavaScript and the update targeted the row by id. Fired together, both
+  // callers read a live row and both minted a successor, so one token became
+  // two live sessions.
+  // Called against the function, not over HTTP: fetch reuses one connection per
+  // origin, so four POSTs fired with Promise.all still arrive one after another
+  // and never overlap in the database, which is where this race lives.
+  test('one refresh token cannot mint two sessions at once', async () => {
+    const raw = await issueRefreshToken(alice.id);
+    const results = await Promise.allSettled([
+      rotateRefreshToken(raw),
+      rotateRefreshToken(raw),
+      rotateRefreshToken(raw),
+      rotateRefreshToken(raw),
+    ]);
+    const won = results.filter((r) => r.status === 'fulfilled');
+    assert.equal(won.length, 1, 'exactly one caller may rotate the token');
+  });
+
+  // Logging out has to stick even if a refresh is in flight beside it.
+  // Same reason: driven against the functions so the two genuinely overlap.
+  test('a logout is not undone by a refresh racing it', async () => {
+    const raw = await issueRefreshToken(alice.id);
+    const [, rotated] = await Promise.allSettled([
+      revokeRefreshToken(raw),
+      rotateRefreshToken(raw),
+    ]);
+
+    // Whoever won, the token must be dead afterwards and mint nothing more.
+    await assert.rejects(() => rotateRefreshToken(raw), 'the revoked token must stay dead');
+    if (rotated.status === 'fulfilled') {
+      // The refresh got there first; its successor is a legitimate live session,
+      // but the token it consumed is still gone.
+      assert.ok(rotated.value.refreshToken);
+    }
   });
 });
 

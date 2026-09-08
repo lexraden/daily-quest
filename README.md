@@ -50,6 +50,15 @@ user, and returns a 15-minute access token plus an `HttpOnly` refresh cookie.
 Refresh tokens are stored hashed and rotate on every use, so a replayed token is
 already revoked. The access token lives in memory only.
 
+Rotation claims the token with an atomic conditional update — the validity
+predicate lives in the `WHERE` clause and the affected-row count is the
+authorization, so exactly one caller can consume it. Checking `revokedAt` in
+JavaScript and then updating by id was not the same thing: two refreshes
+arriving together both read a live row and both minted a successor, turning one
+token into two live sessions, and a logout racing a refresh was undone the same
+way. There is deliberately no token-family revocation on reuse — with several
+tabs open, a legitimate double refresh would sign the user out everywhere.
+
 Every route derives the user from that token. No endpoint accepts a user id or
 email in a request body — that was the authorisation hole in the Base44 version,
 where the client chose its own `created_by` filter.

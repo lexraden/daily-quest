@@ -98,19 +98,33 @@ export async function issueRefreshToken(userId: string): Promise<string> {
 export async function rotateRefreshToken(
   raw: string,
 ): Promise<{ userId: string; email: string; refreshToken: string }> {
+  const tokenHash = hashToken(raw);
+
+  // Read for the user's details only. It decides nothing: the row could be
+  // revoked between this line and the update below.
   const record = await prisma.refreshToken.findUnique({
-    where: { tokenHash: hashToken(raw) },
+    where: { tokenHash },
     include: { user: true },
   });
+  if (!record) throw unauthorized('Session expired, sign in again');
 
-  if (!record || record.revokedAt || record.expiresAt < new Date()) {
-    throw unauthorized('Session expired, sign in again');
-  }
-
-  await prisma.refreshToken.update({
-    where: { id: record.id },
+  // This is the authorization. The validity predicate lives in the WHERE
+  // clause, so exactly one caller can claim the token: `tokenHash` is unique,
+  // so the count is 0 or 1, and only the caller that got 1 may mint a
+  // replacement.
+  //
+  // Checking `revokedAt` in JavaScript and then updating by id was not the same
+  // thing. Two refreshes arriving together — two tabs, or a retry — both read a
+  // live row, both revoked it, and both issued a replacement, so one token
+  // became two live sessions and the replay rejection this is supposed to
+  // provide only held when the calls happened to be sequential. A logout racing
+  // a refresh was undone the same way: it revoked the row, but the refresh had
+  // already read it as live and minted a successor.
+  const claimed = await prisma.refreshToken.updateMany({
+    where: { tokenHash, revokedAt: null, expiresAt: { gt: new Date() } },
     data: { revokedAt: new Date() },
   });
+  if (claimed.count !== 1) throw unauthorized('Session expired, sign in again');
 
   const refreshToken = await issueRefreshToken(record.userId);
   return { userId: record.userId, email: record.user.email, refreshToken };
