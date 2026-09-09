@@ -5,6 +5,7 @@ import { api } from '@/api/client';
 import { toast } from 'sonner';
 import { t, getLang } from '@/lib/i18n';
 import { todayKey } from '@/lib/dates';
+import { aiErrorMessage } from '@/lib/aiErrors';
 
 const MAX_PHOTOS = 3;
 const MAX_DIMENSION = 1280; // px — max width/height after compression
@@ -126,7 +127,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme
       }
     } catch (error) {
       console.error('Error analyzing meal:', error);
-      toast.error(t().calories.analysisError);
+      toast.error(aiErrorMessage(error, t().calories.analysisError));
     } finally {
       setIsAnalyzing(false);
     }

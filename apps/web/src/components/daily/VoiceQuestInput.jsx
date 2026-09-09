@@ -7,6 +7,7 @@ import { useSpeechRecognition } from '@/components/useSpeechRecognition';
 import CaloriePhotoInput from './CaloriePhotoInput';
 import { t, getLang, getSpeechLang } from '@/lib/i18n';
 import { todayKey } from '@/lib/dates';
+import { aiErrorMessage } from '@/lib/aiErrors';
 
 const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion, onMealAnalyzed, theme = 'dark', questData, hasAccess = true, onLocked }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -149,7 +150,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       }
     } catch (error) {
       console.error('Error processing voice input:', error);
-      toast.error(t().voice.processError);
+      toast.error(aiErrorMessage(error, t().voice.processError));
     } finally {
       setIsProcessing(false);
     }
