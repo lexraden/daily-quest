@@ -146,6 +146,31 @@ stable for the file's lifetime, because these URLs are persisted inside
 Photos are sent to OpenAI inline as base64 — the model has no credentials to
 fetch a URL on our volume.
 
+## Installing on a phone
+
+There is no app package. The SPA is an installable PWA, so Chrome on Android
+offers "Add to home screen" and it then runs standalone — its own icon, no
+address bar. `apps/web/public/manifest.json` carries the raster icons Chrome
+requires (192 and 512 PNG, plus a maskable one so Android does not frame the
+icon in a white circle) and `sw.js` is the service worker that makes it
+installable at all.
+
+That worker is deliberately small, because a bad one is very hard to undo on
+someone's phone:
+
+- `/api/` is never intercepted. Those responses are per-user and change
+  constantly.
+- Navigations are network-first and fall back to the cached shell only offline.
+  Serving a cached `index.html` first is how a deploy strands people: the old
+  shell asks for asset hashes that no longer exist and the app comes up blank.
+- `/assets/` is cache-first, which is safe because Vite content-hashes those
+  filenames — a changed file is a different URL.
+
+If a package is ever needed for a store listing, use a Trusted Web Activity
+(Bubblewrap) over this PWA rather than a WebView wrapper: Google refuses OAuth
+in an embedded WebView (`disallowed_useragent`), so Capacitor would break
+sign-in and need a native Google plugin instead.
+
 ## Tests
 
 ```bash
