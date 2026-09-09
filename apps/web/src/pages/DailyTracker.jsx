@@ -31,7 +31,7 @@ const getConfetti = () => {
 import { toast } from 'sonner';
 import { useLocation } from 'react-router-dom';
 import { api } from '@/api/client';
-import { getCachedUser, getCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
+import { getCachedUser, getCachedUserData, setCachedUser, invalidateCache, registerPendingFlush } from '@/components/UserDataCache';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import useSaveUserData from '@/hooks/useSaveUserData';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
@@ -698,12 +698,15 @@ export default function DailyTracker() {
     setCaloriesBurned(snapshot.calories_burned || {});
   }, []);
 
-  const { save: saveUserData, cancelPendingSave, hasPendingWrite } = useSaveUserData({
+  const { save: saveUserData, cancelPendingSave, flushPendingSave, hasPendingWrite } = useSaveUserData({
     userDataId,
     isLoaded,
     getStateSnapshot,
     restoreSnapshot,
   });
+
+  // Let the other tabs settle this page's queued save before they read the row.
+  useEffect(() => registerPendingFlush(flushPendingSave), [flushPendingSave]);
 
   // Stable refs so the re-sync effect doesn't re-run when these identities change
   const cancelPendingSaveRef = useRef(cancelPendingSave);

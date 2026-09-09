@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/api/client';
-import { updateCachedUserData } from '@/components/UserDataCache';
+import { updateCachedUserData, noteInFlightSave } from '@/components/UserDataCache';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 
@@ -31,7 +31,9 @@ export default function useSaveUserData({
   const mutation = useMutation({
     mutationFn: async ({ data }) => {
       // The row is identified by the caller's token, not by an id in the URL.
-      await api.questData.update(data);
+      const promise = api.questData.update(data);
+      noteInFlightSave(promise);
+      await promise;
       return data;
     },
     onMutate: async ({ id, data }) => {
@@ -67,10 +69,41 @@ export default function useSaveUserData({
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      timerRef.current = null;
       const toSave = getSnapshotRef.current();
       mutateRef.current({ id: userDataIdRef.current, data: toSave });
     }, DEBOUNCE_MS);
   }, [isLoaded]);
+
+  /**
+   * Send a queued save now instead of waiting out the debounce.
+   *
+   * Leaving the page used to just drop the timer, so anything edited in the
+   * last 800ms never reached the server — invisible until something refetched
+   * the row, at which point the edit appeared to undo itself. Called on
+   * unmount, and available to anything that needs the row settled first.
+   *
+   * The request goes out directly rather than through the mutation: this runs
+   * while the component is going away, and the rollback the mutation performs
+   * on failure would be writing into state nobody is rendering any more.
+   */
+  const flushPendingSave = useCallback(() => {
+    if (!timerRef.current) return Promise.resolve();
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+
+    const id = userDataIdRef.current;
+    if (!id) return Promise.resolve();
+
+    const data = getSnapshotRef.current();
+    updateCachedUserData(id, data);
+    const promise = api.questData.update(data).catch((error) => {
+      // Nothing is left on screen to roll back, so surface it and move on.
+      toast.error(error?.message || t().errors.saveFailed);
+    });
+    noteInFlightSave(promise);
+    return promise;
+  }, []);
 
   // Expose whether a save is queued or in-flight
   const hasPendingWrite = () => timerRef.current !== null || mutation.isPending;
@@ -83,12 +116,10 @@ export default function useSaveUserData({
     }
   }, []);
 
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+  // On unmount, send what is queued rather than discarding it.
+  const flushRef = useRef(flushPendingSave);
+  useEffect(() => { flushRef.current = flushPendingSave; }, [flushPendingSave]);
+  useEffect(() => () => { flushRef.current(); }, []);
 
-  return { save, cancelPendingSave, isSaving: mutation.isPending, hasPendingWrite };
+  return { save, cancelPendingSave, flushPendingSave, isSaving: mutation.isPending, hasPendingWrite };
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, LabelList,
@@ -93,16 +94,24 @@ export default function Statistics() {
   const [theme, setTheme] = useState('light');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
   const i = t();
   // `stats` was already taken by the Profile summary strings.
   const s = i.statsPage;
 
+  // Keyed on the route, not on mount: tabs stay mounted once visited, so a
+  // mount-only effect never ran again and the page kept showing whatever it
+  // loaded the first time it was opened. Forced, so arriving from the tracker
+  // shows what was just done there rather than the row as it was up to the
+  // cache's 30-second TTL ago.
   useEffect(() => {
+    if (location.pathname !== '/Statistics') return undefined;
+
     setTheme(localStorage.getItem('dailyQuestsTheme') || 'light');
     let cancelled = false;
     (async () => {
       try {
-        const { data: row } = await getCachedUserData();
+        const { data: row } = await getCachedUserData({ force: true });
         if (!cancelled) setData(row);
       } catch {
         if (!cancelled) setData(null);
@@ -111,7 +120,7 @@ export default function Statistics() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [location.pathname]);
 
   const light = theme === 'light';
   const ramp = MOOD_RAMP[light ? 'light' : 'dark'];

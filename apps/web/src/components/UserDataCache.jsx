@@ -35,15 +35,58 @@ export async function getCachedUser() {
   return user;
 }
 
-export async function getCachedUserData() {
+/**
+ * The save currently on its way to the server, if any.
+ *
+ * A forced read has to wait for it. Otherwise switching to Statistics right
+ * after logging a meal reads the row back before the write lands, and then
+ * caches that stale answer — the edit appears to undo itself.
+ */
+let inFlightSave = null;
+
+export function noteInFlightSave(promise) {
+  inFlightSave = promise;
+  const done = () => { if (inFlightSave === promise) inFlightSave = null; };
+  promise.then(done, done);
+}
+
+/**
+ * The tracker's "send the queued save now" function, if it is mounted.
+ *
+ * Tabs stay mounted once visited, so switching to Statistics does not unmount
+ * the tracker and does not end its 800ms debounce. Without this, a meal logged
+ * a moment before switching is still only queued when the other tab reads the
+ * row.
+ */
+let pendingFlush = null;
+
+export function registerPendingFlush(fn) {
+  pendingFlush = fn;
+  return () => { if (pendingFlush === fn) pendingFlush = null; };
+}
+
+export async function settleInFlightSave() {
+  // A failed save must not stop the read; the error is reported by whoever
+  // issued the save.
+  if (pendingFlush) await Promise.resolve(pendingFlush()).catch(() => {});
+  if (inFlightSave) await inFlightSave.catch(() => {});
+}
+
+/**
+ * `force` skips the TTL — for a page that has just become visible and must not
+ * show what the row looked like up to 30 seconds ago.
+ */
+export async function getCachedUserData({ force = false } = {}) {
+  if (force) await settleInFlightSave();
   const now = Date.now();
-  
+
   // Return cached if fresh
-  if (cache.userData && cache.lastFetch && (now - cache.lastFetch < CACHE_TTL)) {
+  if (!force && cache.userData && cache.lastFetch && (now - cache.lastFetch < CACHE_TTL)) {
     return { data: cache.userData, id: cache.userDataId };
   }
 
-  // Deduplicate concurrent requests
+  // Deduplicate concurrent requests. A forced read joins one already running:
+  // it was started after the save settled too, so its answer is just as fresh.
   if (cache.fetching) {
     await cache.fetching;
     return { data: cache.userData, id: cache.userDataId };

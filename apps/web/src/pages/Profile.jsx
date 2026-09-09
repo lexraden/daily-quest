@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { RotateCcw, Trash2, BarChart3, ChevronRight } from 'lucide-react';
+import { RotateCcw, Trash2, BarChart3, ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import { api } from '@/api/client';
@@ -16,6 +16,7 @@ import CategoryLevelsCard from '@/components/profile/CategoryLevelsCard';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 import { aiErrorMessage } from '@/lib/aiErrors';
+import { canInstall, promptInstall, onInstallAvailability } from '@/lib/installPrompt';
 
 
 const LEVEL_DEFS = [
@@ -59,6 +60,11 @@ export default function Profile() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [canInstallApp, setCanInstallApp] = useState(canInstall);
+
+  // The prompt usually arrives before this page is opened, so subscribe rather
+  // than reading once.
+  useEffect(() => onInstallAvailability(setCanInstallApp), []);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -88,7 +94,9 @@ export default function Profile() {
         if (!authUser || cancelled) return;
         setUser(authUser);
 
-        const { data, id } = await getCachedUserData();
+        // Same as Statistics: this effect already re-runs whenever Profile
+        // becomes the active route, so the read has to be a fresh one.
+        const { data, id } = await getCachedUserData({ force: true });
         if (!data || cancelled) return;
         const totalCompleted = data.total_completed || 0;
         let currentLevel = LEVELS[0];
@@ -231,6 +239,27 @@ export default function Profile() {
           }}
           theme={theme}
         />
+
+        {/* Install as an app — only where the browser has an install to offer:
+            already installed, or a browser that never fires the event (iOS
+            installs through Share → Add to Home Screen), leaves nothing here. */}
+        {canInstallApp && (
+          <Button
+            onClick={async () => {
+              const accepted = await promptInstall();
+              if (accepted) toast.success(i.profilePage.installed);
+              setCanInstallApp(canInstall());
+            }}
+            variant="outline"
+            aria-label={i.profilePage.installApp}
+            className={`w-full h-12 text-sm mb-3 ${
+              theme === 'light' ? 'border-gray-300' : 'border-white/10'
+            }`}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {i.profilePage.installApp}
+          </Button>
+        )}
 
         {/* Update quests button */}
         <Button

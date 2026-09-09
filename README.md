@@ -167,6 +167,12 @@ white strip above a dark app. The manifest's `background_color` and
 `theme_color` have to agree with each other too; a dark background against a
 light theme painted a black band under a light app.
 
+Profile carries an **Install app** button where the browser has an install to
+offer. `beforeinstallprompt` fires once and early, so it is captured at boot
+(`apps/web/src/lib/installPrompt.js`) rather than by the screen that shows the
+button; where it never fires — any iOS browser, or an app already installed —
+there is nothing to offer and the button stays hidden.
+
 That worker is deliberately small, because a bad one is very hard to undo on
 someone's phone:
 
@@ -287,6 +293,12 @@ allowlist as every other field; there is no separate mood endpoint.
 - **Billing is not built.** `is_premium` is a flag with no payment path behind
   it. Stripe was listed as a dependency in the Base44 version but never
   imported; those packages have been removed.
+- **Tabs stay mounted once visited**, so a page that loads on mount alone never
+  loads again. Statistics and Profile key their load on the route instead and
+  read past the cache's 30-second TTL, which is why arriving from the tracker
+  shows what was just done there. A forced read first settles any queued or
+  in-flight save, otherwise it would read the row back before the write landed
+  and cache that — the edit would appear to undo itself.
 - **Last-write-wins across devices, for the fields the client still owns.**
   Quests, journal entries, meals, calories and mood are still sent as a
   debounced snapshot, so two open tabs can overwrite each other there. Progress
