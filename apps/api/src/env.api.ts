@@ -35,6 +35,16 @@ const schema = z.object({
   CORS_ORIGINS: z.string().default(''),
 
   AI_MONTHLY_CALL_LIMIT: z.coerce.number().default(500),
+
+  // Set to 0 to let every signed-in user reach the AI endpoints regardless of
+  // trial or premium status — for testing, where a three-day trial that has
+  // already expired is just in the way. The monthly per-user quota still
+  // applies, so this is not a blank cheque. Parsed explicitly rather than with
+  // z.coerce.boolean(), which reads the string "false" as true.
+  AI_GATE_ENABLED: z
+    .string()
+    .default('true')
+    .transform((v) => !(v === '0' || v.toLowerCase() === 'false')),
 });
 
 export const apiEnv = parseEnv(schema, 'API');

@@ -7,7 +7,7 @@ import { t, getLocale } from '@/lib/i18n';
 import { getCachedUserData } from '@/components/UserDataCache';
 import BackButton from '@/components/navigation/BackButton';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
-import { MOOD_LEVELS } from '@/components/daily/MoodCheckIn';
+import { MOOD_LEVELS } from '@/lib/mood';
 import { dayKey } from '@/lib/dates';
 
 const CATEGORIES = {

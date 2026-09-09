@@ -6,7 +6,6 @@ import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
 import CaloriesIndicators from '@/components/daily/CaloriesIndicators.jsx';
-import MoodCheckIn from '@/components/daily/MoodCheckIn.jsx';
 import { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
 
 // Lazy-loaded modals — only fetched when actually shown (reduces initial bundle)
@@ -40,6 +39,7 @@ import { t, getLang } from '@/lib/i18n';
 import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
 import { todayKey } from '@/lib/dates';
 import { aiErrorMessage } from '@/lib/aiErrors';
+import { applyTheme } from '@/lib/theme';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -167,7 +167,6 @@ export default function DailyTracker() {
   const [pendingMeal, setPendingMeal] = useState(null);
   const [categoryLevelUp, setCategoryLevelUp] = useState(null); // { category, level }
   const [caloriesBurned, setCaloriesBurned] = useState({}); // { "YYYY-MM-DD": number }
-  const [moodLog, setMoodLog] = useState({}); // { "YYYY-MM-DD": { score, note?, at } }
   const [trialStartedAt, setTrialStartedAt] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
 
@@ -236,13 +235,9 @@ export default function DailyTracker() {
         };
       }, []);
 
-  // Сохранение темы + обновление meta theme-color для Android status bar
+  // Сохранение темы + класс на <html>, meta theme-color и color-scheme.
   useEffect(() => {
-    localStorage.setItem('dailyQuestsTheme', theme);
-    const meta = document.getElementById('theme-color-meta');
-    if (meta) {
-      meta.setAttribute('content', theme === 'light' ? '#f9fafb' : '#0f1419');
-    }
+    applyTheme(theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
@@ -584,9 +579,6 @@ export default function DailyTracker() {
           }
 
           // Отметки настроения
-          if (data.mood_log) {
-            setMoodLog(data.mood_log);
-          }
 
           // Trial / Premium status
           setTrialStartedAt(data.trial_started_at || null);
@@ -684,10 +676,6 @@ export default function DailyTracker() {
       }, [user]);
 
   // React Query optimistic save with debounce and rollback
-  const handleMoodSave = useCallback((dayKey, entry) => {
-    setMoodLog((prev) => ({ ...prev, [dayKey]: entry }));
-  }, []);
-
   // Progress — XP, category totals and levels, the completion history, the
   // streak and its freezes — is no longer part of this snapshot. The server
   // owns it and applies each change atomically through its own endpoints, so
@@ -698,11 +686,10 @@ export default function DailyTracker() {
     journal_entries: journalEntries,
     meal_history: mealHistory,
     calories_burned: caloriesBurned,
-    mood_log: moodLog,
     // trial_started_at and is_premium are owned by the server and rejected by
     // the API's field allowlist — they are read from responses, never sent.
     last_visit_date: getTodayKey()
-  }), [questData, journalEntries, mealHistory, caloriesBurned, moodLog]);
+  }), [questData, journalEntries, mealHistory, caloriesBurned]);
 
   const restoreSnapshot = useCallback((snapshot) => {
     setQuestData(snapshot.quest_data);
@@ -747,7 +734,7 @@ export default function DailyTracker() {
       return;
     }
     saveUserData();
-  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned, moodLog, isLoaded, userDataId, saveUserData]);
+  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned, isLoaded, userDataId, saveUserData]);
 
   // Экспорт данных
   const exportData = useCallback(() => {
@@ -1085,13 +1072,6 @@ export default function DailyTracker() {
           />
 
         </div>
-
-        <MoodCheckIn
-          todayKey={getTodayKey()}
-          moodLog={moodLog}
-          onSave={handleMoodSave}
-          theme={theme}
-        />
 
         {/* Level Progress Bar */}
         <div className="space-y-2">

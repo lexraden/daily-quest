@@ -25,6 +25,12 @@ export async function requireAiAccess(userId: string): Promise<void> {
   if (!user) throw unauthorized('Account no longer exists');
   if (user.isPremium) return;
 
+  // The gate is off: still a real account, still inside the monthly quota, but
+  // the trial does not decide anything. The clock below is left alone so
+  // turning the gate back on resumes where it was rather than granting a fresh
+  // trial to everyone.
+  if (!apiEnv.AI_GATE_ENABLED) return;
+
   if (!user.trialStartedAt) {
     // First AI call: start the trial now and let this one through. The
     // conditional update means concurrent first calls cannot restart it.

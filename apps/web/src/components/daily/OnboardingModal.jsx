@@ -500,49 +500,47 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
               </div>
             )}
 
-            <Textarea
-              value={answers[currentQuestion.category] || ''}
-              onChange={(e) => handleAnswer(e.target.value)}
-              placeholder={currentQuestion.placeholder}
-              className={`min-h-32 text-base ${
-                theme === 'light' 
-                  ? 'bg-gray-50 border-gray-300 text-gray-900' 
-                  : 'bg-white/5 border-white/10 text-white'
-              }`}
-            />
+            <div className="relative">
+              <Textarea
+                value={answers[currentQuestion.category] || ''}
+                onChange={(e) => handleAnswer(e.target.value)}
+                placeholder={currentQuestion.placeholder}
+                className={`min-h-32 text-base pr-14 ${
+                  theme === 'light'
+                    ? 'bg-gray-50 border-gray-300 text-gray-900'
+                    : 'bg-white/5 border-white/10 text-white'
+                }`}
+              />
 
-            {/* Voice Input */}
-            <div className="mt-4">
-              <Button
+              <button
                 type="button"
                 onClick={startRecording}
                 disabled={isProcessingVoice}
-                aria-label={isRecording ? 'Остановить запись' : 'Голосовой ввод'}
-                className={`w-full h-14 text-base transition-all ${
+                aria-label={
                   isProcessingVoice
-                    ? 'bg-gray-400 cursor-not-allowed'
+                    ? (userLang === 'ru' ? 'Обработка' : 'Processing')
                     : isRecording
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                    : 'bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700'
-                }`}
+                    ? (userLang === 'ru' ? 'Слушаю' : 'Listening')
+                    : t.voice.record
+                }
+                title={t.voice.record}
+                className={`absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full
+                  flex items-center justify-center transition-colors
+                  ${isProcessingVoice
+                    ? 'opacity-50 cursor-not-allowed'
+                    : isRecording
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : theme === 'light'
+                    ? 'text-gray-500 hover:text-gray-900 hover:bg-black/5'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
               >
                 {isProcessingVoice ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    {userLang === 'ru' ? 'Обработка...' : 'Processing...'}
-                  </>
-                ) : isRecording ? (
-                  <>
-                    <Mic className="w-5 h-5 mr-2 animate-pulse" />
-                    {userLang === 'ru' ? 'Слушаю...' : 'Listening...'}
-                  </>
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <>
-                    <Mic className="w-5 h-5 mr-2" />
-                    {t.voice.record}
-                  </>
+                  <Mic className="w-5 h-5" />
                 )}
-              </Button>
+              </button>
             </div>
           </div>
 

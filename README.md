@@ -92,7 +92,10 @@ public internet.
 
 Access is gated server-side on trial or premium status read from the database,
 with a per-minute rate limit and a monthly per-user ceiling charged only on
-success. The client-side `usePremiumStatus` hook decides what the UI *offers*;
+success. `AI_GATE_ENABLED=0` drops the trial check for testing — an expired
+three-day trial is otherwise just in the way — while leaving the monthly quota
+in force, so it is not a blank cheque. Turning it back on resumes the clock
+where it was rather than granting everyone a fresh trial. The client-side `usePremiumStatus` hook decides what the UI *offers*;
 the server decides what actually runs.
 
 Entitlement lives on the **user** row, not on `quest_data` — that row is deleted
@@ -101,12 +104,12 @@ each time. The trial clock starts at the first AI call rather than at onboarding
 completion, because generating the opening quests happens before any quest data
 exists, and because never onboarding must not buy an unexpiring trial.
 
-**Mood.** A daily check-in (1-5, optional note) is stored on
-`quest_data.mood_log`, keyed by local date like `completion_history` and
-`calories_burned` are. The Statistics page reads both and shows average mood by
-how many quests were completed that day — the app already recorded what you
-*did*, and this records how it *felt*, which is the pairing that makes the
-history worth looking at.
+**Mood.** The daily check-in has been taken off the main screen — it competed
+for the top of the page with the day's quests. `quest_data.mood_log` still
+holds whatever was recorded while it was there, and the Statistics page still
+plots it, so nothing was lost; there is simply no way to add to it right now.
+Statistics falls back to its "check in for a few days" empty state once that
+history runs out.
 
 **Progress.** XP, category totals and category levels are never taken from the
 request — the server derives them from `completion_history` (`src/lib/progress.ts`).
@@ -154,6 +157,15 @@ address bar. `apps/web/public/manifest.json` carries the raster icons Chrome
 requires (192 and 512 PNG, plus a maskable one so Android does not frame the
 icon in a white circle) and `sw.js` is the service worker that makes it
 installable at all.
+
+The light and dark themes are applied to `<html>` from one place
+(`apps/web/src/lib/theme.js`) at boot, before the first paint. Components style
+themselves from a `theme` prop, so nothing had ever set the `dark` class
+Tailwind is configured for: `body` kept the light background in dark mode, and
+in standalone — where the page runs under the status bar — that showed as a
+white strip above a dark app. The manifest's `background_color` and
+`theme_color` have to agree with each other too; a dark background against a
+light theme painted a black band under a light app.
 
 That worker is deliberately small, because a bad one is very hard to undo on
 someone's phone:
