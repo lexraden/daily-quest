@@ -6,6 +6,7 @@ import { api } from '@/api/client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { t, getLang } from '@/lib/i18n';
+import { aiErrorMessage } from '@/lib/aiErrors';
 
 export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClose, theme = 'dark' }) {
   const i = t();
@@ -38,7 +39,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
       onClose();
     } catch (error) {
       console.error('Recalculate error:', error);
-      toast.error(me.recalcError);
+      toast.error(aiErrorMessage(error, me.recalcError));
     } finally {
       setIsRecalculating(false);
     }

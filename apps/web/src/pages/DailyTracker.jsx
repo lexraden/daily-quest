@@ -39,6 +39,7 @@ import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { t, getLang } from '@/lib/i18n';
 import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
 import { todayKey } from '@/lib/dates';
+import { aiErrorMessage } from '@/lib/aiErrors';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -466,7 +467,7 @@ export default function DailyTracker() {
       toast.success(t().onboarding.questsReady);
     } catch (error) {
       console.error('Error generating quests:', error);
-      toast.error(error?.message || t().onboarding.questsError);
+      toast.error(aiErrorMessage(error, t().onboarding.questsError));
       setShowOnboarding(false);
     }
   };

@@ -15,6 +15,7 @@ import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 import CategoryLevelsCard from '@/components/profile/CategoryLevelsCard';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
+import { aiErrorMessage } from '@/lib/aiErrors';
 
 
 const LEVEL_DEFS = [
@@ -293,7 +294,7 @@ export default function Profile() {
                 setTimeout(() => { window.location.href = '/DailyTracker'; }, 500);
               } catch (error) {
                 console.error('Error:', error);
-                toast.error(i.profilePage.questsUpdateError);
+                toast.error(aiErrorMessage(error, i.profilePage.questsUpdateError));
                 setShowOnboarding(false);
               }
             }}
