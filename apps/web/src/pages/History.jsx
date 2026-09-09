@@ -54,7 +54,11 @@ export default function History() {
     (async () => {
       const authUser = await getCachedUser();
       if (!authUser || cancelled) return;
-      const { data, id } = await getCachedUserData();
+      // Forced: this effect already re-runs whenever History becomes the active
+      // route, but a cached read would still answer with the row as it was up
+      // to 30 seconds ago — so quests just completed on the tracker would be
+      // missing from the calendar.
+      const { data, id } = await getCachedUserData({ force: true });
       if (!data || cancelled) return;
       setCompletionHistory(data.completion_history || {});
       setJournalEntries(data.journal_entries || []);

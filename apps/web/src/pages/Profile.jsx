@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { RotateCcw, Trash2, BarChart3, ChevronRight, Download } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { RotateCcw, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import { api } from '@/api/client';
@@ -66,7 +66,6 @@ export default function Profile() {
   // than reading once.
   useEffect(() => onInstallAvailability(setCanInstallApp), []);
   const location = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
@@ -94,8 +93,8 @@ export default function Profile() {
         if (!authUser || cancelled) return;
         setUser(authUser);
 
-        // Same as Statistics: this effect already re-runs whenever Profile
-        // becomes the active route, so the read has to be a fresh one.
+        // This effect already re-runs whenever Profile becomes the active
+        // route, so the read has to be a fresh one.
         const { data, id } = await getCachedUserData({ force: true });
         if (!data || cancelled) return;
         const totalCompleted = data.total_completed || 0;
@@ -207,24 +206,6 @@ export default function Profile() {
           categoryLevels={stats.categoryLevels}
           theme={theme}
         />
-
-        {/* Statistics — mood and quest trends */}
-        <button
-          onClick={() => navigate('/Statistics')}
-          className={`w-full flex items-center justify-between rounded-2xl p-4 transition-colors ${
-            theme === 'light'
-              ? 'bg-white border border-gray-200 hover:bg-gray-50'
-              : 'bg-white/5 border border-white/10 hover:bg-white/10'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <BarChart3 className={`w-4 h-4 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
-            <span className={`text-sm font-medium ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
-              {t().statsPage.title}
-            </span>
-          </span>
-          <ChevronRight className={`w-4 h-4 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
-        </button>
 
         {/* Notification Settings */}
         <NotificationSettings

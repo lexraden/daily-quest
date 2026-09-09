@@ -104,6 +104,10 @@ each time. The trial clock starts at the first AI call rather than at onboarding
 completion, because generating the opening quests happens before any quest data
 exists, and because never onboarding must not buy an unexpiring trial.
 
+**Statistics.** No longer reachable: the entry point on Profile is gone. The
+page and its route are still there, unlinked, along with the mood history it
+plots.
+
 **Mood.** The daily check-in has been taken off the main screen — it competed
 for the top of the page with the day's quests. `quest_data.mood_log` still
 holds whatever was recorded while it was there, and the Statistics page still
@@ -294,9 +298,9 @@ allowlist as every other field; there is no separate mood endpoint.
   it. Stripe was listed as a dependency in the Base44 version but never
   imported; those packages have been removed.
 - **Tabs stay mounted once visited**, so a page that loads on mount alone never
-  loads again. Statistics and Profile key their load on the route instead and
-  read past the cache's 30-second TTL, which is why arriving from the tracker
-  shows what was just done there. A forced read first settles any queued or
+  loads again. History and Profile key their load on the route and read past
+  the cache's 30-second TTL, which is why arriving from the tracker shows what
+  was just done there. A forced read first settles any queued or
   in-flight save, otherwise it would read the row back before the write landed
   and cache that — the edit would appear to undo itself.
 - **Last-write-wins across devices, for the fields the client still owns.**
