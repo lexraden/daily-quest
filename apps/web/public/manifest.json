@@ -32,5 +32,6 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ]
+  ],
+  "theme_color": "#0f1419"
 }

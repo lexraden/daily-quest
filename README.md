@@ -175,11 +175,15 @@ through. The full-page gradients run **vertically** for the same reason: on a
 diagonal (`to-br`) the top row shades across the width, so it could not match a
 status bar filled with one flat colour and left a visible band along the top
 edge. Vertical means the first row is exactly the `from-` colour, which is the
-theme colour. The manifest deliberately carries **no** `theme_color`: it is captured
-at install time and overrides the page's `<meta name="theme-color">`, which is
-how an installed dark app kept a light strip along its top edge. Without it the
-meta — which follows the theme — is the only source. `background_color` stays;
-it only paints the splash before the first frame. Components style
+theme colour. The manifest's `theme_color` is the **dark** shade. An installed app fills its
+status bar from that and ignores the page's `<meta name="theme-color">`, so the
+meta cannot fix the bar once installed and dropping `theme_color` altogether
+just falls back to a light default — both were tried, and both left the bar
+white. This is the one setting that decides it, and dark is what the app is
+actually used in. The cost is that light mode gets a dark status bar; there is
+only one value and the theme is a manual choice, so it cannot follow both.
+`background_color` stays light: it only paints the splash before the first
+frame. Components style
 themselves from a `theme` prop, so nothing had ever set the `dark` class
 Tailwind is configured for: `body` kept the light background in dark mode, and
 in standalone — where the page runs under the status bar — that showed as a
@@ -201,8 +205,12 @@ someone's phone:
 - Navigations are network-first and fall back to the cached shell only offline.
   Serving a cached `index.html` first is how a deploy strands people: the old
   shell asks for asset hashes that no longer exist and the app comes up blank.
-- `/assets/` is cache-first, which is safe because Vite content-hashes those
-  filenames — a changed file is a different URL.
+- `/assets/` is cache-first, and only `/assets/`, which is safe because Vite
+  content-hashes those filenames — a changed file is a different URL. Anything
+  else keeps its name forever, so caching it that way meant a change could
+  never reach a phone that had loaded it once; `manifest.json` in particular
+  sat frozen through two attempts to fix the status-bar colour. Those go to the
+  network first and fall back to the cache only offline.
 
 If a package is ever needed for a store listing, use a Trusted Web Activity
 (Bubblewrap) over this PWA rather than a WebView wrapper: Google refuses OAuth

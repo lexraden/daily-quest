@@ -11,12 +11,16 @@
  *    when the network fails. Serving a cached index.html ahead of the network
  *    is how a deploy strands people: the old shell asks for asset hashes that
  *    no longer exist, and the app comes up blank with no way to refresh past it.
- *  - /assets/ is cache-first, which is safe precisely because Vite puts a
- *    content hash in each filename — a changed file is a different URL.
+ *  - /assets/ is cache-first, and ONLY /assets/, which is safe precisely
+ *    because Vite puts a content hash in each filename — a changed file is a
+ *    different URL. Everything else keeps its name forever: caching
+ *    manifest.json or an icon this way meant a change to it could never reach
+ *    a phone that had already loaded it once. Those go to the network first
+ *    and fall back to the cache only when offline.
  *
  * Bump CACHE to retire everything the previous version stored.
  */
-const CACHE = 'dailyq-v1';
+const CACHE = 'dailyq-v2';
 const SHELL = '/';
 
 self.addEventListener('install', (event) => {
@@ -66,19 +70,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // `basic` excludes opaque cross-origin responses, which cannot be inspected
+  // and would poison the cache with unknown failures.
+  const keep = (response) => {
+    if (response.ok && response.type === 'basic') {
+      const copy = response.clone();
+      caches.open(CACHE).then((cache) => cache.put(event.request, copy)).catch(() => {});
+    }
+    return response;
+  };
+
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(event.request).then((hit) => hit || fetch(event.request).then(keep)),
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then(
-      (hit) =>
-        hit ||
-        fetch(event.request).then((response) => {
-          // `basic` excludes opaque cross-origin responses, which cannot be
-          // inspected and would poison the cache with unknown failures.
-          if (response.ok && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(event.request, copy)).catch(() => {});
-          }
-          return response;
-        }),
-    ),
+    fetch(event.request)
+      .then(keep)
+      .catch(() => caches.match(event.request).then((hit) => hit || Response.error())),
   );
 });
