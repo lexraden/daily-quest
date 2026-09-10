@@ -175,15 +175,17 @@ through. The full-page gradients run **vertically** for the same reason: on a
 diagonal (`to-br`) the top row shades across the width, so it could not match a
 status bar filled with one flat colour and left a visible band along the top
 edge. Vertical means the first row is exactly the `from-` colour, which is the
-theme colour. The manifest's `theme_color` is the **dark** shade. An installed app fills its
-status bar from that and ignores the page's `<meta name="theme-color">`, so the
-meta cannot fix the bar once installed and dropping `theme_color` altogether
-just falls back to a light default — both were tried, and both left the bar
-white. This is the one setting that decides it, and dark is what the app is
-actually used in. The cost is that light mode gets a dark status bar; there is
-only one value and the theme is a manual choice, so it cannot follow both.
-`background_color` stays light: it only paints the splash before the first
-frame. Components style
+theme colour. The manifest's `theme_color` is light, and an installed app's status bar takes
+that value and nothing else — the page's `<meta name="theme-color">` is kept in
+sync but does not appear to reach the bar once installed. There is one value in
+the manifest and the theme is a manual choice, so the bar cannot follow both:
+light mode looks right, dark mode gets a light bar above it.
+
+Worth knowing before changing this again: every earlier attempt to test another
+value was invalid, because the service worker was serving a frozen
+`manifest.json` (see above) and nothing ever reached the device. The one
+combination still genuinely untested is dropping `theme_color` entirely now
+that the cache is fixed, which would leave the meta as the only source. Components style
 themselves from a `theme` prop, so nothing had ever set the `dark` class
 Tailwind is configured for: `body` kept the light background in dark mode, and
 in standalone — where the page runs under the status bar — that showed as a
