@@ -17,6 +17,7 @@ import PullToRefresh from '@/components/navigation/PullToRefresh';
 import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 import { aiErrorMessage } from '@/lib/aiErrors';
 import { canInstall, promptInstall, onInstallAvailability } from '@/lib/installPrompt';
+import { useTheme } from '@/lib/useTheme';
 
 
 const LEVEL_DEFS = [
@@ -35,7 +36,7 @@ const LEVELS = LEVEL_DEFS.map(l => ({ ...l, name: t().levels[l.level] }));
 
 export default function Profile() {
   const i = t();
-  const [theme, setTheme] = useState('light');
+  const theme = useTheme();
   const [user, setUser] = useState(null);
 
   // The shared cache has to move with the profile, not just this page's state:
@@ -66,11 +67,6 @@ export default function Profile() {
   // than reading once.
   useEffect(() => onInstallAvailability(setCanInstallApp), []);
   const location = useLocation();
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
-    setTheme(savedTheme);
-  }, []);
 
   // Listen for meal updates from other pages and apply them immediately
   useEffect(() => {

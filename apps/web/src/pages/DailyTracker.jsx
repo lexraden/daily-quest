@@ -39,7 +39,8 @@ import { t, getLang } from '@/lib/i18n';
 import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
 import { todayKey } from '@/lib/dates';
 import { aiErrorMessage } from '@/lib/aiErrors';
-import { applyTheme } from '@/lib/theme';
+import { setTheme, getTheme } from '@/lib/theme';
+import { useTheme } from '@/lib/useTheme';
 
 /* ============================================
    🎨 DESIGN CUSTOMIZATION SECTION
@@ -152,7 +153,7 @@ export default function DailyTracker() {
   }, []);
 
   const [showPremium, setShowPremium] = useState(false);
-  const [theme, setTheme] = useState('light');
+  const theme = useTheme();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [questSuggestion, setQuestSuggestion] = useState(null);
   const [journalEntries, setJournalEntries] = useState([]);
@@ -179,8 +180,6 @@ export default function DailyTracker() {
   // Инициализация Telegram Web App и темы
   useEffect(() => {
     // Загрузка темы из localStorage (по умолчанию 'light')
-    const savedTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
-    setTheme(savedTheme);
 
     // Load authenticated user and save name on first login
         const loadUser = async () => {
@@ -235,13 +234,10 @@ export default function DailyTracker() {
         };
       }, []);
 
-  // Сохранение темы + класс на <html>, meta theme-color и color-scheme.
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
+  // One setter for every page: it writes the class, color-scheme, the
+  // theme-color meta and storage, then tells the other screens.
   const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    setTheme(getTheme() === 'light' ? 'dark' : 'light');
   }, []);
 
   const handleSaveQuest = (categoryKey, questLevel, updatedData) => {
@@ -990,7 +986,7 @@ export default function DailyTracker() {
   };
 
   if (!isLoaded) {
-    const loadingTheme = localStorage.getItem('dailyQuestsTheme') || 'light';
+    const loadingTheme = getTheme();
     return (
       <div className={`min-h-screen flex items-center justify-center ${
         loadingTheme === 'light'

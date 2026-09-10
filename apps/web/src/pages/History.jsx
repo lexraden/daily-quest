@@ -13,11 +13,12 @@ import MealEditModal from '@/components/daily/MealEditModal';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import StatsSection from '@/components/profile/StatsSection';
 import { dayKey } from '@/lib/dates';
+import { useTheme } from '@/lib/useTheme';
 
 export default function History() {
   const i = t();
   const hp = i.historyPage;
-  const [theme, setTheme] = useState('light');
+  const theme = useTheme();
   const [viewMode, setViewMode] = useState('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [completionHistory, setCompletionHistory] = useState({});
@@ -31,10 +32,6 @@ export default function History() {
   const [totalCompleted, setTotalCompleted] = useState(0);
   const [streak, setStreak] = useState(0);
   const location = useLocation();
-
-  useEffect(() => {
-    setTheme(localStorage.getItem('dailyQuestsTheme') || 'light');
-  }, []);
 
   // Listen for meal updates from other pages and apply them immediately
   useEffect(() => {

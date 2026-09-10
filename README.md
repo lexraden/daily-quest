@@ -162,8 +162,20 @@ requires (192 and 512 PNG, plus a maskable one so Android does not frame the
 icon in a white circle) and `sw.js` is the service worker that makes it
 installable at all.
 
-The light and dark themes are applied to `<html>` from one place
-(`apps/web/src/lib/theme.js`) at boot, before the first paint. Components style
+The light and dark themes live in one place (`apps/web/src/lib/theme.js`),
+applied to `<html>` at boot before the first paint and **observable** — pages
+subscribe through `useTheme()` instead of reading storage on mount. Reading
+once was not enough: tabs stay mounted after their first visit, so History and
+Profile kept whatever theme was in force when they were first opened and never
+followed the toggle on the tracker.
+
+`body` is painted with the theme's own colour rather than Tailwind's token,
+because in standalone the page runs under the status bar and that is what shows
+through. The manifest deliberately carries **no** `theme_color`: it is captured
+at install time and overrides the page's `<meta name="theme-color">`, which is
+how an installed dark app kept a light strip along its top edge. Without it the
+meta — which follows the theme — is the only source. `background_color` stays;
+it only paints the splash before the first frame. Components style
 themselves from a `theme` prop, so nothing had ever set the `dark` class
 Tailwind is configured for: `body` kept the light background in dark mode, and
 in standalone — where the page runs under the status bar — that showed as a

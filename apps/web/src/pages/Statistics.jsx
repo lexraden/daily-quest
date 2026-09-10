@@ -10,6 +10,7 @@ import BackButton from '@/components/navigation/BackButton';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import { MOOD_LEVELS } from '@/lib/mood';
 import { dayKey } from '@/lib/dates';
+import { useTheme } from '@/lib/useTheme';
 
 const CATEGORIES = {
   health: { icon: '💪', color: '#00b894' },
@@ -91,7 +92,7 @@ function ChartTooltip({ active, payload, label, theme, suffix }) {
 }
 
 export default function Statistics() {
-  const [theme, setTheme] = useState('light');
+  const theme = useTheme();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
@@ -107,7 +108,6 @@ export default function Statistics() {
   useEffect(() => {
     if (location.pathname !== '/Statistics') return undefined;
 
-    setTheme(localStorage.getItem('dailyQuestsTheme') || 'light');
     let cancelled = false;
     (async () => {
       try {

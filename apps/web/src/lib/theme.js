@@ -13,6 +13,33 @@ const KEY = 'dailyQuestsTheme';
 
 export const THEME_COLORS = { light: '#f9fafb', dark: '#0f1419' };
 
+let current = null;
+const listeners = new Set();
+
+/** The theme in force right now, without touching storage again. */
+export function getTheme() {
+  if (current === null) current = readTheme();
+  return current;
+}
+
+/**
+ * Change the theme everywhere.
+ *
+ * Pages used to read storage once on mount. Tabs stay mounted after the first
+ * visit, so History and Profile were stuck with whatever the theme was when
+ * they were first opened — toggling on the tracker never reached them.
+ */
+export function setTheme(next) {
+  current = next;
+  applyTheme(next);
+  listeners.forEach((fn) => fn(next));
+}
+
+export function subscribeTheme(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 export function readTheme() {
   try {
     return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light';
@@ -30,8 +57,16 @@ export function applyTheme(theme) {
   // the page in the matching shade.
   root.style.colorScheme = dark ? 'dark' : 'light';
 
+  const color = THEME_COLORS[dark ? 'dark' : 'light'];
+
   const meta = document.getElementById('theme-color-meta');
-  if (meta) meta.setAttribute('content', THEME_COLORS[dark ? 'dark' : 'light']);
+  if (meta) meta.setAttribute('content', color);
+
+  // In standalone the page runs under the status bar, so whatever `body` is
+  // painted with shows through there. Matching it to the app's own top colour
+  // exactly — rather than leaving it on Tailwind's near-black token — keeps
+  // that strip from reading as a separate band.
+  document.body.style.backgroundColor = color;
 
   try {
     localStorage.setItem(KEY, theme);

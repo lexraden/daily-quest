@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Routes, useLocation } from 'react-router-dom';
+import { useTheme } from '@/lib/useTheme';
 import { AnimatePresence, motion } from 'framer-motion';
 import BottomNavBar from './BottomNavBar';
 import BackButton from './BackButton';
@@ -49,7 +50,7 @@ const childTransition = {
 
 export default function AnimatedRoutes({ children, fallback }) {
   const location = useLocation();
-  const [theme, setTheme] = useState(() => localStorage.getItem('dailyQuestsTheme') || 'light');
+  const theme = useTheme();
   const [prevIndex, setPrevIndex] = useState(0);
   const prevPathRef = useRef(location.pathname);
 
@@ -63,15 +64,6 @@ export default function AnimatedRoutes({ children, fallback }) {
 
   // Scroll positions per tab
   const scrollPositions = useRef({});
-
-  // Theme sync
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const t = localStorage.getItem('dailyQuestsTheme') || 'light';
-      setTheme(prev => prev !== t ? t : prev);
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
 
   const currentTabKey = TAB_KEY_MAP[location.pathname];
   const isTabPage = NAV_PATHS.has(location.pathname);
