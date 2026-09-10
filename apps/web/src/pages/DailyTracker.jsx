@@ -990,8 +990,8 @@ export default function DailyTracker() {
     return (
       <div className={`min-h-screen flex items-center justify-center ${
         loadingTheme === 'light'
-          ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50'
-          : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
+          ? 'bg-gradient-to-b from-gray-50 via-purple-50 to-cyan-50'
+          : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
       }`}>
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
       </div>
@@ -1001,8 +1001,8 @@ export default function DailyTracker() {
   // Calendar view removed - History page is used instead
 
   const bgClass = theme === 'light' 
-    ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
-    : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
+    ? 'bg-gradient-to-b from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
+    : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
 
   // Show onboarding first
   if (showOnboarding) {

@@ -406,8 +406,8 @@ export default function CalendarView({ completionHistory, onClose, categories, t
   return (
     <div className={`min-h-screen pb-8 ${
       theme === 'light'
-        ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
-        : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white'
+        ? 'bg-gradient-to-b from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
+        : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white'
     }`}>
       {/* Header */}
       <div className={`sticky top-0 z-10 backdrop-blur-lg border-b ${

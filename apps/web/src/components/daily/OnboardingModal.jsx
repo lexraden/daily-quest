@@ -314,7 +314,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   if (isGenerating) {
     return (
       <div className={`fixed inset-0 z-50 flex items-center justify-center ${
-        theme === 'light' ? 'bg-white' : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
+        theme === 'light' ? 'bg-white' : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
       }`}>
         <div className="text-center px-6">
           <div className="mb-6">
@@ -343,8 +343,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     return (
       <div className={`fixed inset-0 z-50 flex flex-col overflow-y-auto ${
         theme === 'light' 
-          ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50'
-          : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
+          ? 'bg-gradient-to-b from-gray-50 via-purple-50 to-cyan-50'
+          : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
       }`}>
         <div className="flex-1 flex items-center justify-center px-5 py-8 min-h-full">
           <div className="max-w-md w-full my-auto">
@@ -423,8 +423,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   return (
     <div className={`fixed inset-0 z-50 flex flex-col ${
       theme === 'light' 
-        ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50'
-        : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
+        ? 'bg-gradient-to-b from-gray-50 via-purple-50 to-cyan-50'
+        : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419]'
     }`}>
       {/* Header */}
       <div className={`sticky top-0 z-10 backdrop-blur-xl border-b ${

@@ -128,8 +128,8 @@ export default function Profile() {
 
   const levelProgress = getLevelProgress();
   const bgClass = theme === 'light'
-    ? 'bg-gradient-to-br from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
-    : 'bg-gradient-to-br from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
+    ? 'bg-gradient-to-b from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
+    : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
 
   const handlePullRefresh = async () => {
     invalidateCache();

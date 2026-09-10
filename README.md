@@ -171,7 +171,11 @@ followed the toggle on the tracker.
 
 `body` is painted with the theme's own colour rather than Tailwind's token,
 because in standalone the page runs under the status bar and that is what shows
-through. The manifest deliberately carries **no** `theme_color`: it is captured
+through. The full-page gradients run **vertically** for the same reason: on a
+diagonal (`to-br`) the top row shades across the width, so it could not match a
+status bar filled with one flat colour and left a visible band along the top
+edge. Vertical means the first row is exactly the `from-` colour, which is the
+theme colour. The manifest deliberately carries **no** `theme_color`: it is captured
 at install time and overrides the page's `<meta name="theme-color">`, which is
 how an installed dark app kept a light strip along its top edge. Without it the
 meta — which follows the theme — is the only source. `background_color` stays;
