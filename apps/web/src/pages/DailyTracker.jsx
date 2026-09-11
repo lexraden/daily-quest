@@ -18,6 +18,7 @@ const StreakCelebrationModal = React.lazy(() => import('@/components/daily/Strea
 const StreakFreezeModal = React.lazy(() => import('@/components/daily/StreakFreezeModal.jsx'));
 const MealReportModal = React.lazy(() => import('@/components/daily/MealReportModal.jsx'));
 const CategoryLevelUpModal = React.lazy(() => import('@/components/daily/CategoryLevelUpModal.jsx'));
+const LevelUpModal = React.lazy(() => import('@/components/daily/LevelUpModal.jsx'));
 import { isCategoryLevelMilestone } from '@/components/daily/CategoryLevelUpModal.jsx';
 
 // Dynamic import for confetti — only loaded on first quest completion
@@ -36,6 +37,7 @@ import PullToRefresh from '@/components/navigation/PullToRefresh';
 import useSaveUserData from '@/hooks/useSaveUserData';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { t, getLang } from '@/lib/i18n';
+import { LEVEL_DEFS } from '@/lib/levels';
 import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
 import { todayKey } from '@/lib/dates';
 import { aiErrorMessage } from '@/lib/aiErrors';
@@ -108,19 +110,7 @@ const CATEGORIES = {
 const DEFAULT_QUEST_DATA = t().defaultQuests;
 
 // Level system with i18n names
-const LEVEL_DEFS = [
-  { level: 1, threshold: 0, icon: "🌱", color: "#6c5ce7" },
-  { level: 2, threshold: 10, icon: "📚", color: "#00cec9" },
-  { level: 3, threshold: 25, icon: "⚡", color: "#fdcb6e" },
-  { level: 4, threshold: 50, icon: "🔥", color: "#e17055" },
-  { level: 5, threshold: 100, icon: "💎", color: "#d63031" },
-  { level: 6, threshold: 200, icon: "⚔️", color: "#fd79a8" },
-  { level: 7, threshold: 350, icon: "🏆", color: "#fdcb6e" },
-  { level: 8, threshold: 550, icon: "👑", color: "#ffeaa7" },
-  { level: 9, threshold: 800, icon: "⚡", color: "#a29bfe" },
-  { level: 10, threshold: 1100, icon: "✨", color: "#ffffff" }
-];
-const LEVELS = LEVEL_DEFS.map(l => ({ ...l, name: t().levels[l.level] }));
+const LEVELS = LEVEL_DEFS.map((l) => ({ ...l, name: t().levels[l.level] }));
 
 /* ============================================
    END OF CUSTOMIZATION SECTION
@@ -141,6 +131,13 @@ export default function DailyTracker() {
   const [streakFreezes, setStreakFreezes] = useState(1);
 
   /** The progress endpoints return the whole row; the server's numbers win. */
+  const [levelUp, setLevelUp] = useState(null);
+  const [overallLevel, setOverallLevel] = useState(null);
+  // dismissLevelUp is memoised on applyServerProgress alone, so it reads the
+  // pending level through a ref rather than going stale on it.
+  const levelUpRef = useRef(null);
+  levelUpRef.current = levelUp;
+
   const applyServerProgress = useCallback((row) => {
     if (!row) return;
     setTotalCompleted(row.total_completed ?? 0);
@@ -150,7 +147,28 @@ export default function DailyTracker() {
     if (row.streak !== undefined) setStreak(row.streak);
     if (row.streak_freezes !== undefined) setStreakFreezes(row.streak_freezes);
     if (row.last_completed_date !== undefined) setLastCompletedDate(row.last_completed_date);
+    if (row.overall_level) setOverallLevel(row.overall_level);
+    // Whether there is anything to celebrate is the server's answer, not a
+    // comparison of two numbers here: this row may be the same level arriving
+    // again from a second tab, or a reload of a level already shown.
+    if (row.celebrate_level) setLevelUp(row.celebrate_level);
   }, []);
+
+  /**
+   * Dismissing the modal is what marks the level as seen. Doing it on close
+   * rather than on open means a user who closes the app mid-celebration is
+   * shown it again instead of missing it; the server call is idempotent, so
+   * the extra round trip costs nothing.
+   */
+  const dismissLevelUp = useCallback(() => {
+    const level = levelUpRef.current;
+    setLevelUp(null);
+    if (!level) return;
+    api.questData.levelCelebrated(level).then(applyServerProgress).catch(() => {
+      // Purely cosmetic bookkeeping — if it fails the modal simply shows once
+      // more next time, which is better than blocking the user on a toast.
+    });
+  }, [applyServerProgress]);
 
   const [showPremium, setShowPremium] = useState(false);
   const theme = useTheme();
@@ -579,6 +597,11 @@ export default function DailyTracker() {
           // Trial / Premium status
           setTrialStartedAt(data.trial_started_at || null);
           setIsPremium(!!data.is_premium);
+
+          // A level earned on another device, or one whose modal was closed by
+          // the app being killed, is still waiting here on the next load.
+          if (data.overall_level) setOverallLevel(data.overall_level);
+          if (data.celebrate_level) setLevelUp(data.celebrate_level);
           
           // Инициализация уровней категорий
           const levels = {};
@@ -782,8 +805,23 @@ export default function DailyTracker() {
     fire(0.1, { spread: 120, startVelocity: 45 });
   };
 
+  // Levelling up is the rarest thing that happens here — ten times in the life
+  // of an account — so it gets the confetti unconditionally.
+  useEffect(() => {
+    if (levelUp) fireConfetti();
+    // fireConfetti is redefined every render and is not a reason to re-fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelUp]);
+
   // Подсчёт текущего уровня игрока
+  /**
+   * The server decides the level and sends it as `overall_level`; the local
+   * thresholds are only the answer for a payload written before that field
+   * existed. Two places computing this is how the header and the celebration
+   * would end up disagreeing.
+   */
   const getCurrentLevel = useCallback(() => {
+    if (overallLevel) return LEVELS[Math.min(overallLevel, LEVELS.length) - 1];
     let currentLevel = LEVELS[0];
     for (const level of LEVELS) {
       if (totalCompleted >= level.threshold) {
@@ -791,7 +829,7 @@ export default function DailyTracker() {
       }
     }
     return currentLevel;
-  }, [totalCompleted]);
+  }, [totalCompleted, overallLevel]);
 
   // Прогресс до следующего уровня
   const getProgressToNextLevel = useCallback(() => {
@@ -1258,6 +1296,9 @@ export default function DailyTracker() {
           onClose={() => setCategoryLevelUp(null)}
           theme={theme}
         />
+      )}
+      {levelUp && (
+        <LevelUpModal level={levelUp} onClose={dismissLevelUp} theme={theme} />
       )}
       </React.Suspense>
 

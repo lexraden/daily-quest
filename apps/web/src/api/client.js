@@ -199,6 +199,13 @@ export const api = {
     countStreakDay: (day) =>
       request('/api/quest-data/streak', { method: 'POST', body: { day } }),
 
+    /**
+     * Marks a level-up as shown. The server only ever moves the mark forward,
+     * so calling this twice — two tabs, a retry — is harmless.
+     */
+    levelCelebrated: (level) =>
+      request('/api/quest-data/level-celebrated', { method: 'POST', body: { level } }),
+
     /** action: 'use' spends a freeze, 'lose' resets the streak. */
     streakFreeze: (action) =>
       request('/api/quest-data/streak/freeze', { method: 'POST', body: { action } }),

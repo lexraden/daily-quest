@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/api/client';
 import { toast } from 'sonner';
 import { t, getLang } from '@/lib/i18n';
+import { LEVEL_DEFS } from '@/lib/levels';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
+import AvatarsCard from '@/components/profile/AvatarsCard';
 import NotificationSettings from '@/components/profile/NotificationSettings';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData, setCachedUser } from '@/components/UserDataCache';
 
@@ -20,19 +22,19 @@ import { canInstall, promptInstall, onInstallAvailability } from '@/lib/installP
 import { useTheme } from '@/lib/useTheme';
 
 
-const LEVEL_DEFS = [
-  { level: 1, threshold: 0, icon: "🌱", color: "#6c5ce7" },
-  { level: 2, threshold: 10, icon: "📚", color: "#00cec9" },
-  { level: 3, threshold: 25, icon: "⚡", color: "#fdcb6e" },
-  { level: 4, threshold: 50, icon: "🔥", color: "#e17055" },
-  { level: 5, threshold: 100, icon: "💎", color: "#d63031" },
-  { level: 6, threshold: 200, icon: "⚔️", color: "#fd79a8" },
-  { level: 7, threshold: 350, icon: "🏆", color: "#fdcb6e" },
-  { level: 8, threshold: 550, icon: "👑", color: "#ffeaa7" },
-  { level: 9, threshold: 800, icon: "⚡", color: "#a29bfe" },
-  { level: 10, threshold: 1100, icon: "✨", color: "#ffffff" }
-];
-const LEVELS = LEVEL_DEFS.map(l => ({ ...l, name: t().levels[l.level] }));
+const LEVELS = LEVEL_DEFS.map((l) => ({ ...l, name: t().levels[l.level] }));
+
+/**
+ * The level the server says the user is on. The thresholds are only consulted
+ * for a payload written before `overall_level` existed — the tracker and this
+ * page have to agree, and the server is what both of them ask.
+ */
+function levelOf(data, totalCompleted) {
+  if (data?.overall_level) return LEVELS[Math.min(data.overall_level, LEVELS.length) - 1];
+  let found = LEVELS[0];
+  for (const level of LEVELS) if (totalCompleted >= level.threshold) found = level;
+  return found;
+}
 
 export default function Profile() {
   const i = t();
@@ -94,10 +96,7 @@ export default function Profile() {
         const { data, id } = await getCachedUserData({ force: true });
         if (!data || cancelled) return;
         const totalCompleted = data.total_completed || 0;
-        let currentLevel = LEVELS[0];
-        for (const level of LEVELS) {
-          if (totalCompleted >= level.threshold) currentLevel = level;
-        }
+        const currentLevel = levelOf(data, totalCompleted);
         setStats({
           streak: data.streak || 0,
           totalCompleted,
@@ -139,8 +138,7 @@ export default function Profile() {
     const { data, id } = await getCachedUserData();
     if (data) {
       const tc = data.total_completed || 0;
-      let cl = LEVELS[0];
-      for (const level of LEVELS) { if (tc >= level.threshold) cl = level; }
+      const cl = levelOf(data, tc);
       setStats({
         streak: data.streak || 0, totalCompleted: tc,
         categoryLevels: data.category_levels || {}, categoryTotalCompleted: data.category_total_completed || {},
@@ -168,7 +166,21 @@ export default function Profile() {
 
       <div className="px-5 py-3 space-y-3 max-w-2xl mx-auto pb-6">
         {/* Profile header - compact */}
-        <ProfileHeader user={user} stats={stats} levelProgress={levelProgress} theme={theme} onUserUpdate={handleUserUpdate} />
+        <ProfileHeader
+          user={user}
+          stats={stats}
+          levelProgress={levelProgress}
+          theme={theme}
+          onUserUpdate={handleUserUpdate}
+          earnedLevel={stats.currentLevel?.level || 1}
+        />
+
+        <AvatarsCard
+          user={user}
+          earnedLevel={stats.currentLevel?.level || 1}
+          theme={theme}
+          onUserUpdate={handleUserUpdate}
+        />
 
         {/* Daily Calories */}
         <DailyCaloriesCard

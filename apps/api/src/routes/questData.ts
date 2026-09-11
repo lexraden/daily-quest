@@ -2,7 +2,11 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
-import { deriveProgress } from '../lib/progress.js';
+import {
+  deriveProgress,
+  overallLevelFor,
+  OVERALL_LEVEL_THRESHOLDS,
+} from '../lib/progress.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import {
   sanitizeQuestData,
@@ -81,7 +85,24 @@ const completionRemoveBody = z
 
 const streakBody = z.object({ day: dayString }).strict();
 
+const celebratedBody = z.object({
+  level: z.number().int().min(1).max(OVERALL_LEVEL_THRESHOLDS.length),
+});
+
 const freezeBody = z.object({ action: z.enum(['use', 'lose']) }).strict();
+
+/**
+ * The level to congratulate someone for, or null.
+ *
+ * Level 1 is where everyone starts, so it is never a celebration — the floor is
+ * 1 rather than the column's 0 default. An account that was already past level 1
+ * when this shipped does get one modal on next load, which is how they find out
+ * the avatar it unlocked exists.
+ */
+function celebrationFor(totalXp: number, celebrated: number): number | null {
+  const level = overallLevelFor(totalXp);
+  return level > Math.max(celebrated, 1) ? level : null;
+}
 
 // snake_case over the wire, camelCase in the database. The frontend was built
 // against Base44's snake_case entity and there was no reason to churn it.
@@ -98,6 +119,7 @@ const toWire = (row: {
   journalEntries: unknown;
   mealHistory: unknown;
   totalCompleted: number;
+  celebratedLevel: number;
   streak: number;
   streakFreezes: number;
   lastCompletedDate: string | null;
@@ -118,6 +140,14 @@ const toWire = (row: {
   journal_entries: row.journalEntries,
   meal_history: row.mealHistory,
   total_completed: row.totalCompleted,
+  overall_level: overallLevelFor(row.totalCompleted),
+  /**
+   * The level to congratulate the user for, or null when there is nothing to
+   * show. Computed here rather than by comparing totals in the browser so it
+   * survives a reload and cannot fire twice on two devices: the client
+   * acknowledges it, and only then does this go quiet.
+   */
+  celebrate_level: celebrationFor(row.totalCompleted, row.celebratedLevel),
   streak: row.streak,
   streak_freezes: row.streakFreezes,
   last_completed_date: row.lastCompletedDate,
@@ -413,6 +443,33 @@ export default async function questDataRoutes(app: FastifyInstance) {
     if (!row) throw notFound('Finish onboarding before saving progress');
 
     return { ...toWire(row), applied: applied > 0 };
+  });
+
+  /**
+   * Acknowledge a level-up the client has shown.
+   *
+   * `celebrated_level` only ever moves up, and the guard is in the WHERE
+   * clause: two devices showing the same modal, or a retry after a dropped
+   * response, settle on the same value instead of walking it backwards and
+   * replaying an older celebration.
+   */
+  app.post('/level-celebrated', async (request) => {
+    const parsed = celebratedBody.safeParse(request.body);
+    if (!parsed.success) throw badRequest('Cannot record the level — expected a level of 1 to 10');
+    const userId = currentUserId(request);
+
+    await prisma.questData.updateMany({
+      where: { userId, celebratedLevel: { lt: parsed.data.level } },
+      data: { celebratedLevel: parsed.data.level },
+    });
+
+    const row = await prisma.questData.findUnique({
+      where: { userId },
+      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+    });
+    if (!row) throw notFound('Finish onboarding before saving progress');
+
+    return toWire(row);
   });
 
   // Reset onboarding. Premium survives; the trial does not restart.

@@ -280,6 +280,21 @@ const translations = {
       75: { emoji: '🌠', title: '75 дней подряд!', message: 'Три четверти века стрика! Невероятно!' },
       100: { emoji: '✨', title: '100 дней подряд!', message: 'СТО ДНЕЙ! Ты — абсолютная легенда!' },
     },
+    levelUp: {
+      kicker: 'Новый уровень',
+      reached: 'Уровень {level} достигнут.',
+      unlocked: 'Открыт новый облик.',
+      cta: 'Отлично',
+    },
+    avatars: {
+      title: 'Аватары',
+      unlockedCount: '{have} из {total}',
+      lockedAt: 'Ур. {level}',
+      wear: 'Надеть',
+      worn: 'Надет',
+      ownPhoto: 'Своё фото',
+      locked: 'Открывается на уровне {level}',
+    },
     levelCeleb: {
       title: 'Новый уровень категории!',
       message: 'Ты достиг(ла) уровня',
@@ -689,6 +704,21 @@ const translations = {
       50: { emoji: '👑', title: '50 days in a row!', message: 'Fifty days! You\'re elite!' },
       75: { emoji: '🌠', title: '75 days in a row!', message: 'Three quarters of a century streak! Insane!' },
       100: { emoji: '✨', title: '100 days in a row!', message: '100 DAYS! You\'re an absolute legend!' },
+    },
+    levelUp: {
+      kicker: 'Level up',
+      reached: 'Level {level} reached.',
+      unlocked: 'A new look is yours.',
+      cta: 'Nice',
+    },
+    avatars: {
+      title: 'Avatars',
+      unlockedCount: '{have} of {total}',
+      lockedAt: 'Lvl {level}',
+      wear: 'Wear',
+      worn: 'Worn',
+      ownPhoto: 'My own photo',
+      locked: 'Unlocks at level {level}',
     },
     levelCeleb: {
       title: 'Category level up!',

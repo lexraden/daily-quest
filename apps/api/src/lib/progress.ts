@@ -70,3 +70,25 @@ export function deriveProgress(history: unknown): Progress {
 
   return { totalCompleted: total, categoryTotalCompleted: byCategory, categoryLevels: levels };
 }
+
+/**
+ * XP at which each overall level starts, level 1 first.
+ *
+ * These used to live only in the browser (`LEVEL_DEFS` in DailyTracker), which
+ * was fine while nothing depended on them. Deciding when to congratulate
+ * someone does: the client may not reach the server for a while, two devices
+ * may reach it at once, and a reload must not replay the celebration. So the
+ * thresholds move here and the level travels in the payload; the browser keeps
+ * its own copy of the icons, colours and names and looks them up by level.
+ */
+export const OVERALL_LEVEL_THRESHOLDS = [0, 10, 25, 50, 100, 200, 350, 550, 800, 1100];
+
+/** The overall level for a given total XP. 1 at the bottom, never above 10. */
+export function overallLevelFor(totalXp: number): number {
+  const xp = Number.isFinite(totalXp) ? Math.max(totalXp, 0) : 0;
+  let level = 1;
+  for (let i = 0; i < OVERALL_LEVEL_THRESHOLDS.length; i += 1) {
+    if (xp >= (OVERALL_LEVEL_THRESHOLDS[i] as number)) level = i + 1;
+  }
+  return level;
+}

@@ -5,8 +5,9 @@ import { api } from '@/api/client';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
+import { resolveAvatar } from '@/lib/levels';
 
-export default function ProfileHeader({ user, stats, levelProgress, theme, onUserUpdate }) {
+export default function ProfileHeader({ user, stats, levelProgress, theme, onUserUpdate, earnedLevel = 1 }) {
   const i = t();
   const { logout } = useAuth();
   const [isEditingName, setIsEditingName] = useState(false);
@@ -66,6 +67,8 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
     }
   };
 
+  const avatar = resolveAvatar(user, earnedLevel);
+
   return (
     <div className={`rounded-2xl p-4 border ${
       theme === 'light' ? 'bg-white border-gray-200' : 'bg-[#1e2836] border-white/10'
@@ -80,8 +83,15 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
             theme === 'light' ? 'bg-gradient-to-br from-purple-100 to-cyan-100' : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20'
           }`}
         >
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+          {avatar.kind === 'photo' || avatar.kind === 'art' ? (
+            <img src={avatar.src} alt="" className="w-full h-full object-cover" />
+          ) : avatar.kind === 'emoji' ? (
+            <div
+              className="w-full h-full flex items-center justify-center text-3xl"
+              style={{ background: `${avatar.color}33` }}
+            >
+              {avatar.emoji}
+            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <User className={`w-7 h-7 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />

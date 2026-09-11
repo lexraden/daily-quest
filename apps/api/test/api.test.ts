@@ -425,6 +425,97 @@ describe('progress is derived, not trusted', () => {
   });
 });
 
+describe('levels and avatars', () => {
+  async function onboard(actor: Actor) {
+    await prisma.questData.deleteMany({ where: { userId: actor.id } });
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+  }
+
+  /**
+   * Earns XP the way the app does — one completion at a time through the
+   * endpoint that derives the totals. Writing completionHistory straight into
+   * the row leaves total_completed at zero, because nothing recomputes it.
+   *
+   * Each completion goes on its own day: the same category and level twice in
+   * one day is deliberately idempotent and would not count.
+   */
+  async function earnXp(actor: Actor, xp: number) {
+    for (let i = 0; i < Math.ceil(xp / 3); i += 1) {
+      const day = `2031-05-${String(i + 1).padStart(2, '0')}`;
+      const res = await call('/api/quest-data/completions', {
+        token: actor.token,
+        method: 'POST',
+        body: { day, category: 'health', quest_name: `q${i}`, level: 3 },
+      });
+      assert.equal(res.status, 201);
+    }
+  }
+
+  test('the level comes from the server, and is celebrated exactly once', async () => {
+    await onboard(bob);
+    const fresh = await (await call('/api/quest-data', { token: bob.token })).json();
+    assert.equal(fresh.overall_level, 1);
+    assert.equal(fresh.celebrate_level, null, 'a brand new account has nothing to celebrate');
+
+    await earnXp(bob, 30); // past the level 3 threshold of 25
+    const earned = await (await call('/api/quest-data', { token: bob.token })).json();
+    assert.equal(earned.overall_level, 3);
+    assert.equal(earned.celebrate_level, 3);
+
+    // Reading again must still offer it: the modal may never have been shown.
+    const again = await (await call('/api/quest-data', { token: bob.token })).json();
+    assert.equal(again.celebrate_level, 3);
+
+    const acked = await (await call('/api/quest-data/level-celebrated', {
+      token: bob.token, method: 'POST', body: { level: 3 },
+    })).json();
+    assert.equal(acked.celebrate_level, null);
+
+    const afterAck = await (await call('/api/quest-data', { token: bob.token })).json();
+    assert.equal(afterAck.celebrate_level, null, 'a shown level never comes back');
+  });
+
+  test('acknowledging an older level cannot replay a newer one', async () => {
+    await onboard(bob);
+    await earnXp(bob, 30);
+    await call('/api/quest-data/level-celebrated', {
+      token: bob.token, method: 'POST', body: { level: 3 },
+    });
+    // A late request from a second tab that was still showing level 2.
+    await call('/api/quest-data/level-celebrated', {
+      token: bob.token, method: 'POST', body: { level: 2 },
+    });
+    const row = await (await call('/api/quest-data', { token: bob.token })).json();
+    assert.equal(row.celebrate_level, null);
+  });
+
+  test('an avatar above your level is refused', async () => {
+    await onboard(bob);
+    await earnXp(bob, 30); // level 3
+
+    const tooHigh = await call('/api/auth/me', {
+      token: bob.token, method: 'PATCH', body: { avatar_choice: 'level-9' },
+    });
+    assert.equal(tooHigh.status, 403);
+
+    const allowed = await call('/api/auth/me', {
+      token: bob.token, method: 'PATCH', body: { avatar_choice: 'level-3' },
+    });
+    assert.equal(allowed.status, 200);
+    assert.equal((await allowed.json()).avatar_choice, 'level-3');
+  });
+
+  test('a made-up avatar name is rejected before it reaches the database', async () => {
+    const res = await call('/api/auth/me', {
+      token: bob.token, method: 'PATCH', body: { avatar_choice: '../../admin' },
+    });
+    assert.equal(res.status, 400);
+  });
+});
+
 describe('entitlement', () => {
   test('resetting onboarding does not grant a fresh trial', async () => {
     const resetter = await makeUser('resetter');

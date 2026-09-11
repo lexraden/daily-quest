@@ -15,7 +15,8 @@ import {
   refreshCookieOptions,
 } from '../auth/tokens.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
-import { badRequest, unauthorized, notFound, HttpError } from '../lib/errors.js';
+import { badRequest, unauthorized, notFound, forbidden, HttpError } from '../lib/errors.js';
+import { overallLevelFor } from '../lib/progress.js';
 
 const googleBody = z.object({
   id_token: z.string().min(1),
@@ -30,9 +31,19 @@ const avatarUrl = z
     message: 'must be a URL returned by the file upload endpoint',
   });
 
+/**
+ * "level-<n>" for an unlocked avatar, or null to fall back to the uploaded
+ * photo. The number is checked against the level the user has actually earned
+ * further down — the shape alone proves nothing.
+ */
+const avatarChoice = z
+  .string()
+  .regex(/^level-([1-9]|10)$/, 'must be a level avatar you have unlocked');
+
 const updateMeBody = z.object({
   full_name: z.string().trim().min(1).max(120).optional(),
   avatar_url: avatarUrl.nullable().optional(),
+  avatar_choice: avatarChoice.nullable().optional(),
 });
 
 const publicUser = (u: {
@@ -43,12 +54,14 @@ const publicUser = (u: {
   role: string;
   trialStartedAt: Date | null;
   isPremium: boolean;
+  avatarChoice?: string | null;
 }) => ({
   id: u.id,
   email: u.email,
   // The frontend reads `full_name` and `avatar_url` — keep those names.
   full_name: u.fullName,
   avatar_url: u.avatarUrl,
+  avatar_choice: u.avatarChoice ?? null,
   role: u.role,
   trial_started_at: u.trialStartedAt?.toISOString() ?? null,
   is_premium: u.isPremium,
@@ -180,12 +193,30 @@ export default async function authRoutes(app: FastifyInstance) {
       throw badRequest(`Cannot update ${issue?.path.join('.') || 'profile'}: ${issue?.message}`);
     }
 
-    const { full_name, avatar_url } = parsed.data;
+    const { full_name, avatar_url, avatar_choice } = parsed.data;
+    const userId = currentUserId(request);
+
+    // Wearing an avatar is an entitlement, so it is checked against the level
+    // the history actually adds up to. Trusting the body here would hand out
+    // the level 10 look for the cost of one request.
+    if (avatar_choice) {
+      const wanted = Number(avatar_choice.slice('level-'.length));
+      const row = await prisma.questData.findUnique({
+        where: { userId },
+        select: { totalCompleted: true },
+      });
+      const earned = overallLevelFor(row?.totalCompleted ?? 0);
+      if (wanted > earned) {
+        throw forbidden(`Reach level ${wanted} to wear this avatar`, 'avatar_locked');
+      }
+    }
+
     const user = await prisma.user.update({
-      where: { id: currentUserId(request) },
+      where: { id: userId },
       data: {
         ...(full_name !== undefined ? { fullName: full_name } : {}),
         ...(avatar_url !== undefined ? { avatarUrl: avatar_url } : {}),
+        ...(avatar_choice !== undefined ? { avatarChoice: avatar_choice } : {}),
       },
     });
     return publicUser(user);

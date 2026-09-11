@@ -32,6 +32,11 @@ model User {
   trialStartedAt DateTime? @map("trial_started_at")
   isPremium      Boolean   @default(false) @map("is_premium")
 
+  // Which unlocked level avatar the user is wearing, as "level-<n>". Null means
+  // avatarUrl is in charge — an uploaded photo always outranks the unlockables,
+  // so earning a new one never silently replaces someone's own picture.
+  avatarChoice String? @map("avatar_choice")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -64,6 +69,11 @@ model QuestData {
   totalCompleted Int @default(0) @map("total_completed")
   streak         Int @default(0)
   streakFreezes  Int @default(1) @map("streak_freezes")
+
+  // Highest overall level the user has already been congratulated for. The
+  // level itself is derived from totalCompleted on every write, so without this
+  // the modal would reappear on every reload and on every other device.
+  celebratedLevel Int @default(0) @map("celebrated_level")
 
   // "YYYY-MM-DD" strings: these are local calendar days, not instants.
   lastCompletedDate String? @map("last_completed_date")
