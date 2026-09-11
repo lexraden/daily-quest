@@ -1094,9 +1094,9 @@ export default function DailyTracker() {
             <h1 className="truncate text-xl font-bold leading-tight">
               {user?.full_name || 'Daily Quests'}
             </h1>
-            <div className={`flex items-center gap-1.5 text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
-              <span>{currentLevel.icon}</span>
-              <span className="truncate">{i.levels[currentLevel.level] || currentLevel.name}</span>
+            {/* No icon here — the same one is already in the avatar beside it. */}
+            <div className={`truncate text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+              {i.levels[currentLevel.level] || currentLevel.name}
             </div>
           </div>
 

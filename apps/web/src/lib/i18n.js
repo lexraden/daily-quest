@@ -298,6 +298,9 @@ const translations = {
       apply: 'Применить',
       skip: 'Пропустить',
       applied: 'Готово',
+      mealAdded: 'Еда записана',
+      questReplaced: 'Квест заменён',
+      questDone: 'Отмечено',
     },
     sound: {
       title: 'Звуки',
@@ -746,6 +749,9 @@ const translations = {
       apply: 'Apply',
       skip: 'Skip',
       applied: 'Done',
+      mealAdded: 'Meal logged',
+      questReplaced: 'Quest replaced',
+      questDone: 'Marked done',
     },
     sound: {
       title: 'Sound effects',

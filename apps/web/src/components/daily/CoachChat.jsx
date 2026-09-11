@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Loader2, Trash2 } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Trash2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/api/client';
 import { t, getLang } from '@/lib/i18n';
@@ -48,6 +48,8 @@ export default function CoachChat({
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(null);
   const [dismissed, setDismissed] = useState(() => new Set());
+  // What was just applied, shown in the middle of the screen until it fades.
+  const [applied, setApplied] = useState(null);
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -73,6 +75,14 @@ export default function CoachChat({
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, sending]);
+
+  // The confirmation is an acknowledgement, not a decision — it clears itself
+  // so nothing has to be tapped to carry on, and a tap closes it sooner.
+  useEffect(() => {
+    if (!applied) return undefined;
+    const timer = setTimeout(() => setApplied(null), 1800);
+    return () => clearTimeout(timer);
+  }, [applied]);
 
   const send = async () => {
     const message = draft.trim();
@@ -105,6 +115,8 @@ export default function CoachChat({
     if (applying) return;
     setApplying(messageId);
     try {
+      let done;
+
       if (proposal.kind === 'meal') {
         const meal = {
           meal_name: proposal.meal_name,
@@ -121,6 +133,11 @@ export default function CoachChat({
         const next = [meal, ...mealHistory];
         await api.questData.update({ meal_history: next });
         onApplied?.({ kind: 'meal', mealHistory: next });
+        done = {
+          icon: '🍽️',
+          title: copy.mealAdded || 'Meal logged',
+          detail: `${proposal.meal_name} · ${proposal.calories} kcal`,
+        };
       } else if (proposal.kind === 'quest') {
         const current = Array.isArray(questData?.[proposal.category])
           ? questData[proposal.category]
@@ -135,6 +152,11 @@ export default function CoachChat({
         };
         await api.questData.update({ quest_data: next });
         onApplied?.({ kind: 'quest', questData: next });
+        done = {
+          icon: proposal.emoji || '✏️',
+          title: copy.questReplaced || 'Quest replaced',
+          detail: proposal.name,
+        };
       } else {
         const quest = (questData?.[proposal.category] || []).find(
           (q) => q.level === proposal.level,
@@ -146,11 +168,18 @@ export default function CoachChat({
           emoji: quest?.emoji || '',
         });
         onApplied?.({ kind: 'complete', row });
+        done = {
+          icon: quest?.emoji || '✅',
+          title: copy.questDone || 'Marked done',
+          // A completion is worth its level in XP, which is the part worth
+          // seeing — the quest name is already on the card above.
+          detail: `${quest?.name || ''} · +${proposal.level} XP`.trim(),
+        };
       }
 
       playSfx('complete');
       setDismissed((prev) => new Set(prev).add(messageId));
-      toast.success(copy.applied || 'Done');
+      setApplied(done);
     } catch (error) {
       toast.error(error?.message || i.errors?.saveFailed || 'Could not save that — try again');
     } finally {
@@ -175,6 +204,47 @@ export default function CoachChat({
       : light
         ? 'self-start bg-gray-100 text-gray-900 rounded-bl-md'
         : 'self-start bg-[#1e2836] text-gray-100 border border-white/10 rounded-bl-md';
+
+  /**
+   * Applied. Centred rather than a toast in the corner: the tap happens
+   * halfway down a scrolling conversation, and a corner toast is the easiest
+   * thing on the screen to miss at the moment you most need to see it landed.
+   */
+  const confirmation = applied && (
+    <motion.div
+      key="applied"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => setApplied(null)}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-8 backdrop-blur-[2px]"
+    >
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: 'spring', damping: 18, stiffness: 320 }}
+        className={`flex w-full max-w-[16rem] flex-col items-center rounded-3xl px-6 py-7 text-center shadow-2xl ${
+          light ? 'bg-white' : 'bg-[#1b2433] border border-white/10'
+        }`}
+      >
+        <span className="relative flex h-16 w-16 items-center justify-center">
+          <span className="absolute inset-0 rounded-full bg-emerald-500/15" />
+          <span className="text-3xl leading-none">{applied.icon}</span>
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500">
+            <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+          </span>
+        </span>
+
+        <span className={`mt-4 text-base font-bold ${light ? 'text-gray-900' : 'text-white'}`}>
+          {applied.title}
+        </span>
+        {applied.detail && (
+          <span className="mt-1 text-xs leading-snug text-gray-500">{applied.detail}</span>
+        )}
+      </motion.div>
+    </motion.div>
+  );
 
   return (
     <AnimatePresence>
@@ -376,6 +446,8 @@ export default function CoachChat({
           </div>
         </motion.div>
       </div>
+
+      {confirmation}
     </AnimatePresence>
   );
 }
