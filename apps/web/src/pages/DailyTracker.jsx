@@ -1086,11 +1086,16 @@ export default function DailyTracker() {
           </div>
         </div>
 
-        {/* Stats Row */}
-        <div className="flex items-center gap-2 mb-3 text-sm">
+        {/*
+          Stats Row. It wraps rather than squeezing: the level titles are two
+          words, and at 360px "Forged Master" broke across lines mid-title while
+          the divider and the streak stayed put. Wrapping by item keeps each
+          piece whole and moves whichever no longer fits onto the next line.
+        */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3 text-sm">
           <div className="flex items-center gap-1.5">
             <span className="text-lg">{currentLevel.icon}</span>
-            <span className={theme === 'light' ? 'text-gray-600' : 'text-gray-400'}>{i.levels[currentLevel.level] || currentLevel.name}</span>
+            <span className={`whitespace-nowrap ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>{i.levels[currentLevel.level] || currentLevel.name}</span>
           </div>
           <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
           <div className="flex items-center gap-1.5">

@@ -91,17 +91,22 @@ const translations = {
       ],
     },
     // Levels
+    /**
+     * Звания из двух слов. Прилагательное взято от иконки и цвета уровня в
+     * LEVEL_DEFS, так что имя и картинка читаются как одно целое: у 5-го
+     * уровня алмаз и он Алмазный, у 9-го молния и он Грозовой.
+     */
     levels: {
-      1: 'Новичок',
-      2: 'Ученик',
-      3: 'Практик',
-      4: 'Мастер',
-      5: 'Эксперт',
-      6: 'Герой',
-      7: 'Чемпион',
-      8: 'Легенда',
-      9: 'Титан',
-      10: 'Бог',
+      1: 'Зелёный Новичок',
+      2: 'Прилежный Ученик',
+      3: 'Верный Практик',
+      4: 'Калёный Мастер',
+      5: 'Алмазный Эксперт',
+      6: 'Закалённый Герой',
+      7: 'Лавровый Чемпион',
+      8: 'Золотая Легенда',
+      9: 'Грозовой Титан',
+      10: 'Сияющий Бог',
     },
     // Default quests
     defaultQuests: {
@@ -544,17 +549,22 @@ const translations = {
         "Legendary! 👑"
       ],
     },
+    /**
+     * Two-word titles. The adjective comes from the level's own icon and colour
+     * in LEVEL_DEFS, so the name and the artwork read as one thing: level 5 has
+     * the diamond and is Diamond, level 9 has the lightning and is Storm.
+     */
     levels: {
-      1: 'Novice',
-      2: 'Apprentice',
-      3: 'Practitioner',
-      4: 'Master',
-      5: 'Expert',
-      6: 'Hero',
-      7: 'Champion',
-      8: 'Legend',
-      9: 'Titan',
-      10: 'God',
+      1: 'Green Novice',
+      2: 'Steady Apprentice',
+      3: 'Daily Practitioner',
+      4: 'Forged Master',
+      5: 'Diamond Expert',
+      6: 'Tempered Hero',
+      7: 'Laurel Champion',
+      8: 'Golden Legend',
+      9: 'Storm Titan',
+      10: 'Radiant God',
     },
     defaultQuests: {
       health: [

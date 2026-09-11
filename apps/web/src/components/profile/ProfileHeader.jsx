@@ -154,8 +154,9 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
               <button onClick={() => setIsEditingName(true)} aria-label={i.profilePage.editName} className="text-sm opacity-50 hover:opacity-100 w-8 h-8 flex items-center justify-center flex-shrink-0">✏️</button>
             </div>
           )}
-          <div className="flex items-center gap-2 mt-1">
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            {/* Two-word titles broke across lines inside the pill at 360px. */}
+            <span className={`inline-flex items-center gap-1 whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-bold ${
               theme === 'light' ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
             }`}>
               {stats.currentLevel.icon} {stats.currentLevel.name}

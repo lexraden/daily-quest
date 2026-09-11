@@ -357,9 +357,15 @@ export default async function aiRoutes(app: FastifyInstance) {
 const HISTORY_KEPT = 40;
 const HISTORY_SENT = 12;
 
+/**
+ * The English titles, for the coach's context line only — the ones the user
+ * actually sees are localised in the browser's i18n.js `levels` map. Keep the
+ * two in step: a coach that calls someone a Forged Master while the header says
+ * something else reads as a different app talking.
+ */
 const LEVEL_TITLES = [
-  'Novice', 'Apprentice', 'Practitioner', 'Master', 'Expert',
-  'Hero', 'Champion', 'Legend', 'Titan', 'God',
+  'Green Novice', 'Steady Apprentice', 'Daily Practitioner', 'Forged Master', 'Diamond Expert',
+  'Tempered Hero', 'Laurel Champion', 'Golden Legend', 'Storm Titan', 'Radiant God',
 ];
 
 interface Proposal {

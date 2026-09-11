@@ -24,16 +24,16 @@ is used even if the files exist, so a partial set never ships half-drawn.
 
 | File | Level | Title | Frame colour | Character |
 |------|-------|-------|--------------|-----------|
-| level-1.png | 1 | Novice | `#6c5ce7` | a beginner: plain clothes, a sapling or a satchel, hopeful rather than capable |
-| level-2.png | 2 | Apprentice | `#00cec9` | a student: books under one arm, first proper gear |
-| level-3.png | 3 | Practitioner | `#fdcb6e` | someone who trains daily: practical kit, sleeves rolled up |
-| level-4.png | 4 | Master | `#e17055` | assured and settled: a cloak or coat, a mark of rank |
-| level-5.png | 5 | Expert | `#d63031` | refined and precise: crystal or gemstone motif |
-| level-6.png | 6 | Hero | `#fd79a8` | armed and scarred: a blade, a battered shield |
-| level-7.png | 7 | Champion | `#fdcb6e` | crowned with laurel, a trophy, unmistakably a winner |
-| level-8.png | 8 | Legend | `#ffeaa7` | a crown and a cape, gold throughout |
-| level-9.png | 9 | Titan | `#a29bfe` | immense, storm-lit, barely contained power |
-| level-10.png | 10 | God | `#ffffff` | radiant and near-abstract, white and light |
+| level-1.png | 1 | Green Novice | `#6c5ce7` | a beginner: plain clothes, a sapling or a satchel, hopeful rather than capable |
+| level-2.png | 2 | Steady Apprentice | `#00cec9` | a student: books under one arm, first proper gear |
+| level-3.png | 3 | Daily Practitioner | `#fdcb6e` | someone who trains daily: practical kit, sleeves rolled up |
+| level-4.png | 4 | Forged Master | `#e17055` | assured and settled: a cloak or coat, a mark of rank |
+| level-5.png | 5 | Diamond Expert | `#d63031` | refined and precise: crystal or gemstone motif |
+| level-6.png | 6 | Tempered Hero | `#fd79a8` | armed and scarred: a blade, a battered shield |
+| level-7.png | 7 | Laurel Champion | `#fdcb6e` | crowned with laurel, a trophy, unmistakably a winner |
+| level-8.png | 8 | Golden Legend | `#ffeaa7` | a crown and a cape, gold throughout |
+| level-9.png | 9 | Storm Titan | `#a29bfe` | immense, storm-lit, barely contained power |
+| level-10.png | 10 | Radiant God | `#ffffff` | radiant and near-abstract, white and light |
 
 The frame colour is drawn by the app as a ring around the image — the artwork
 itself should sit well against it without repeating it as a background.
