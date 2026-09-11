@@ -175,17 +175,19 @@ through. The full-page gradients run **vertically** for the same reason: on a
 diagonal (`to-br`) the top row shades across the width, so it could not match a
 status bar filled with one flat colour and left a visible band along the top
 edge. Vertical means the first row is exactly the `from-` colour, which is the
-theme colour. The manifest's `theme_color` is light, and an installed app's status bar takes
-that value and nothing else — the page's `<meta name="theme-color">` is kept in
-sync but does not appear to reach the bar once installed. There is one value in
-the manifest and the theme is a manual choice, so the bar cannot follow both:
-light mode looks right, dark mode gets a light bar above it.
+theme colour. The manifest carries **no** `theme_color`, on purpose. A value there is fixed
+at install time and cannot follow a theme the user picks by hand — setting it
+light left a light bar over the dark app, setting it dark left a dark bar over
+the light one. Without it the page's `<meta name="theme-color">` is the only
+source, and that one does follow the theme.
 
-Worth knowing before changing this again: every earlier attempt to test another
-value was invalid, because the service worker was serving a frozen
-`manifest.json` (see above) and nothing ever reached the device. The one
-combination still genuinely untested is dropping `theme_color` entirely now
-that the cache is fixed, which would leave the meta as the only source. Components style
+The meta is corrected by an inline script in `<head>`, during parsing, before
+any module loads: Chrome reads theme-color very early and an installed app may
+never look again, so the first value it sees has to be right. `applyTheme`
+keeps it in step afterwards for the toggle.
+
+Note that the Android navigation bar along the bottom is not part of this. No
+way was found to colour it from the page; it appears to follow the system. Components style
 themselves from a `theme` prop, so nothing had ever set the `dark` class
 Tailwind is configured for: `body` kept the light background in dark mode, and
 in standalone — where the page runs under the status bar — that showed as a
