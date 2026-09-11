@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme switch fade.
+ *
+ * `theme-transition` is added to <html> for the length of the change and then
+ * removed, so these transitions never apply to ordinary repaints — only to the
+ * moment light and dark swap. Every colour property is listed because a card
+ * changes its background, its border and its text all at once, and a partial
+ * list makes the fade look broken rather than absent.
+ */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition:
+    background-color 260ms ease,
+    border-color 260ms ease,
+    color 260ms ease,
+    fill 260ms ease,
+    stroke 260ms ease,
+    box-shadow 260ms ease !important;
+  transition-delay: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition: none !important;
+  }
+}
+
 /* Mobile safe area insets */
 html {
   padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);

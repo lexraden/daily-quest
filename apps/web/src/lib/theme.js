@@ -16,6 +16,37 @@ export const THEME_COLORS = { light: '#f9fafb', dark: '#0f1419' };
 let current = null;
 const listeners = new Set();
 
+/**
+ * Long enough to read as a fade, short enough not to feel laggy when the
+ * toggle is tapped twice. Kept in step with the duration in index.css.
+ */
+const TRANSITION_MS = 260;
+let transitionTimer = null;
+
+/**
+ * Fade the colours instead of snapping them.
+ *
+ * The class is only on during the change: leaving a blanket colour transition
+ * on every element would also slow down hovers, presses and anything else that
+ * repaints, so it goes on, the theme changes, and it comes off again.
+ */
+function withTransition(change) {
+  const root = document.documentElement;
+  const reduced =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (reduced) {
+    change();
+    return;
+  }
+
+  root.classList.add('theme-transition');
+  change();
+  clearTimeout(transitionTimer);
+  transitionTimer = setTimeout(() => root.classList.remove('theme-transition'), TRANSITION_MS);
+}
+
 /** The theme in force right now, without touching storage again. */
 export function getTheme() {
   if (current === null) current = readTheme();
@@ -31,8 +62,10 @@ export function getTheme() {
  */
 export function setTheme(next) {
   current = next;
-  applyTheme(next);
-  listeners.forEach((fn) => fn(next));
+  withTransition(() => {
+    applyTheme(next);
+    listeners.forEach((fn) => fn(next));
+  });
 }
 
 export function subscribeTheme(fn) {
