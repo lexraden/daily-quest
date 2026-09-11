@@ -221,6 +221,20 @@ If a package is ever needed for a store listing, use a Trusted Web Activity
 in an embedded WebView (`disallowed_useragent`), so Capacitor would break
 sign-in and need a native Google plugin instead.
 
+## Environment
+
+`NODE_ENV` is parsed leniently at one end and strictly at the other. An empty
+value counts as absent — Zod's `.default()` only fills a *missing* key, so a
+blanked-out `NODE_ENV=""` reached the enum and crash-looped the service on
+boot. An unrecognised value still fails loudly.
+
+When nothing is set, a deployed container (detected from the `RAILWAY_*`
+variables) falls back to `production` and a laptop to `development`. That
+asymmetry is deliberate: `isProd` gates the `Secure` flag on the refresh
+cookie, so defaulting a deployment to development would quietly ship session
+cookies without it, while defaulting a laptop to production would break sign-in
+over plain http.
+
 ## Tests
 
 ```bash

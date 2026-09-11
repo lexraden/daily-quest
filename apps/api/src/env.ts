@@ -6,8 +6,39 @@ import { z } from 'zod';
  * env.api.ts and env.job.ts — importing this file must not demand a secret the
  * importing service was never given.
  */
+/**
+ * Railway injects these into every deployed container. They are the signal that
+ * this is not someone's laptop.
+ */
+const isDeployed = Boolean(
+  process.env.RAILWAY_ENVIRONMENT ||
+    process.env.RAILWAY_SERVICE_ID ||
+    process.env.RAILWAY_PROJECT_ID,
+);
+
 const schema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  /**
+   * Empty counts as absent. Zod's `.default()` only fills in a missing key, so
+   * `NODE_ENV=""` — which is what a blanked-out Railway variable sends — reached
+   * the enum and crash-looped the service on boot.
+   *
+   * A deployed container with nothing set falls back to production rather than
+   * development, because `isProd` gates the Secure flag on the refresh cookie:
+   * guessing wrong in that direction would quietly ship session cookies without
+   * it. Locally, where none of the Railway variables exist, development still
+   * wins so sign-in works over plain http.
+   */
+  NODE_ENV: z.preprocess(
+    (v) => {
+      const value = typeof v === 'string' ? v.trim() : v;
+      return value === '' || value === undefined
+        ? isDeployed
+          ? 'production'
+          : 'development'
+        : value;
+    },
+    z.enum(['development', 'production', 'test']),
+  ),
   DATABASE_URL: z.string().min(1),
 });
 
