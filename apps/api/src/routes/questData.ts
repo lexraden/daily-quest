@@ -104,6 +104,24 @@ const mealBody = z
 
 const mealPatchBody = mealBody.partial().strict();
 
+/**
+ * A journal entry. Append-only: nothing in the app edits or deletes one, so
+ * there is no endpoint for it — the id is here so that a retry after a dropped
+ * response cannot record the same entry twice.
+ */
+const journalBody = z
+  .object({
+    id: z.string().min(1).max(64),
+    date: dayString,
+    category: z.string().min(1).max(64),
+    emoji: z.string().max(16).default(''),
+    text: z.string().trim().min(1).max(2000),
+    rawText: z.string().max(4000).default(''),
+    type: z.enum(['quest_completed', 'journal']),
+    questLevel: z.number().int().min(1).max(3).optional(),
+  })
+  .strict();
+
 const streakBody = z.object({ day: dayString }).strict();
 
 const celebratedBody = z.object({
@@ -618,6 +636,44 @@ export default async function questDataRoutes(app: FastifyInstance) {
       return writeMeals(tx, userId, next);
     });
 
+    return toWire(row);
+  });
+
+  /**
+   * One journal entry, appended under the row lock.
+   *
+   * Same reasoning as meals: a debounced save of the whole array would drop an
+   * entry written on another device between this screen's load and its save.
+   * Appending by id also makes a retry harmless — the entry is already there,
+   * so the second attempt returns the same list rather than a duplicate.
+   */
+  app.post('/journal', async (request, reply) => {
+    const parsed = journalBody.safeParse(request.body);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const field = issue?.path.length ? `${issue.path.join('.')}: ` : '';
+      throw badRequest(`Cannot save the entry — ${field}${issue?.message ?? 'invalid data'}`);
+    }
+    const userId = currentUserId(request);
+    const entry = { ...parsed.data, timestamp: new Date().toISOString() };
+
+    const row = await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ journal_entries: unknown }[]>`
+        SELECT journal_entries FROM quest_data WHERE user_id = ${userId} FOR UPDATE`;
+      if (locked.length === 0) throw notFound('Finish onboarding before saving entries');
+
+      const value = locked[0]?.journal_entries;
+      const entries = Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+      const already = entries.some((e) => e && typeof e === 'object' && e.id === entry.id);
+
+      return tx.questData.update({
+        where: { userId },
+        data: { journalEntries: toJson(already ? entries : [entry, ...entries]) },
+        include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+      });
+    });
+
+    reply.code(201);
     return toWire(row);
   });
 

@@ -200,6 +200,14 @@ export const api = {
       request('/api/quest-data/streak', { method: 'POST', body: { day } }),
 
     /**
+     * Journal entries, appended one at a time. Append-only by design — nothing
+     * edits or deletes one — and the id makes a retry a no-op.
+     */
+    journal: {
+      add: (entry) => request('/api/quest-data/journal', { method: 'POST', body: entry }),
+    },
+
+    /**
      * Meals, one at a time. The server locks the row and changes exactly that
      * entry, so a save from another device cannot take the whole list back to
      * what it was when this one loaded.

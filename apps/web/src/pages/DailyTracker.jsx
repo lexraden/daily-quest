@@ -141,6 +141,27 @@ export default function DailyTracker() {
   const levelUpRef = useRef(null);
   levelUpRef.current = levelUp;
 
+  /**
+   * Appends one journal entry server-side. The optimistic copy is already on
+   * screen; this is what makes it survive, and the server's list replaces the
+   * local one so an entry written elsewhere appears too.
+   */
+  const saveJournalEntry = useCallback((entry) => {
+    api.questData.journal
+      .add({
+        id: String(entry.id),
+        date: entry.date,
+        category: entry.category,
+        emoji: entry.emoji || '',
+        text: entry.text,
+        rawText: entry.rawText || '',
+        type: entry.type,
+        ...(entry.questLevel ? { questLevel: entry.questLevel } : {}),
+      })
+      .then((row) => setJournalEntries(row.journal_entries || []))
+      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
+  }, []);
+
   const applyServerProgress = useCallback((row) => {
     if (!row) return;
     setTotalCompleted(row.total_completed ?? 0);
@@ -418,7 +439,8 @@ export default function DailyTracker() {
         timestamp: new Date().toISOString()
       };
       setJournalEntries(prev => [newEntry, ...prev]);
-      
+      saveJournalEntry(newEntry);
+
       toast.success(aiResponse.message || '🎉');
     } else if (intent === 'ADD_QUEST') {
       // Добавить новый квест напрямую
@@ -446,7 +468,8 @@ export default function DailyTracker() {
         timestamp: new Date().toISOString()
       };
       setJournalEntries(prev => [newEntry, ...prev]);
-      
+      saveJournalEntry(newEntry);
+
       toast.success(aiResponse.message || '📝');
     }
 
@@ -716,7 +739,6 @@ export default function DailyTracker() {
   // in another tab with the numbers this one happened to load at mount.
   const getStateSnapshot = useCallback(() => ({
     quest_data: questData,
-    journal_entries: journalEntries,
     // meal_history is not here either, for the same reason. It is appended,
     // edited and deleted one meal at a time through its own endpoints; sending
     // the whole array on a debounce would put it back to whatever this screen
@@ -725,11 +747,10 @@ export default function DailyTracker() {
     // trial_started_at and is_premium are owned by the server and rejected by
     // the API's field allowlist — they are read from responses, never sent.
     last_visit_date: getTodayKey()
-  }), [questData, journalEntries, caloriesBurned]);
+  }), [questData, caloriesBurned]);
 
   const restoreSnapshot = useCallback((snapshot) => {
     setQuestData(snapshot.quest_data);
-    setJournalEntries(snapshot.journal_entries);
     setCaloriesBurned(snapshot.calories_burned || {});
   }, []);
 

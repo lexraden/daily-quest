@@ -877,6 +877,69 @@ describe('meals are changed one at a time', () => {
   });
 });
 
+describe('journal entries are appended, not rewritten', () => {
+  const entry = (id: string, text: string) => ({
+    id,
+    date: '2031-09-01',
+    category: 'mind',
+    emoji: '📝',
+    text,
+    rawText: '',
+    type: 'journal' as const,
+  });
+
+  async function onboard(actor: Actor) {
+    await prisma.questData.deleteMany({ where: { userId: actor.id } });
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+  }
+
+  const add = (actor: Actor, body: unknown) =>
+    call('/api/quest-data/journal', { token: actor.token, method: 'POST', body });
+
+  test('two entries written at once both survive', async () => {
+    await onboard(alice);
+    const [a, b] = await Promise.all([
+      add(alice, entry('one', 'From the phone')),
+      add(alice, entry('two', 'From the laptop')),
+    ]);
+    assert.equal(a.status, 201);
+    assert.equal(b.status, 201);
+
+    const row = await (await call('/api/quest-data', { token: alice.token })).json();
+    const texts = row.journal_entries.map((e: { text: string }) => e.text).sort();
+    assert.deepEqual(texts, ['From the laptop', 'From the phone']);
+  });
+
+  test('the same entry sent twice is recorded once', async () => {
+    await onboard(alice);
+    await add(alice, entry('same', 'Wrote this'));
+    const row = await (await add(alice, entry('same', 'Wrote this'))).json();
+    assert.equal(row.journal_entries.length, 1, 'a retry is not a second entry');
+  });
+
+  test('an entry with no text, a bad type or a stray field is refused', async () => {
+    await onboard(alice);
+    for (const body of [
+      { ...entry('x', '   ') },
+      { ...entry('x', 'ok'), type: 'shopping' },
+      { ...entry('x', 'ok'), date: 'yesterday' },
+      { ...entry('x', 'ok'), sneaky: true },
+    ]) {
+      assert.equal((await add(alice, body)).status, 400, JSON.stringify(body));
+    }
+  });
+
+  test('the journal route is closed without a token', async () => {
+    const res = await call('/api/quest-data/journal', {
+      method: 'POST', body: entry('x', 'hello'),
+    });
+    assert.equal(res.status, 401);
+  });
+});
+
 describe('coach chat', () => {
   async function onboard(actor: Actor) {
     await prisma.chatMessage.deleteMany({ where: { userId: actor.id } });
