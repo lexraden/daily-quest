@@ -35,7 +35,6 @@ export default function CoachChat({
   onClose,
   theme = 'dark',
   questData,
-  mealHistory = [],
   onApplied,
 }) {
   const i = t();
@@ -118,7 +117,9 @@ export default function CoachChat({
       let done;
 
       if (proposal.kind === 'meal') {
-        const meal = {
+        // One meal, appended by the server under a row lock — this screen never
+        // sends the whole list, so it cannot undo a meal logged elsewhere.
+        const row = await api.questData.meals.add({
           meal_name: proposal.meal_name,
           calories: proposal.calories,
           protein: proposal.protein,
@@ -126,13 +127,8 @@ export default function CoachChat({
           carbs: proposal.carbs,
           photo_urls: [],
           date: todayKey(),
-          timestamp: new Date().toISOString(),
-        };
-        // meal_history is still a whole-array column, so the list is rebuilt
-        // from the copy this screen was given rather than appended blind.
-        const next = [meal, ...mealHistory];
-        await api.questData.update({ meal_history: next });
-        onApplied?.({ kind: 'meal', mealHistory: next });
+        });
+        onApplied?.({ kind: 'meal', mealHistory: row.meal_history });
         done = {
           icon: '🍽️',
           title: copy.mealAdded || 'Meal logged',

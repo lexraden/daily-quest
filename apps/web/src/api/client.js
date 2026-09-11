@@ -200,6 +200,22 @@ export const api = {
       request('/api/quest-data/streak', { method: 'POST', body: { day } }),
 
     /**
+     * Meals, one at a time. The server locks the row and changes exactly that
+     * entry, so a save from another device cannot take the whole list back to
+     * what it was when this one loaded.
+     */
+    meals: {
+      add: (meal) => request('/api/quest-data/meals', { method: 'POST', body: meal }),
+      update: (id, patch) =>
+        request(`/api/quest-data/meals/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          body: patch,
+        }),
+      remove: (id) =>
+        request(`/api/quest-data/meals/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    },
+
+    /**
      * Marks a level-up as shown. The server only ever moves the mark forward,
      * so calling this twice — two tabs, a retry — is harmless.
      */

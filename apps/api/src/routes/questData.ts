@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../db.js';
+import type { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
 import {
   deriveProgress,
@@ -82,6 +84,25 @@ const completionRemoveBody = z
     level: z.number().int().min(1).max(3),
   })
   .strict();
+
+/**
+ * A meal as the client records it. The id is assigned server-side on append so
+ * that editing and deleting can name a specific meal rather than a position in
+ * an array that another device may already have changed underneath them.
+ */
+const mealBody = z
+  .object({
+    meal_name: z.string().trim().min(1).max(200),
+    calories: z.number().int().min(0).max(100000),
+    protein: z.number().int().min(0).max(10000).default(0),
+    fat: z.number().int().min(0).max(10000).default(0),
+    carbs: z.number().int().min(0).max(10000).default(0),
+    photo_urls: z.array(z.string().max(2048)).max(8).default([]),
+    date: dayString,
+  })
+  .strict();
+
+const mealPatchBody = mealBody.partial().strict();
 
 const streakBody = z.object({ day: dayString }).strict();
 
@@ -184,6 +205,38 @@ async function writeDerived(
     },
     include: { user: { select: { trialStartedAt: true, isPremium: true } } },
   });
+}
+
+/** Reads meal_history under a row lock, tolerating anything stored before this. */
+async function lockMeals(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<Record<string, unknown>[]> {
+  const locked = await tx.$queryRaw<{ meal_history: unknown }[]>`
+    SELECT meal_history FROM quest_data WHERE user_id = ${userId} FOR UPDATE`;
+  if (locked.length === 0) throw notFound('Finish onboarding before saving meals');
+  const value = locked[0]?.meal_history;
+  return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
+}
+
+function writeMeals(tx: Prisma.TransactionClient, userId: string, meals: unknown[]) {
+  return tx.questData.update({
+    where: { userId },
+    data: { mealHistory: toJson(meals) },
+    include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+  });
+}
+
+/**
+ * Meals written before ids existed have none. Falling back to the timestamp
+ * keeps those editable instead of stranding them, and two meals logged in the
+ * same millisecond is not a case worth a migration.
+ */
+function mealId(meal: unknown): string {
+  if (!meal || typeof meal !== 'object') return '';
+  const m = meal as { id?: unknown; timestamp?: unknown };
+  if (typeof m.id === 'string' && m.id) return m.id;
+  return typeof m.timestamp === 'string' ? m.timestamp : '';
 }
 
 /** Fallback only — a client that sends its own local day is preferred. */
@@ -500,6 +553,70 @@ export default async function questDataRoutes(app: FastifyInstance) {
       include: { user: { select: { trialStartedAt: true, isPremium: true } } },
     });
     if (!row) throw notFound('Finish onboarding before saving progress');
+
+    return toWire(row);
+  });
+
+  /**
+   * Meals, one at a time.
+   *
+   * meal_history used to be rewritten whole by whoever saved last: the tracker's
+   * debounced autosave, the profile's edit and delete, and now the coach chat.
+   * Three writers and one array is how a meal logged on a phone disappears when
+   * a laptop's autosave lands a second later with the list as it was at mount.
+   * Each of these locks the row, changes exactly one entry, and writes back.
+   */
+  app.post('/meals', async (request, reply) => {
+    const parsed = mealBody.safeParse(request.body);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const field = issue?.path.length ? `${issue.path.join('.')}: ` : '';
+      throw badRequest(`Cannot save the meal — ${field}${issue?.message ?? 'invalid data'}`);
+    }
+    const userId = currentUserId(request);
+    const meal = { id: randomUUID(), ...parsed.data, timestamp: new Date().toISOString() };
+
+    const row = await prisma.$transaction(async (tx) => {
+      const meals = await lockMeals(tx, userId);
+      return writeMeals(tx, userId, [meal, ...meals]);
+    });
+
+    reply.code(201);
+    return toWire(row);
+  });
+
+  app.patch('/meals/:id', async (request) => {
+    const parsed = mealPatchBody.safeParse(request.body);
+    if (!parsed.success) throw badRequest('Cannot update the meal — invalid data');
+    const { id } = request.params as { id: string };
+    const userId = currentUserId(request);
+
+    const row = await prisma.$transaction(async (tx) => {
+      const meals = await lockMeals(tx, userId);
+      const index = meals.findIndex((m) => mealId(m) === id);
+      // A meal edited on one device and deleted on another is gone, not an
+      // error worth interrupting anyone over.
+      if (index === -1) return null;
+      const next = [...meals];
+      next[index] = { ...(next[index] as object), ...parsed.data };
+      return writeMeals(tx, userId, next);
+    });
+
+    if (!row) throw notFound('That meal is no longer there');
+    return toWire(row);
+  });
+
+  app.delete('/meals/:id', async (request) => {
+    const { id } = request.params as { id: string };
+    const userId = currentUserId(request);
+
+    const row = await prisma.$transaction(async (tx) => {
+      const meals = await lockMeals(tx, userId);
+      const next = meals.filter((m) => mealId(m) !== id);
+      // Deleting twice is the same as deleting once: a retry after a dropped
+      // response must not fail.
+      return writeMeals(tx, userId, next);
+    });
 
     return toWire(row);
   });

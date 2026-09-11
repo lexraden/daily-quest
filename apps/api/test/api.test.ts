@@ -749,6 +749,134 @@ describe('what the coach is allowed to offer', () => {
   });
 });
 
+describe('meals are changed one at a time', () => {
+  async function onboard(actor: Actor) {
+    await prisma.questData.deleteMany({ where: { userId: actor.id } });
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+  }
+
+  const add = (actor: Actor, name: string, calories = 500) =>
+    call('/api/quest-data/meals', {
+      token: actor.token,
+      method: 'POST',
+      body: { meal_name: name, calories, date: '2031-08-01' },
+    });
+
+  test('an appended meal gets an id and keeps the ones already there', async () => {
+    await onboard(alice);
+    await add(alice, 'Breakfast');
+    const row = await (await add(alice, 'Lunch')).json();
+
+    assert.equal(row.meal_history.length, 2);
+    assert.equal(row.meal_history[0].meal_name, 'Lunch', 'newest first');
+    assert.ok(row.meal_history[0].id, 'the server names the meal');
+    assert.notEqual(row.meal_history[0].id, row.meal_history[1].id);
+  });
+
+  // The bug this replaces: the tracker, the profile and the coach each sent
+  // meal_history whole, so whichever landed last put the list back to what it
+  // held at mount and the other meal was gone.
+  test('two devices logging at once keep both meals', async () => {
+    await onboard(alice);
+
+    const [a, b] = await Promise.all([add(alice, 'Phone meal'), add(alice, 'Laptop meal')]);
+    assert.equal(a.status, 201);
+    assert.equal(b.status, 201);
+
+    const row = await (await call('/api/quest-data', { token: alice.token })).json();
+    const names = row.meal_history.map((m: { meal_name: string }) => m.meal_name).sort();
+    assert.deepEqual(names, ['Laptop meal', 'Phone meal']);
+  });
+
+  test('editing names the meal, not a position in the array', async () => {
+    await onboard(alice);
+    const first = await (await add(alice, 'Shawarma', 620)).json();
+    const id = first.meal_history[0].id;
+
+    // Something else lands in front of it, moving it down the list.
+    await add(alice, 'Coffee', 5);
+
+    const edited = await (await call(`/api/quest-data/meals/${id}`, {
+      token: alice.token, method: 'PATCH', body: { calories: 700 },
+    })).json();
+
+    const target = edited.meal_history.find((m: { id: string }) => m.id === id);
+    assert.equal(target.calories, 700);
+    assert.equal(target.meal_name, 'Shawarma', 'an untouched field stays put');
+    assert.equal(
+      edited.meal_history.find((m: { meal_name: string }) => m.meal_name === 'Coffee').calories,
+      5,
+      'the other meal is untouched',
+    );
+  });
+
+  test('deleting twice is not an error', async () => {
+    await onboard(alice);
+    const row = await (await add(alice, 'Snack')).json();
+    const id = row.meal_history[0].id;
+
+    const first = await call(`/api/quest-data/meals/${id}`, { token: alice.token, method: 'DELETE' });
+    assert.equal(first.status, 200);
+    assert.deepEqual((await first.json()).meal_history, []);
+
+    const again = await call(`/api/quest-data/meals/${id}`, { token: alice.token, method: 'DELETE' });
+    assert.equal(again.status, 200, 'a retry after a dropped response must not fail');
+  });
+
+  test('editing a meal that is gone says so rather than inventing one', async () => {
+    await onboard(alice);
+    const res = await call('/api/quest-data/meals/nope', {
+      token: alice.token, method: 'PATCH', body: { calories: 1 },
+    });
+    assert.equal(res.status, 404);
+  });
+
+  test("one user cannot touch another user's meals", async () => {
+    await onboard(alice);
+    await onboard(bob);
+    const row = await (await add(alice, 'Private lunch')).json();
+    const id = row.meal_history[0].id;
+
+    // Bob has a row of his own, so this is a real lookup that finds nothing.
+    const res = await call(`/api/quest-data/meals/${id}`, {
+      token: bob.token, method: 'PATCH', body: { calories: 9999 },
+    });
+    assert.equal(res.status, 404);
+
+    const after = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.equal(after.meal_history[0].calories, 500);
+  });
+
+  test('a meal without a name or with absurd numbers is refused', async () => {
+    await onboard(alice);
+    for (const body of [
+      { meal_name: '', calories: 100, date: '2031-08-01' },
+      { meal_name: 'x', calories: -5, date: '2031-08-01' },
+      { meal_name: 'x', calories: 100, date: 'not-a-day' },
+      { meal_name: 'x', calories: 100, date: '2031-08-01', sneaky: true },
+    ]) {
+      const res = await call('/api/quest-data/meals', {
+        token: alice.token, method: 'POST', body,
+      });
+      assert.equal(res.status, 400, JSON.stringify(body));
+    }
+  });
+
+  test('the meal routes are closed without a token', async () => {
+    for (const [method, path] of [
+      ['POST', '/api/quest-data/meals'],
+      ['PATCH', '/api/quest-data/meals/x'],
+      ['DELETE', '/api/quest-data/meals/x'],
+    ]) {
+      const res = await call(path, { method });
+      assert.equal(res.status, 401, `${method} ${path}`);
+    }
+  });
+});
+
 describe('coach chat', () => {
   async function onboard(actor: Actor) {
     await prisma.chatMessage.deleteMany({ where: { userId: actor.id } });

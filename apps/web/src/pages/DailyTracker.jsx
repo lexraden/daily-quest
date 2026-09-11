@@ -717,17 +717,19 @@ export default function DailyTracker() {
   const getStateSnapshot = useCallback(() => ({
     quest_data: questData,
     journal_entries: journalEntries,
-    meal_history: mealHistory,
+    // meal_history is not here either, for the same reason. It is appended,
+    // edited and deleted one meal at a time through its own endpoints; sending
+    // the whole array on a debounce would put it back to whatever this screen
+    // was holding and silently undo a meal logged somewhere else.
     calories_burned: caloriesBurned,
     // trial_started_at and is_premium are owned by the server and rejected by
     // the API's field allowlist — they are read from responses, never sent.
     last_visit_date: getTodayKey()
-  }), [questData, journalEntries, mealHistory, caloriesBurned]);
+  }), [questData, journalEntries, caloriesBurned]);
 
   const restoreSnapshot = useCallback((snapshot) => {
     setQuestData(snapshot.quest_data);
     setJournalEntries(snapshot.journal_entries);
-    setMealHistory(snapshot.meal_history);
     setCaloriesBurned(snapshot.calories_burned || {});
   }, []);
 
@@ -1266,9 +1268,24 @@ export default function DailyTracker() {
         <MealReportModal
           meal={pendingMeal}
           onSave={() => {
+            // Optimistic, then reconciled: the server assigns the id and is the
+            // one appending to the list, so the row it returns wins.
             setMealHistory(prev => [pendingMeal, ...prev]);
             setPendingMeal(null);
             toast.success(i.calories.mealSaved);
+
+            api.questData.meals
+              .add({
+                meal_name: pendingMeal.meal_name,
+                calories: Math.round(pendingMeal.calories || 0),
+                protein: Math.round(pendingMeal.protein || 0),
+                fat: Math.round(pendingMeal.fat || 0),
+                carbs: Math.round(pendingMeal.carbs || 0),
+                photo_urls: pendingMeal.photo_urls || [],
+                date: pendingMeal.date || getTodayKey(),
+              })
+              .then((row) => setMealHistory(row.meal_history || []))
+              .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
 
             // Streak засчитывается только при загрузке фото еды, один раз в день.
             // The day is counted by the server: its WHERE clause matches only a
@@ -1338,7 +1355,6 @@ export default function DailyTracker() {
           onClose={() => setShowCoach(false)}
           theme={theme}
           questData={questData}
-          mealHistory={mealHistory}
           onApplied={(change) => {
             // The chat applied something through the ordinary endpoints; take
             // its word for the new quests or meals, and the server's row for XP.

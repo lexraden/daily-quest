@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { t, getLang } from '@/lib/i18n';
 import { LEVEL_DEFS } from '@/lib/levels';
 import { todayKey } from '@/lib/dates';
+import { mealKey } from '@/lib/meals';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import NotificationSettings from '@/components/profile/NotificationSettings';
@@ -46,6 +47,29 @@ export default function Profile() {
   // The shared cache has to move with the profile, not just this page's state:
   // DailyTracker re-checks the cached user on every focus and would otherwise
   // overwrite a freshly chosen name with the email-derived default.
+  /**
+   * One meal changed, named by its own id rather than its position.
+   *
+   * The list is rebuilt by the server, which holds the row lock; this page
+   * takes the result. Sending the whole array from here is what used to
+   * overwrite a meal logged on another device between this page's load and
+   * this tap.
+   */
+  const applyMealChange = useCallback(async (idx, run) => {
+    const meal = mealHistory[idx];
+    if (!meal) return;
+    try {
+      const row = await run();
+      setMealHistory(row.meal_history || []);
+      if (userDataId) updateCachedUserData(userDataId, { meal_history: row.meal_history || [] });
+      window.dispatchEvent(
+        new CustomEvent('meal-history-updated', { detail: { meal_history: row.meal_history || [] } }),
+      );
+    } catch (error) {
+      toast.error(error?.message || i.profilePage?.nameError || 'Could not save that');
+    }
+  }, [mealHistory, userDataId, i]);
+
   const handleUserUpdate = useCallback((next) => {
     setUser(next);
     setCachedUser(next);
@@ -181,25 +205,18 @@ export default function Profile() {
         {/* Daily Calories */}
         <DailyCaloriesCard
           mealHistory={mealHistory}
-          onEditMeal={async (idx, updated) => {
-            const newHistory = [...mealHistory];
-            newHistory[idx] = updated;
-            setMealHistory(newHistory);
-            if (userDataId) {
-              updateCachedUserData(userDataId, { meal_history: newHistory });
-              window.dispatchEvent(new CustomEvent('meal-history-updated', { detail: { meal_history: newHistory } }));
-              await api.questData.update({ meal_history: newHistory });
-            }
-          }}
-          onDeleteMeal={async (idx) => {
-            const newHistory = mealHistory.filter((_, i) => i !== idx);
-            setMealHistory(newHistory);
-            if (userDataId) {
-              updateCachedUserData(userDataId, { meal_history: newHistory });
-              window.dispatchEvent(new CustomEvent('meal-history-updated', { detail: { meal_history: newHistory } }));
-              await api.questData.update({ meal_history: newHistory });
-            }
-          }}
+          onEditMeal={(idx, updated) => applyMealChange(idx, () =>
+            api.questData.meals.update(mealKey(mealHistory[idx]), {
+              meal_name: updated.meal_name,
+              calories: Math.round(updated.calories || 0),
+              protein: Math.round(updated.protein || 0),
+              fat: Math.round(updated.fat || 0),
+              carbs: Math.round(updated.carbs || 0),
+            }),
+          )}
+          onDeleteMeal={(idx) => applyMealChange(idx, () =>
+            api.questData.meals.remove(mealKey(mealHistory[idx])),
+          )}
           theme={theme}
         />
 
