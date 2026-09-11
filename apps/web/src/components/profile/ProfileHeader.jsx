@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
 import { resolveAvatar } from '@/lib/levels';
+import AvatarPickerSheet from '@/components/profile/AvatarPickerSheet';
 
 export default function ProfileHeader({ user, stats, levelProgress, theme, onUserUpdate, earnedLevel = 1 }) {
   const i = t();
@@ -14,6 +15,7 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
   const [editedName, setEditedName] = useState(user?.full_name || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const fileInputRef = useRef(null);
 
   // Keep editedName in sync when user data arrives
@@ -40,9 +42,12 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
     }
   };
 
+  // Tapping the picture opens the picker rather than the file dialog: the
+  // unlockable avatars have to be reachable from somewhere, and uploading a
+  // photo is one of the choices inside it.
   const handleAvatarClick = () => {
     if (isUploadingAvatar) return;
-    fileInputRef.current?.click();
+    setShowAvatarPicker(true);
   };
 
   const handleAvatarChange = async (e) => {
@@ -58,6 +63,7 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
       const { file_url } = await api.files.upload(file);
       await api.auth.updateMe({ avatar_url: file_url });
       onUserUpdate?.({ ...user, avatar_url: file_url });
+      setShowAvatarPicker(false);
       toast.success(i.profilePage.nameSaved);
     } catch (error) {
       console.error('Avatar upload error:', error);
@@ -193,6 +199,18 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
           />
         </div>
       </div>
+
+      {showAvatarPicker && (
+        <AvatarPickerSheet
+          user={user}
+          earnedLevel={earnedLevel}
+          theme={theme}
+          onUserUpdate={onUserUpdate}
+          onPickPhoto={() => fileInputRef.current?.click()}
+          isUploadingPhoto={isUploadingAvatar}
+          onClose={() => setShowAvatarPicker(false)}
+        />
+      )}
     </div>
   );
 }

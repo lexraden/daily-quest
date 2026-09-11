@@ -9,7 +9,6 @@ import { t, getLang } from '@/lib/i18n';
 import { LEVEL_DEFS } from '@/lib/levels';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
-import AvatarsCard from '@/components/profile/AvatarsCard';
 import NotificationSettings from '@/components/profile/NotificationSettings';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData, setCachedUser } from '@/components/UserDataCache';
 
@@ -175,12 +174,6 @@ export default function Profile() {
           earnedLevel={stats.currentLevel?.level || 1}
         />
 
-        <AvatarsCard
-          user={user}
-          earnedLevel={stats.currentLevel?.level || 1}
-          theme={theme}
-          onUserUpdate={handleUserUpdate}
-        />
 
         {/* Daily Calories */}
         <DailyCaloriesCard
