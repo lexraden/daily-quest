@@ -8,6 +8,7 @@ import { completeJson, strictSchema, nullable, type ImagePart } from '../ai/open
 import * as prompts from '../ai/prompts.js';
 import { CATEGORIES, sanitizeQuestData, sortByLevel } from '../lib/questData.js';
 import { readFileForUser } from '../lib/storage.js';
+import { validProposal, type Proposal } from '../lib/coachProposal.js';
 import { prisma } from '../db.js';
 import { overallLevelFor } from '../lib/progress.js';
 import { toJson } from '../lib/json.js';
@@ -353,41 +354,31 @@ export default async function aiRoutes(app: FastifyInstance) {
   });
 }
 
-/** How many messages are kept, and how many of those are sent to the model. */
-const HISTORY_KEPT = 40;
-const HISTORY_SENT = 12;
-
 /**
- * The English titles, for the coach's context line only — the ones the user
- * actually sees are localised in the browser's i18n.js `levels` map. Keep the
- * two in step: a coach that calls someone a Forged Master while the header says
- * something else reads as a different app talking.
+ * One shape covers all three kinds: structured output requires every property
+ * to be listed as required, so the fields the chosen kind does not use come
+ * back null and are dropped by validProposal.
  */
-const LEVEL_TITLES = [
-  'Green Novice', 'Steady Apprentice', 'Daily Practitioner', 'Forged Master', 'Diamond Expert',
-  'Tempered Hero', 'Laurel Champion', 'Golden Legend', 'Storm Titan', 'Radiant God',
-];
-
-interface Proposal {
-  kind: 'quest' | 'complete';
-  category: string;
-  level: number;
-  name?: string;
-  emoji?: string;
-}
-
 const chatSchema = strictSchema({
   reply: { type: 'string' },
   proposal: {
     type: ['object', 'null'],
     additionalProperties: false,
-    required: ['kind', 'category', 'level', 'name', 'emoji'],
+    required: [
+      'kind', 'category', 'level', 'name', 'emoji',
+      'meal_name', 'calories', 'protein', 'fat', 'carbs',
+    ],
     properties: {
-      kind: { type: 'string', enum: ['quest', 'complete'] },
-      category: { type: 'string', enum: [...CATEGORIES] },
-      level: { type: 'number' },
+      kind: { type: 'string', enum: ['quest', 'complete', 'meal'] },
+      category: { type: ['string', 'null'], enum: [...CATEGORIES, null] },
+      level: nullable('number'),
       name: nullable('string'),
       emoji: nullable('string'),
+      meal_name: nullable('string'),
+      calories: nullable('number'),
+      protein: nullable('number'),
+      fat: nullable('number'),
+      carbs: nullable('number'),
     },
   },
 });
@@ -406,34 +397,20 @@ const toWireMessage = (m: {
   created_at: m.createdAt.toISOString(),
 });
 
+/** How many messages are kept, and how many of those are sent to the model. */
+const HISTORY_KEPT = 40;
+const HISTORY_SENT = 12;
+
 /**
- * Keeps only what a proposal needs to be actionable, and returns null if it is
- * not. A "quest" has to name a replacement; a "complete" has to point at a
- * quest that exists, or the button would tick something that is not there.
+ * The English titles, for the coach's context line only — the ones the user
+ * actually sees are localised in the browser's i18n.js `levels` map. Keep the
+ * two in step: a coach that calls someone a Forged Master while the header says
+ * something else reads as a different app talking.
  */
-function validProposal(raw: unknown, questData: unknown): Proposal | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const p = raw as Partial<Proposal>;
-
-  if (p.kind !== 'quest' && p.kind !== 'complete') return null;
-  if (typeof p.category !== 'string' || !CATEGORIES.includes(p.category as never)) return null;
-
-  const level = Math.trunc(Number(p.level));
-  if (!Number.isFinite(level) || level < 1 || level > 3) return null;
-
-  if (p.kind === 'complete') {
-    const quests = (questData as Record<string, unknown>)?.[p.category];
-    const exists =
-      Array.isArray(quests) &&
-      quests.some((q) => q && typeof q === 'object' && (q as { level?: unknown }).level === level);
-    return exists ? { kind: 'complete', category: p.category, level } : null;
-  }
-
-  const name = typeof p.name === 'string' ? p.name.trim().slice(0, 80) : '';
-  if (!name) return null;
-  const emoji = typeof p.emoji === 'string' && p.emoji.trim() ? p.emoji.trim().slice(0, 8) : '⭐';
-  return { kind: 'quest', category: p.category, level, name, emoji };
-}
+const LEVEL_TITLES = [
+  'Green Novice', 'Steady Apprentice', 'Daily Practitioner', 'Forged Master', 'Diamond Expert',
+  'Tempered Hero', 'Laurel Champion', 'Golden Legend', 'Storm Titan', 'Radiant God',
+];
 
 /**
  * Drops everything past the newest HISTORY_KEPT messages. Trimming on write

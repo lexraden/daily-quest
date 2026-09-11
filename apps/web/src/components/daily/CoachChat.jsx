@@ -6,6 +6,7 @@ import { api } from '@/api/client';
 import { t, getLang } from '@/lib/i18n';
 import { aiErrorMessage } from '@/lib/aiErrors';
 import { playSfx } from '@/lib/sfx';
+import { todayKey } from '@/lib/dates';
 
 const CATEGORY_EMOJI = {
   health: '💚',
@@ -29,7 +30,14 @@ const CATEGORY_EMOJI = {
  * such thing as adding one: every quest proposal overwrites something. The card
  * shows what it would replace for exactly that reason.
  */
-export default function CoachChat({ open, onClose, theme = 'dark', questData, onApplied }) {
+export default function CoachChat({
+  open,
+  onClose,
+  theme = 'dark',
+  questData,
+  mealHistory = [],
+  onApplied,
+}) {
   const i = t();
   const copy = i.coach || {};
   const light = theme === 'light';
@@ -97,7 +105,23 @@ export default function CoachChat({ open, onClose, theme = 'dark', questData, on
     if (applying) return;
     setApplying(messageId);
     try {
-      if (proposal.kind === 'quest') {
+      if (proposal.kind === 'meal') {
+        const meal = {
+          meal_name: proposal.meal_name,
+          calories: proposal.calories,
+          protein: proposal.protein,
+          fat: proposal.fat,
+          carbs: proposal.carbs,
+          photo_urls: [],
+          date: todayKey(),
+          timestamp: new Date().toISOString(),
+        };
+        // meal_history is still a whole-array column, so the list is rebuilt
+        // from the copy this screen was given rather than appended blind.
+        const next = [meal, ...mealHistory];
+        await api.questData.update({ meal_history: next });
+        onApplied?.({ kind: 'meal', mealHistory: next });
+      } else if (proposal.kind === 'quest') {
         const current = Array.isArray(questData?.[proposal.category])
           ? questData[proposal.category]
           : [];
@@ -237,26 +261,43 @@ export default function CoachChat({ open, onClose, theme = 'dark', questData, on
                       }`}
                     >
                       <div className="text-[10px] font-bold tracking-[0.15em] text-gray-500">
-                        {proposal.kind === 'quest'
-                          ? (copy.replaceLabel || 'REPLACE A QUEST').toUpperCase()
-                          : (copy.completeLabel || 'MARK AS DONE').toUpperCase()}
+                        {(proposal.kind === 'meal'
+                          ? copy.mealLabel || 'LOG A MEAL'
+                          : proposal.kind === 'quest'
+                            ? copy.replaceLabel || 'REPLACE A QUEST'
+                            : copy.completeLabel || 'MARK AS DONE'
+                        ).toUpperCase()}
                       </div>
 
-                      <div className={`mt-2 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
-                        {CATEGORY_EMOJI[proposal.category] || '•'} {proposal.category} · L
-                        {proposal.level}
-                      </div>
-
-                      {proposal.kind === 'quest' && (
+                      {proposal.kind === 'meal' ? (
                         <>
-                          {replaced && (
-                            <div className="mt-1 text-xs text-gray-500 line-through">
-                              {replaced.emoji} {replaced.name}
-                            </div>
-                          )}
-                          <div className={`mt-1 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
-                            {proposal.emoji} {proposal.name}
+                          <div className={`mt-2 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                            🍽️ {proposal.meal_name}
                           </div>
+                          <div className="mt-1 text-xs text-gray-500">
+                            {proposal.calories} kcal · P{proposal.protein} F{proposal.fat} C
+                            {proposal.carbs}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className={`mt-2 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                            {CATEGORY_EMOJI[proposal.category] || '•'} {proposal.category} · L
+                            {proposal.level}
+                          </div>
+
+                          {proposal.kind === 'quest' && (
+                            <>
+                              {replaced && (
+                                <div className="mt-1 text-xs text-gray-500 line-through">
+                                  {replaced.emoji} {replaced.name}
+                                </div>
+                              )}
+                              <div className={`mt-1 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                                {proposal.emoji} {proposal.name}
+                              </div>
+                            </>
+                          )}
                         </>
                       )}
 

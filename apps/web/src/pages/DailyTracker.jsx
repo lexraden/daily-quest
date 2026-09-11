@@ -38,7 +38,7 @@ import PullToRefresh from '@/components/navigation/PullToRefresh';
 import useSaveUserData from '@/hooks/useSaveUserData';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { t, getLang } from '@/lib/i18n';
-import { LEVEL_DEFS } from '@/lib/levels';
+import { LEVEL_DEFS, resolveAvatar } from '@/lib/levels';
 import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
 import { todayKey } from '@/lib/dates';
 import { aiErrorMessage } from '@/lib/aiErrors';
@@ -1006,6 +1006,7 @@ export default function DailyTracker() {
   const totalQuests = Object.keys(CATEGORIES).length;
   const progress = (completedCount / totalQuests) * 100;
   const currentLevel = getCurrentLevel();
+  const avatar = resolveAvatar(user, currentLevel.level);
   const levelProgress = getProgressToNextLevel();
 
   const i = t();
@@ -1067,37 +1068,51 @@ export default function DailyTracker() {
     <PullToRefresh onRefresh={handlePullRefresh} className={`min-h-screen ${bgClass} pb-4`}>
       {/* Compact Header */}
       <div className="px-5 pb-3" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">
+        {/*
+          Identity on one line — picture, name, and the level title under it as
+          a subtitle. The title used to sit in the stats row, where two words
+          pushed the calories onto a second line at any phone width.
+        */}
+        <div className="flex items-center gap-3 mb-3">
+          <span
+            className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ${
+              theme === 'light'
+                ? 'bg-gradient-to-br from-purple-100 to-cyan-100'
+                : 'bg-gradient-to-br from-purple-500/20 to-cyan-500/20'
+            }`}
+          >
+            {avatar.kind === 'photo' || avatar.kind === 'art' ? (
+              <img src={avatar.src} alt="" className="h-full w-full object-cover" />
+            ) : avatar.kind === 'emoji' ? (
+              <span className="text-2xl" style={{ lineHeight: 1 }}>{avatar.emoji}</span>
+            ) : (
+              <span className="text-xl" style={{ lineHeight: 1 }}>{currentLevel.icon}</span>
+            )}
+          </span>
+
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-bold leading-tight">
               {user?.full_name || 'Daily Quests'}
             </h1>
+            <div className={`flex items-center gap-1.5 text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+              <span>{currentLevel.icon}</span>
+              <span className="truncate">{i.levels[currentLevel.level] || currentLevel.name}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={toggleTheme}
-              variant="ghost"
-              size="icon"
-              aria-label={theme === 'light' ? i.tracker.darkTheme : i.tracker.lightTheme}
-              className={`h-11 w-11 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
-            >
-              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </Button>
-          </div>
+
+          <Button
+            onClick={toggleTheme}
+            variant="ghost"
+            size="icon"
+            aria-label={theme === 'light' ? i.tracker.darkTheme : i.tracker.lightTheme}
+            className={`h-10 w-10 shrink-0 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
+          >
+            {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+          </Button>
         </div>
 
-        {/*
-          Stats Row. It wraps rather than squeezing: the level titles are two
-          words, and at 360px "Forged Master" broke across lines mid-title while
-          the divider and the streak stayed put. Wrapping by item keeps each
-          piece whole and moves whichever no longer fits onto the next line.
-        */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3 text-sm">
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg">{currentLevel.icon}</span>
-            <span className={`whitespace-nowrap ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>{i.levels[currentLevel.level] || currentLevel.name}</span>
-          </div>
-          <div className={`w-px h-4 ${theme === 'light' ? 'bg-black/10' : 'bg-white/10'}`} />
+        {/* Streak and calories, one line at any phone width now the title has moved. */}
+        <div className="flex items-center gap-2 mb-3 text-sm">
           <div className="flex items-center gap-1.5">
             <Flame className="w-4 h-4 text-orange-500" fill="currentColor" />
             <span className={`font-semibold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{streak}</span>
@@ -1108,7 +1123,6 @@ export default function DailyTracker() {
             onCaloriesOutChange={handleCaloriesOutChange}
             theme={theme}
           />
-
         </div>
 
         {/* Level Progress Bar */}
@@ -1324,10 +1338,12 @@ export default function DailyTracker() {
           onClose={() => setShowCoach(false)}
           theme={theme}
           questData={questData}
+          mealHistory={mealHistory}
           onApplied={(change) => {
             // The chat applied something through the ordinary endpoints; take
-            // its word for the new quest set, and the server's row for XP.
+            // its word for the new quests or meals, and the server's row for XP.
             if (change.kind === 'quest') setQuestData(change.questData);
+            else if (change.kind === 'meal') setMealHistory(change.mealHistory);
             else applyServerProgress(change.row);
           }}
         />

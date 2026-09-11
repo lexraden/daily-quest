@@ -13,6 +13,7 @@ import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { isDue, minutesSince } from '../src/jobs/window.js';
+import { validProposal } from '../src/lib/coachProposal.js';
 import {
   issueAccessToken,
   issueRefreshToken,
@@ -650,6 +651,101 @@ describe('entitlement', () => {
     });
     const usage = await prisma.aiUsage.findFirst({ where: { userId: spender.id } });
     assert.equal(usage?.calls ?? 0, 0, 'quota is charged only on success');
+  });
+});
+
+describe('what the coach is allowed to offer', () => {
+  // The quests the user actually has, as the chat route passes them in.
+  const quests = {
+    health: [{ level: 1, name: 'Walk 15 minutes', emoji: '🚶' }],
+    mind: [{ level: 1, name: 'Read 10 pages', emoji: '📚' }],
+  };
+
+  test('a replacement identical to the quest already there is dropped', () => {
+    // This is what the model actually returned when asked to log a meal: a
+    // card offering to replace "Walk 15 minutes" with "Walk 15 minutes".
+    assert.equal(
+      validProposal(
+        { kind: 'quest', category: 'health', level: 1, name: 'Walk 15 minutes', emoji: '🚶' },
+        quests,
+      ),
+      null,
+    );
+
+    // Surrounding whitespace is not a change either.
+    assert.equal(
+      validProposal(
+        { kind: 'quest', category: 'health', level: 1, name: '  Walk 15 minutes  ', emoji: '🚶' },
+        quests,
+      ),
+      null,
+    );
+  });
+
+  test('a real replacement survives, and gets an emoji either way', () => {
+    assert.deepEqual(
+      validProposal(
+        { kind: 'quest', category: 'health', level: 1, name: 'Walk 30 minutes', emoji: '🏃' },
+        quests,
+      ),
+      { kind: 'quest', category: 'health', level: 1, name: 'Walk 30 minutes', emoji: '🏃' },
+    );
+
+    const noEmoji = validProposal(
+      { kind: 'quest', category: 'health', level: 1, name: 'Walk 30 minutes', emoji: null },
+      quests,
+    );
+    assert.equal(noEmoji?.kind === 'quest' && noEmoji.emoji, '⭐');
+  });
+
+  test('ticking a quest that is not there is dropped', () => {
+    assert.equal(validProposal({ kind: 'complete', category: 'health', level: 3 }, quests), null);
+    assert.deepEqual(validProposal({ kind: 'complete', category: 'health', level: 1 }, quests), {
+      kind: 'complete',
+      category: 'health',
+      level: 1,
+    });
+  });
+
+  test('a category or level outside the grid is dropped', () => {
+    for (const bad of [
+      { kind: 'quest', category: 'crypto', level: 1, name: 'HODL', emoji: '🪙' },
+      { kind: 'quest', category: 'health', level: 0, name: 'x', emoji: '🚶' },
+      { kind: 'quest', category: 'health', level: 4, name: 'x', emoji: '🚶' },
+      { kind: 'quest', category: 'health', level: 'one', name: 'x', emoji: '🚶' },
+      { kind: 'nonsense', category: 'health', level: 1 },
+      null,
+      'a string',
+    ]) {
+      assert.equal(validProposal(bad, quests), null, JSON.stringify(bad));
+    }
+  });
+
+  test('a meal needs a name and calories to be worth a button', () => {
+    assert.equal(validProposal({ kind: 'meal', meal_name: '', calories: 500 }, quests), null);
+    assert.equal(
+      validProposal({ kind: 'meal', meal_name: 'Shawarma', calories: 0 }, quests),
+      null,
+      'a zero-calorie meal adds nothing to the day',
+    );
+
+    assert.deepEqual(
+      validProposal(
+        { kind: 'meal', meal_name: 'Shawarma', calories: 620.4, protein: 28, fat: 30, carbs: 55 },
+        quests,
+      ),
+      { kind: 'meal', meal_name: 'Shawarma', calories: 620, protein: 28, fat: 30, carbs: 55 },
+    );
+  });
+
+  test('absurd or missing macros are clamped rather than trusted', () => {
+    const p = validProposal(
+      { kind: 'meal', meal_name: 'x', calories: 400, protein: -5, fat: 999999, carbs: null },
+      quests,
+    );
+    assert.equal(p?.kind === 'meal' && p.protein, 0);
+    assert.equal(p?.kind === 'meal' && p.fat, 10000);
+    assert.equal(p?.kind === 'meal' && p.carbs, 0);
   });
 });
 
