@@ -59,8 +59,18 @@ export function applyTheme(theme) {
 
   const color = THEME_COLORS[dark ? 'dark' : 'light'];
 
-  const meta = document.getElementById('theme-color-meta');
-  if (meta) meta.setAttribute('content', color);
+  // Replace the element rather than edit it. Chrome appears to sample
+  // theme-color once and ignore a later change to the attribute — the status
+  // bar kept whatever the theme was when the page loaded, so toggling to light
+  // left a dark bar above a light app. Removing the node and inserting a fresh
+  // one makes it look again.
+  const previous = document.getElementById('theme-color-meta');
+  const meta = document.createElement('meta');
+  meta.name = 'theme-color';
+  meta.id = 'theme-color-meta';
+  meta.content = color;
+  if (previous) previous.remove();
+  document.head.appendChild(meta);
 
   // In standalone the page runs under the status bar, so whatever `body` is
   // painted with shows through there. Matching it to the app's own top colour
