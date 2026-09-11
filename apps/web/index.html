@@ -4,21 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f9fafb" id="theme-color-meta" />
+    <!--
+      One fixed status bar colour, never switched.
+
+      An installed Android app paints the bar from the manifest's theme_color,
+      which is frozen at install and cannot follow the in-app toggle. Chrome
+      still reads this meta to decide whether the clock and battery icons are
+      drawn light or dark — so while this said #f9fafb in the light theme, dark
+      icons were painted onto the manifest's dark bar and vanished into it.
+
+      Both values are therefore the same dark colour. Changing one without the
+      other is what splits the bar's background from its icons.
+    -->
+    <meta name="theme-color" content="#0f1419" id="theme-color-meta" />
     <script>
-      // Correct the theme colour during parsing, before any module loads.
-      // Chrome reads theme-color very early, and an installed app may never
-      // look again — so the first value it sees has to be the right one.
+      // The theme itself still has to be right during parsing, before any
+      // module loads, or the first paint flashes the wrong one.
       try {
         if (localStorage.getItem('dailyQuestsTheme') === 'dark') {
-          document.getElementById('theme-color-meta').content = '#0f1419';
           document.documentElement.style.colorScheme = 'dark';
         }
       } catch (e) {
         /* storage unavailable — the light default stands */
       }
     </script>
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="manifest" href="/manifest.json" />

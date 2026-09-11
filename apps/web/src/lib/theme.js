@@ -6,8 +6,15 @@
  * `--background` in dark mode, and on a phone that showed: the page extends
  * under the status bar in standalone, so a white strip sat above a dark app.
  *
- * Keeping the class, `color-scheme` and the `theme-color` meta in one place
- * means every page gets this, not just the one that happens to own the toggle.
+ * Keeping the class, `color-scheme` and the body colour in one place means
+ * every page gets this, not just the one that happens to own the toggle.
+ *
+ * The system status bar is NOT one of these. An installed Android app paints
+ * it from the manifest's theme_color, frozen at install, so it cannot follow
+ * the toggle; the page's theme-color meta only still decides whether the clock
+ * and battery are drawn light or dark. The two have to name the same colour or
+ * the icons disappear into the bar, so both are pinned to the dark shade in
+ * index.html and manifest.json, and nothing here touches them.
  */
 const KEY = 'dailyQuestsTheme';
 
@@ -92,23 +99,10 @@ export function applyTheme(theme) {
 
   const color = THEME_COLORS[dark ? 'dark' : 'light'];
 
-  // Replace the element rather than edit it. Chrome appears to sample
-  // theme-color once and ignore a later change to the attribute — the status
-  // bar kept whatever the theme was when the page loaded, so toggling to light
-  // left a dark bar above a light app. Removing the node and inserting a fresh
-  // one makes it look again.
-  const previous = document.getElementById('theme-color-meta');
-  const meta = document.createElement('meta');
-  meta.name = 'theme-color';
-  meta.id = 'theme-color-meta';
-  meta.content = color;
-  if (previous) previous.remove();
-  document.head.appendChild(meta);
-
-  // In standalone the page runs under the status bar, so whatever `body` is
-  // painted with shows through there. Matching it to the app's own top colour
-  // exactly — rather than leaving it on Tailwind's near-black token — keeps
-  // that strip from reading as a separate band.
+  // The theme-color meta is deliberately left alone — see STATUS_BAR_COLOR.
+  // Painting `body` explicitly still matters: Tailwind's --background token is
+  // a slightly different near-black, and the gap showed as a seam under the
+  // bar.
   document.body.style.backgroundColor = color;
 
   try {
