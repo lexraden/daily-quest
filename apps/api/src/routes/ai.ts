@@ -355,9 +355,9 @@ export default async function aiRoutes(app: FastifyInstance) {
 }
 
 /**
- * One shape covers all three kinds: structured output requires every property
- * to be listed as required, so the fields the chosen kind does not use come
- * back null and are dropped by validProposal.
+ * One shape covers every kind: structured output requires each property to be
+ * listed as required, so the fields the chosen kind does not use come back null
+ * and are dropped by validProposal.
  */
 const chatSchema = strictSchema({
   reply: { type: 'string' },
@@ -365,15 +365,19 @@ const chatSchema = strictSchema({
     type: ['object', 'null'],
     additionalProperties: false,
     required: [
-      'kind', 'category', 'level', 'name', 'emoji',
+      'kind', 'category', 'level', 'name', 'emoji', 'text',
       'meal_name', 'calories', 'protein', 'fat', 'carbs',
     ],
     properties: {
-      kind: { type: 'string', enum: ['quest', 'complete', 'meal'] },
+      kind: {
+        type: 'string',
+        enum: ['quest_add', 'quest_edit', 'quest_delete', 'complete', 'journal', 'meal'],
+      },
       category: { type: ['string', 'null'], enum: [...CATEGORIES, null] },
       level: nullable('number'),
       name: nullable('string'),
       emoji: nullable('string'),
+      text: nullable('string'),
       meal_name: nullable('string'),
       calories: nullable('number'),
       protein: nullable('number'),

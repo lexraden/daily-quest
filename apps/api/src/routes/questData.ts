@@ -14,6 +14,7 @@ import {
   CATEGORIES,
   sanitizeQuestData,
   sortByLevel,
+  type QuestSet,
   zeroedByCategory,
   onesByCategory,
 } from '../lib/questData.js';
@@ -105,7 +106,23 @@ const mealBody = z
 
 const mealPatchBody = mealBody.partial().strict();
 
-/** One quest in the six-by-three grid, named by where it sits. */
+/** How many quests one category may hold. The carousel gets unusable past this. */
+const MAX_QUESTS_PER_CATEGORY = 6;
+
+/**
+ * A new quest. `level` is the difficulty the caller wants, 1 to 3; if that slot
+ * is taken the server appends past it, which is what the voice flow has always
+ * done — a category is not limited to three.
+ */
+const questAddBody = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    emoji: z.string().max(16).default(''),
+    level: z.number().int().min(1).max(3).default(1),
+  })
+  .strict();
+
+/** One quest, named by where it sits. */
 const questPatchBody = z
   .object({
     name: z.string().trim().min(1).max(200),
@@ -230,6 +247,30 @@ async function writeDerived(
       categoryTotalCompleted: toJson(progress.categoryTotalCompleted),
       categoryLevels: toJson(progress.categoryLevels),
     },
+    include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+  });
+}
+
+/** The category and level from the path, both checked. */
+function questSlot(request: { params: unknown }): { category: string; level: number } {
+  const { category, level: raw } = request.params as { category: string; level: string };
+  if (!CATEGORIES.includes(category as never)) throw badRequest('No such category');
+  const level = Number(raw);
+  if (!Number.isInteger(level) || level < 1 || level > 99) throw badRequest('No such quest level');
+  return { category, level };
+}
+
+async function lockQuests(tx: Prisma.TransactionClient, userId: string): Promise<QuestSet> {
+  const locked = await tx.$queryRaw<{ quest_data: unknown }[]>`
+    SELECT quest_data FROM quest_data WHERE user_id = ${userId} FOR UPDATE`;
+  if (locked.length === 0) throw notFound('Finish onboarding before saving quests');
+  return sanitizeQuestData(locked[0]?.quest_data);
+}
+
+function writeQuests(tx: Prisma.TransactionClient, userId: string, quests: QuestSet) {
+  return tx.questData.update({
+    where: { userId },
+    data: { questData: toJson(sortByLevel(quests)) },
     include: { user: { select: { trialStartedAt: true, isPremium: true } } },
   });
 }
@@ -687,50 +728,85 @@ export default async function questDataRoutes(app: FastifyInstance) {
   });
 
   /**
-   * One quest, by category and level.
+   * Quests, one at a time.
    *
    * quest_data was the last column still sent whole — by the tracker's autosave
    * and by the coach chat. Two devices editing different quests meant the later
-   * save carried its own copy of all eighteen and quietly reverted the other.
-   * The grid is fixed, so a quest is addressed by where it sits rather than by
-   * an id, and only that slot is written.
+   * save carried its own copy of every quest and quietly reverted the other.
    */
+
+  /** Adds a quest to a category, at the requested difficulty or just past it. */
+  app.post('/quests/:category', async (request, reply) => {
+    const parsed = questAddBody.safeParse(request.body);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw badRequest(`Cannot add the quest — ${issue?.message ?? 'invalid data'}`);
+    }
+    const { category } = request.params as { category: string };
+    if (!CATEGORIES.includes(category as never)) throw badRequest('No such category');
+
+    const userId = currentUserId(request);
+    const row = await prisma.$transaction(async (tx) => {
+      const quests = await lockQuests(tx, userId);
+      const list = quests[category] ?? [];
+      if (list.length >= MAX_QUESTS_PER_CATEGORY) {
+        throw badRequest(`A category holds at most ${MAX_QUESTS_PER_CATEGORY} quests`);
+      }
+
+      const taken = new Set(list.map((q) => q.level));
+      let level = parsed.data.level;
+      while (taken.has(level)) level += 1;
+
+      return writeQuests(tx, userId, {
+        ...quests,
+        [category]: [...list, { level, name: parsed.data.name, emoji: parsed.data.emoji || '⭐' }],
+      });
+    });
+
+    reply.code(201);
+    return toWire(row);
+  });
+
+  /** Edits one quest in place. */
   app.patch('/quests/:category/:level', async (request) => {
     const parsed = questPatchBody.safeParse(request.body);
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
       throw badRequest(`Cannot save the quest — ${issue?.message ?? 'invalid data'}`);
     }
-    const { category, level: rawLevel } = request.params as { category: string; level: string };
-    if (!CATEGORIES.includes(category as never)) throw badRequest('No such category');
-
-    const level = Number(rawLevel);
-    if (!Number.isInteger(level) || level < 1 || level > 3) throw badRequest('No such quest level');
-
+    const { category, level } = questSlot(request);
     const userId = currentUserId(request);
+
     const row = await prisma.$transaction(async (tx) => {
-      const locked = await tx.$queryRaw<{ quest_data: unknown }[]>`
-        SELECT quest_data FROM quest_data WHERE user_id = ${userId} FOR UPDATE`;
-      if (locked.length === 0) throw notFound('Finish onboarding before saving quests');
-
-      const quests = sanitizeQuestData(locked[0]?.quest_data);
+      const quests = await lockQuests(tx, userId);
       const list = quests[category] ?? [];
-      const index = list.findIndex((q) => q.level === level);
-      if (index === -1) throw notFound('That quest is no longer there');
+      if (!list.some((q) => q.level === level)) throw notFound('That quest is no longer there');
 
-      const next = {
+      return writeQuests(tx, userId, {
         ...quests,
-        [category]: list.map((q, idx) =>
-          idx === index
+        [category]: list.map((q) =>
+          q.level === level
             ? { ...q, name: parsed.data.name, emoji: parsed.data.emoji || q.emoji }
             : q,
         ),
-      };
+      });
+    });
 
-      return tx.questData.update({
-        where: { userId },
-        data: { questData: toJson(sortByLevel(next)) },
-        include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+    return toWire(row);
+  });
+
+  /** Removes one quest. Past completions stay: they are history, not a plan. */
+  app.delete('/quests/:category/:level', async (request) => {
+    const { category, level } = questSlot(request);
+    const userId = currentUserId(request);
+
+    const row = await prisma.$transaction(async (tx) => {
+      const quests = await lockQuests(tx, userId);
+      const list = quests[category] ?? [];
+      // Deleting twice is the same as deleting once.
+      return writeQuests(tx, userId, {
+        ...quests,
+        [category]: list.filter((q) => q.level !== level),
       });
     });
 

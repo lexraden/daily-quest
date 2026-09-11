@@ -208,6 +208,15 @@ export const api = {
         method: 'PATCH',
         body: { name: quest.name, emoji: quest.emoji || '' },
       }),
+    addQuest: (category, quest) =>
+      request(`/api/quest-data/quests/${encodeURIComponent(category)}`, {
+        method: 'POST',
+        body: { name: quest.name, emoji: quest.emoji || '', level: quest.level || 1 },
+      }),
+    removeQuest: (category, level) =>
+      request(`/api/quest-data/quests/${encodeURIComponent(category)}/${level}`, {
+        method: 'DELETE',
+      }),
 
     /**
      * Journal entries, appended one at a time. Append-only by design — nothing

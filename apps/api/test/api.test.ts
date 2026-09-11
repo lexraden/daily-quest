@@ -655,7 +655,6 @@ describe('entitlement', () => {
 });
 
 describe('what the coach is allowed to offer', () => {
-  // The quests the user actually has, as the chat route passes them in.
   const quests = {
     health: [{ level: 1, name: 'Walk 15 minutes', emoji: '🚶' }],
     mind: [{ level: 1, name: 'Read 10 pages', emoji: '📚' }],
@@ -664,61 +663,87 @@ describe('what the coach is allowed to offer', () => {
   test('a replacement identical to the quest already there is dropped', () => {
     // This is what the model actually returned when asked to log a meal: a
     // card offering to replace "Walk 15 minutes" with "Walk 15 minutes".
-    assert.equal(
-      validProposal(
-        { kind: 'quest', category: 'health', level: 1, name: 'Walk 15 minutes', emoji: '🚶' },
-        quests,
-      ),
-      null,
-    );
-
-    // Surrounding whitespace is not a change either.
-    assert.equal(
-      validProposal(
-        { kind: 'quest', category: 'health', level: 1, name: '  Walk 15 minutes  ', emoji: '🚶' },
-        quests,
-      ),
-      null,
-    );
+    for (const name of ['Walk 15 minutes', '  Walk 15 minutes  ', 'walk 15 MINUTES']) {
+      assert.equal(
+        validProposal({ kind: 'quest_edit', category: 'health', level: 1, name, emoji: '🚶' }, quests),
+        null,
+        name,
+      );
+    }
   });
 
-  test('a real replacement survives, and gets an emoji either way', () => {
-    assert.deepEqual(
+  // The model kept prefixing the name with the emoji it had already put in the
+  // emoji field, which drew it twice and slipped past the check above.
+  test('an emoji inside the name is stripped, not treated as a difference', () => {
+    assert.equal(
       validProposal(
-        { kind: 'quest', category: 'health', level: 1, name: 'Walk 30 minutes', emoji: '🏃' },
+        { kind: 'quest_edit', category: 'health', level: 1, name: '🚶 Walk 15 minutes', emoji: '🚶' },
         quests,
       ),
-      { kind: 'quest', category: 'health', level: 1, name: 'Walk 30 minutes', emoji: '🏃' },
+      null,
+      'the same quest with its emoji glued on is still the same quest',
     );
 
-    const noEmoji = validProposal(
-      { kind: 'quest', category: 'health', level: 1, name: 'Walk 30 minutes', emoji: null },
+    const real = validProposal(
+      { kind: 'quest_edit', category: 'health', level: 1, name: '🏃 Run 3km', emoji: '🏃' },
       quests,
     );
-    assert.equal(noEmoji?.kind === 'quest' && noEmoji.emoji, '⭐');
+    assert.equal(real?.kind === 'quest_edit' && real.name, 'Run 3km');
   });
 
-  test('ticking a quest that is not there is dropped', () => {
+  test('adding a quest the user already has is dropped', () => {
+    assert.equal(
+      validProposal({ kind: 'quest_add', category: 'health', level: 1, name: 'Walk 15 minutes' }, quests),
+      null,
+    );
+    assert.deepEqual(
+      validProposal(
+        { kind: 'quest_add', category: 'health', level: 2, name: 'Sleep by 23:00', emoji: '😴' },
+        quests,
+      ),
+      { kind: 'quest_add', category: 'health', level: 2, name: 'Sleep by 23:00', emoji: '😴' },
+    );
+  });
+
+  test('deleting or ticking a quest that is not there is dropped', () => {
+    assert.equal(validProposal({ kind: 'quest_delete', category: 'health', level: 3 }, quests), null);
     assert.equal(validProposal({ kind: 'complete', category: 'health', level: 3 }, quests), null);
-    assert.deepEqual(validProposal({ kind: 'complete', category: 'health', level: 1 }, quests), {
-      kind: 'complete',
-      category: 'health',
-      level: 1,
-    });
+
+    const del = validProposal({ kind: 'quest_delete', category: 'health', level: 1 }, quests);
+    assert.equal(
+      del?.kind === 'quest_delete' && del.name,
+      'Walk 15 minutes',
+      'the card names what would disappear',
+    );
   });
 
-  test('a category or level outside the grid is dropped', () => {
+  test('a journal note needs text and a real category', () => {
+    assert.equal(validProposal({ kind: 'journal', category: 'health', text: '  ' }, quests), null);
+    assert.equal(validProposal({ kind: 'journal', category: 'crypto', text: 'hi' }, quests), null);
+    assert.deepEqual(
+      validProposal({ kind: 'journal', category: 'mind', text: 'Read on the train' }, quests),
+      { kind: 'journal', category: 'mind', text: 'Read on the train' },
+    );
+  });
+
+  test('an unknown category, kind or shape is dropped', () => {
     for (const bad of [
-      { kind: 'quest', category: 'crypto', level: 1, name: 'HODL', emoji: '🪙' },
-      { kind: 'quest', category: 'health', level: 0, name: 'x', emoji: '🚶' },
-      { kind: 'quest', category: 'health', level: 4, name: 'x', emoji: '🚶' },
-      { kind: 'quest', category: 'health', level: 'one', name: 'x', emoji: '🚶' },
+      { kind: 'quest_edit', category: 'crypto', level: 1, name: 'HODL', emoji: '🪙' },
+      { kind: 'quest_edit', category: 'health', level: 0, name: 'x', emoji: '🚶' },
       { kind: 'nonsense', category: 'health', level: 1 },
       null,
       'a string',
     ]) {
       assert.equal(validProposal(bad, quests), null, JSON.stringify(bad));
     }
+  });
+
+  test('the old "quest" kind still renders for proposals already stored', () => {
+    const p = validProposal(
+      { kind: 'quest', category: 'health', level: 1, name: 'Walk 30 minutes', emoji: '🚶' },
+      quests,
+    );
+    assert.equal(p?.kind, 'quest_edit');
   });
 
   test('a meal needs a name and calories to be worth a button', () => {
@@ -929,12 +954,59 @@ describe('quests are edited one slot at a time', () => {
     );
   });
 
-  test('an unknown category or level is refused', async () => {
+  test('a quest can be added past the third, and the category has a ceiling', async () => {
+    await onboard(alice);
+
+    const added = await call('/api/quest-data/quests/health', {
+      token: alice.token, method: 'POST', body: { name: 'Sleep by 23:00', emoji: '😴', level: 1 },
+    });
+    assert.equal(added.status, 201);
+    const row = await added.json();
+    assert.equal(row.quest_data.health.length, 4, 'a category is not limited to three');
+    // Level 1 was taken, so it lands just past the ones that exist.
+    assert.equal(
+      row.quest_data.health.find((q: { name: string }) => q.name === 'Sleep by 23:00').level,
+      4,
+    );
+
+    for (const name of ['Stretch', 'Water']) {
+      await call('/api/quest-data/quests/health', {
+        token: alice.token, method: 'POST', body: { name, emoji: '💧' },
+      });
+    }
+    const tooMany = await call('/api/quest-data/quests/health', {
+      token: alice.token, method: 'POST', body: { name: 'One more', emoji: '➕' },
+    });
+    assert.equal(tooMany.status, 400, 'a category has a ceiling');
+  });
+
+  test('deleting a quest leaves the others and is safe to repeat', async () => {
+    await onboard(alice);
+    const first = await call('/api/quest-data/quests/health/2', {
+      token: alice.token, method: 'DELETE',
+    });
+    assert.equal(first.status, 200);
+    assert.deepEqual(
+      (await first.json()).quest_data.health.map((q: { level: number }) => q.level),
+      [1, 3],
+    );
+
+    const again = await call('/api/quest-data/quests/health/2', {
+      token: alice.token, method: 'DELETE',
+    });
+    assert.equal(again.status, 200);
+  });
+
+  test('a bad category, level or body is refused; a missing quest is 404', async () => {
     await onboard(alice);
     assert.equal((await save(alice, 'crypto', 1, { name: 'HODL' })).status, 400);
-    assert.equal((await save(alice, 'health', 9, { name: 'x' })).status, 400);
+    assert.equal((await save(alice, 'health', 0, { name: 'x' })).status, 400);
     assert.equal((await save(alice, 'health', 1, { name: '  ' })).status, 400);
     assert.equal((await save(alice, 'health', 1, { name: 'x', sneaky: 1 })).status, 400);
+
+    // Levels are no longer capped at three, so 9 is a well-formed slot that
+    // simply holds nothing — not found rather than malformed.
+    assert.equal((await save(alice, 'health', 9, { name: 'x' })).status, 404);
   });
 
   test("one user cannot edit another user's quests", async () => {

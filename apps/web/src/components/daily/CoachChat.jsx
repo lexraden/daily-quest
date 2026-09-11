@@ -8,6 +8,16 @@ import { aiErrorMessage } from '@/lib/aiErrors';
 import { playSfx } from '@/lib/sfx';
 import { todayKey } from '@/lib/dates';
 
+/** The line above each card, by what it is offering to do. */
+const PROPOSAL_LABELS = {
+  meal: (c) => c.mealLabel || 'Log a meal',
+  quest_add: (c) => c.addLabel || 'Add a quest',
+  quest_edit: (c) => c.replaceLabel || 'Replace a quest',
+  quest_delete: (c) => c.deleteLabel || 'Remove a quest',
+  complete: (c) => c.completeLabel || 'Mark as done',
+  journal: (c) => c.journalLabel || 'Save a note',
+};
+
 const CATEGORY_EMOJI = {
   health: '💚',
   mind: '🧠',
@@ -134,23 +144,52 @@ export default function CoachChat({
           title: copy.mealAdded || 'Meal logged',
           detail: `${proposal.meal_name} · ${proposal.calories} kcal`,
         };
-      } else if (proposal.kind === 'quest') {
+      } else if (proposal.kind === 'quest_add') {
+        const row = await api.questData.addQuest(proposal.category, proposal);
+        onApplied?.({ kind: 'quest', questData: row.quest_data });
+        done = {
+          icon: proposal.emoji || '➕',
+          title: copy.questAdded || 'Quest added',
+          detail: proposal.name,
+        };
+      } else if (proposal.kind === 'quest_edit') {
         // One slot, rewritten by the server — the whole grid never leaves here.
-        const row = await api.questData.saveQuest(proposal.category, proposal.level, {
-          name: proposal.name,
-          emoji: proposal.emoji,
-        });
+        const row = await api.questData.saveQuest(proposal.category, proposal.level, proposal);
         onApplied?.({ kind: 'quest', questData: row.quest_data });
         done = {
           icon: proposal.emoji || '✏️',
           title: copy.questReplaced || 'Quest replaced',
           detail: proposal.name,
         };
+      } else if (proposal.kind === 'quest_delete') {
+        const row = await api.questData.removeQuest(proposal.category, proposal.level);
+        onApplied?.({ kind: 'quest', questData: row.quest_data });
+        done = {
+          icon: '🗑️',
+          title: copy.questDeleted || 'Quest removed',
+          detail: proposal.name,
+        };
+      } else if (proposal.kind === 'journal') {
+        const row = await api.questData.journal.add({
+          id: `coach-${Date.now()}`,
+          date: todayKey(),
+          category: proposal.category,
+          emoji: '📝',
+          text: proposal.text,
+          rawText: '',
+          type: 'journal',
+        });
+        onApplied?.({ kind: 'journal', journalEntries: row.journal_entries });
+        done = {
+          icon: '📝',
+          title: copy.journalSaved || 'Noted',
+          detail: proposal.text,
+        };
       } else {
         const quest = (questData?.[proposal.category] || []).find(
           (q) => q.level === proposal.level,
         );
-        const row = await api.questData.completions.add(new Date().toISOString().slice(0, 10), {
+        const row = await api.questData.completions.add(todayKey(), {
           category: proposal.category,
           name: quest?.name || '',
           level: proposal.level,
@@ -162,7 +201,7 @@ export default function CoachChat({
           title: copy.questDone || 'Marked done',
           // A completion is worth its level in XP, which is the part worth
           // seeing — the quest name is already on the card above.
-          detail: `${quest?.name || ''} · +${proposal.level} XP`.trim(),
+          detail: `${quest?.name || ''} · +${Math.min(proposal.level, 3)} XP`.trim(),
         };
       }
 
@@ -302,7 +341,7 @@ export default function CoachChat({
             {messages.map((m) => {
               const mine = m.role === 'user';
               const proposal = !mine && m.proposal && !dismissed.has(m.id) ? m.proposal : null;
-              const replaced = proposal?.kind === 'quest'
+              const replaced = proposal?.kind === 'quest_edit'
                 ? (questData?.[proposal.category] || []).find((q) => q.level === proposal.level)
                 : null;
 
@@ -320,12 +359,7 @@ export default function CoachChat({
                       }`}
                     >
                       <div className="text-[10px] font-bold tracking-[0.15em] text-gray-500">
-                        {(proposal.kind === 'meal'
-                          ? copy.mealLabel || 'LOG A MEAL'
-                          : proposal.kind === 'quest'
-                            ? copy.replaceLabel || 'REPLACE A QUEST'
-                            : copy.completeLabel || 'MARK AS DONE'
-                        ).toUpperCase()}
+                        {(PROPOSAL_LABELS[proposal.kind]?.(copy) || copy.apply || 'Apply').toUpperCase()}
                       </div>
 
                       {proposal.kind === 'meal' ? (
@@ -338,6 +372,13 @@ export default function CoachChat({
                             {proposal.carbs}
                           </div>
                         </>
+                      ) : proposal.kind === 'journal' ? (
+                        <>
+                          <div className={`mt-2 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                            {CATEGORY_EMOJI[proposal.category] || '•'} {proposal.category}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">{proposal.text}</div>
+                        </>
                       ) : (
                         <>
                           <div className={`mt-2 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
@@ -345,18 +386,22 @@ export default function CoachChat({
                             {proposal.level}
                           </div>
 
-                          {proposal.kind === 'quest' && (
-                            <>
-                              {replaced && (
-                                <div className="mt-1 text-xs text-gray-500 line-through">
-                                  {replaced.emoji} {replaced.name}
-                                </div>
-                              )}
-                              <div className={`mt-1 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
-                                {proposal.emoji} {proposal.name}
-                              </div>
-                            </>
+                          {/* What it replaces, struck through, so the cost is visible. */}
+                          {proposal.kind === 'quest_edit' && replaced && (
+                            <div className="mt-1 text-xs text-gray-500 line-through">
+                              {replaced.emoji} {replaced.name}
+                            </div>
                           )}
+
+                          {proposal.kind === 'quest_delete' ? (
+                            <div className="mt-1 text-sm text-gray-500 line-through">
+                              {proposal.name}
+                            </div>
+                          ) : proposal.kind === 'quest_add' || proposal.kind === 'quest_edit' ? (
+                            <div className={`mt-1 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                              {proposal.emoji} {proposal.name}
+                            </div>
+                          ) : null}
                         </>
                       )}
 

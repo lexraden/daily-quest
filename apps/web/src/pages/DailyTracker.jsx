@@ -1391,8 +1391,9 @@ export default function DailyTracker() {
           onApplied={(change) => {
             // The chat applied something through the ordinary endpoints; take
             // its word for the new quests or meals, and the server's row for XP.
-            if (change.kind === 'quest') setQuestData(change.questData);
+            if (change.kind === 'quest') setQuestData(sanitizeQuestData(change.questData, DEFAULT_QUEST_DATA));
             else if (change.kind === 'meal') setMealHistory(change.mealHistory);
+            else if (change.kind === 'journal') setJournalEntries(change.journalEntries);
             else applyServerProgress(change.row);
           }}
         />
