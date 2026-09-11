@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity, Sun, Moon } from 'lucide-react';
+import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity, Sun, Moon, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 // CalendarView replaced by History page
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
@@ -19,6 +19,7 @@ const StreakFreezeModal = React.lazy(() => import('@/components/daily/StreakFree
 const MealReportModal = React.lazy(() => import('@/components/daily/MealReportModal.jsx'));
 const CategoryLevelUpModal = React.lazy(() => import('@/components/daily/CategoryLevelUpModal.jsx'));
 const LevelUpModal = React.lazy(() => import('@/components/daily/LevelUpModal.jsx'));
+const CoachChat = React.lazy(() => import('@/components/daily/CoachChat.jsx'));
 import { isCategoryLevelMilestone } from '@/components/daily/CategoryLevelUpModal.jsx';
 
 // Dynamic import for confetti — only loaded on first quest completion
@@ -132,6 +133,7 @@ export default function DailyTracker() {
   const [streakFreezes, setStreakFreezes] = useState(1);
 
   /** The progress endpoints return the whole row; the server's numbers win. */
+  const [showCoach, setShowCoach] = useState(false);
   const [levelUp, setLevelUp] = useState(null);
   const [overallLevel, setOverallLevel] = useState(null);
   // dismissLevelUp is memoised on applyServerProgress alone, so it reads the
@@ -1261,6 +1263,22 @@ export default function DailyTracker() {
         />
       )}
 
+      {/*
+        The coach, one tap away from anywhere on this screen. It sits above the
+        tab bar rather than beside the Voice button: Voice is how quests get
+        made, and burying it behind a second affordance would cost more than the
+        chat gains. `display: none` on the inactive tab wrapper takes this with
+        it, so it never appears over History or Profile.
+      */}
+      <button
+        onClick={() => setShowCoach(true)}
+        aria-label={t().coach?.title || 'Coach'}
+        className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-500 shadow-lg shadow-purple-900/40 active:scale-95 transition-transform"
+        style={{ bottom: 'calc(3.75rem + env(safe-area-inset-bottom, 0px))' }}
+      >
+        <MessageCircle className="w-6 h-6 text-white" />
+      </button>
+
       {/* Streak Freeze Modal */}
       {showStreakFreeze && pendingFreezeData && (
         <StreakFreezeModal
@@ -1283,6 +1301,20 @@ export default function DailyTracker() {
       )}
       {levelUp && (
         <LevelUpModal level={levelUp} onClose={dismissLevelUp} theme={theme} />
+      )}
+      {showCoach && (
+        <CoachChat
+          open
+          onClose={() => setShowCoach(false)}
+          theme={theme}
+          questData={questData}
+          onApplied={(change) => {
+            // The chat applied something through the ordinary endpoints; take
+            // its word for the new quest set, and the server's row for XP.
+            if (change.kind === 'quest') setQuestData(change.questData);
+            else applyServerProgress(change.row);
+          }}
+        />
       )}
       </React.Suspense>
 

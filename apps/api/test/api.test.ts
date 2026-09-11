@@ -583,6 +583,89 @@ describe('entitlement', () => {
   });
 });
 
+describe('coach chat', () => {
+  async function onboard(actor: Actor) {
+    await prisma.chatMessage.deleteMany({ where: { userId: actor.id } });
+    await prisma.questData.deleteMany({ where: { userId: actor.id } });
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+  }
+
+  test('history starts empty and is scoped to the caller', async () => {
+    await onboard(alice);
+    await prisma.chatMessage.create({
+      data: { userId: bob.id, role: 'user', content: "bob's private question" },
+    });
+
+    const res = await call('/api/ai/chat', { token: alice.token });
+    assert.equal(res.status, 200);
+    const { messages } = await res.json();
+    assert.deepEqual(messages, [], "one user's chat is not another's");
+  });
+
+  test('history comes back oldest first, with its proposal', async () => {
+    await onboard(alice);
+    await prisma.chatMessage.create({
+      data: { userId: alice.id, role: 'user', content: 'first' },
+    });
+    await prisma.chatMessage.create({
+      data: {
+        userId: alice.id,
+        role: 'assistant',
+        content: 'second',
+        proposal: { kind: 'quest', category: 'health', level: 1, name: 'Walk', emoji: '🚶' },
+      },
+    });
+
+    const { messages } = await (await call('/api/ai/chat', { token: alice.token })).json();
+    assert.deepEqual(messages.map((m: { content: string }) => m.content), ['first', 'second']);
+    assert.equal(messages[1].proposal.name, 'Walk');
+    assert.equal(messages[0].proposal, null);
+  });
+
+  test('clearing removes only the caller\'s messages', async () => {
+    await onboard(alice);
+    await prisma.chatMessage.create({ data: { userId: alice.id, role: 'user', content: 'mine' } });
+    await prisma.chatMessage.create({ data: { userId: bob.id, role: 'user', content: 'theirs' } });
+
+    const res = await call('/api/ai/chat', { token: alice.token, method: 'DELETE' });
+    assert.equal(res.status, 200);
+
+    assert.equal(await prisma.chatMessage.count({ where: { userId: alice.id } }), 0);
+    assert.ok(await prisma.chatMessage.count({ where: { userId: bob.id } }) > 0);
+  });
+
+  test('the chat is closed to anyone without a token', async () => {
+    for (const method of ['GET', 'POST', 'DELETE']) {
+      const res = await call('/api/ai/chat', {
+        method,
+        ...(method === 'POST' ? { body: { message: 'hello' } } : {}),
+      });
+      assert.equal(res.status, 401, `${method} /api/ai/chat must require a token`);
+    }
+  });
+
+  test('an empty or oversized message is refused before any model call', async () => {
+    await onboard(alice);
+    for (const message of ['', '   ', 'x'.repeat(1001)]) {
+      const res = await call('/api/ai/chat', { token: alice.token, method: 'POST', body: { message } });
+      assert.equal(res.status, 400);
+    }
+    // Nothing was written on the way to being rejected.
+    assert.equal(await prisma.chatMessage.count({ where: { userId: alice.id } }), 0);
+  });
+
+  test('the coach needs quest data before it can say anything', async () => {
+    await prisma.questData.deleteMany({ where: { userId: alice.id } });
+    const res = await call('/api/ai/chat', {
+      token: alice.token, method: 'POST', body: { message: 'hi' },
+    });
+    assert.equal(res.status, 404);
+  });
+});
+
 describe('files', () => {
   // A 1x1 transparent PNG.
   const PNG = Buffer.from(

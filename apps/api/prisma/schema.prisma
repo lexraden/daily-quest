@@ -43,6 +43,7 @@ model User {
   questData     QuestData?
   files         File[]
   refreshTokens RefreshToken[]
+  chatMessages  ChatMessage[]
 
   @@map("users")
 }
@@ -118,6 +119,37 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+/**
+ * The coach conversation, oldest first.
+ *
+ * Only the tail is ever sent to the model — a chat that grew without bound
+ * would make every reply more expensive than the last — and the table is
+ * trimmed to the same window on write, so the row count per user is capped
+ * rather than merely queried with a limit.
+ */
+model ChatMessage {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+
+  // 'user' or 'assistant'. Not an enum: the set is settled here, and a
+  // migration to add a role would be more ceremony than the check is worth.
+  role    String
+  content String @db.Text
+
+  // The action offered alongside an assistant reply, if any:
+  // { kind: 'quest' | 'complete', category, level, name?, emoji? }.
+  // Nothing is applied from here — the client calls the ordinary quest
+  // endpoints once the user taps, so the chat route never writes quest data.
+  proposal Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("chat_messages")
 }
 
 // Per-user monthly AI spend guard. Rows are cheap; one per user per period.

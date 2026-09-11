@@ -212,6 +212,17 @@ export const api = {
   },
 
   ai: {
+    /**
+     * The coach chat. `send` returns { reply, proposal } — the proposal is an
+     * offer the user taps to apply, never something the server has already
+     * done.
+     */
+    chat: {
+      history: () => request('/api/ai/chat'),
+      send: (message, lang) => request('/api/ai/chat', { method: 'POST', body: { message, lang } }),
+      clear: () => request('/api/ai/chat', { method: 'DELETE' }),
+    },
+
     generateQuests: (answers, lang) =>
       request('/api/ai/quests/generate', { method: 'POST', body: { answers, lang } }),
     voiceIntent: (text, questData, lang) =>
