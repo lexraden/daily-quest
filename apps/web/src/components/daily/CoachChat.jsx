@@ -135,19 +135,12 @@ export default function CoachChat({
           detail: `${proposal.meal_name} · ${proposal.calories} kcal`,
         };
       } else if (proposal.kind === 'quest') {
-        const current = Array.isArray(questData?.[proposal.category])
-          ? questData[proposal.category]
-          : [];
-        const next = {
-          ...questData,
-          [proposal.category]: current.map((q) =>
-            q.level === proposal.level
-              ? { ...q, name: proposal.name, emoji: proposal.emoji || q.emoji }
-              : q,
-          ),
-        };
-        await api.questData.update({ quest_data: next });
-        onApplied?.({ kind: 'quest', questData: next });
+        // One slot, rewritten by the server — the whole grid never leaves here.
+        const row = await api.questData.saveQuest(proposal.category, proposal.level, {
+          name: proposal.name,
+          emoji: proposal.emoji,
+        });
+        onApplied?.({ kind: 'quest', questData: row.quest_data });
         done = {
           icon: proposal.emoji || '✏️',
           title: copy.questReplaced || 'Quest replaced',

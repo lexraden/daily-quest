@@ -283,12 +283,19 @@ export default function DailyTracker() {
   }, []);
 
   const handleSaveQuest = (categoryKey, questLevel, updatedData) => {
+    // Optimistic, then the server's grid wins: it writes only this slot, so a
+    // quest edited on another device survives instead of being reverted by the
+    // copy this screen happens to hold.
     setQuestData(prev => ({
       ...prev,
-      [categoryKey]: prev[categoryKey].map(q => 
+      [categoryKey]: prev[categoryKey].map(q =>
         q.level === questLevel ? { ...q, ...updatedData } : q
       )
     }));
+    api.questData
+      .saveQuest(categoryKey, questLevel, updatedData)
+      .then((row) => setQuestData(sanitizeQuestData(row.quest_data, DEFAULT_QUEST_DATA)))
+      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
   };
 
   const handleQuestSuggestion = useCallback((suggestion) => {
@@ -738,7 +745,6 @@ export default function DailyTracker() {
   // a debounced whole-document save can no longer overwrite a completion made
   // in another tab with the numbers this one happened to load at mount.
   const getStateSnapshot = useCallback(() => ({
-    quest_data: questData,
     // meal_history is not here either, for the same reason. It is appended,
     // edited and deleted one meal at a time through its own endpoints; sending
     // the whole array on a debounce would put it back to whatever this screen
@@ -747,10 +753,9 @@ export default function DailyTracker() {
     // trial_started_at and is_premium are owned by the server and rejected by
     // the API's field allowlist — they are read from responses, never sent.
     last_visit_date: getTodayKey()
-  }), [questData, caloriesBurned]);
+  }), [caloriesBurned]);
 
   const restoreSnapshot = useCallback((snapshot) => {
-    setQuestData(snapshot.quest_data);
     setCaloriesBurned(snapshot.calories_burned || {});
   }, []);
 
@@ -1010,12 +1015,19 @@ export default function DailyTracker() {
 
   // Stable callback refs for SwipeableQuestCard memo
   const handleSaveQuestCb = useCallback((categoryKey, questLevel, updatedData) => {
+    // Optimistic, then the server's grid wins: it writes only this slot, so a
+    // quest edited on another device survives instead of being reverted by the
+    // copy this screen happens to hold.
     setQuestData(prev => ({
       ...prev,
-      [categoryKey]: prev[categoryKey].map(q => 
+      [categoryKey]: prev[categoryKey].map(q =>
         q.level === questLevel ? { ...q, ...updatedData } : q
       )
     }));
+    api.questData
+      .saveQuest(categoryKey, questLevel, updatedData)
+      .then((row) => setQuestData(sanitizeQuestData(row.quest_data, DEFAULT_QUEST_DATA)))
+      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
   }, []);
 
   const handleCategoryClick = useCallback((categoryKey) => {

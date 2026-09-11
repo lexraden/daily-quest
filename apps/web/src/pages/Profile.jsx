@@ -47,6 +47,23 @@ export default function Profile() {
   // The shared cache has to move with the profile, not just this page's state:
   // DailyTracker re-checks the cached user on every focus and would otherwise
   // overwrite a freshly chosen name with the email-derived default.
+  const handleUserUpdate = useCallback((next) => {
+    setUser(next);
+    setCachedUser(next);
+  }, []);
+  const [stats, setStats] = useState({
+    streak: 0,
+    totalCompleted: 0,
+    categoryLevels: {},
+    categoryTotalCompleted: {},
+    completionHistory: {},
+    currentLevel: LEVELS[0]
+  });
+  const [journalEntries, setJournalEntries] = useState([]);
+  const [mealHistory, setMealHistory] = useState([]);
+  const [notificationSettings, setNotificationSettings] = useState(null);
+  const [userDataId, setUserDataId] = useState(null);
+
   /**
    * One meal changed, named by its own id rather than its position.
    *
@@ -70,22 +87,6 @@ export default function Profile() {
     }
   }, [mealHistory, userDataId, i]);
 
-  const handleUserUpdate = useCallback((next) => {
-    setUser(next);
-    setCachedUser(next);
-  }, []);
-  const [stats, setStats] = useState({
-    streak: 0,
-    totalCompleted: 0,
-    categoryLevels: {},
-    categoryTotalCompleted: {},
-    completionHistory: {},
-    currentLevel: LEVELS[0]
-  });
-  const [journalEntries, setJournalEntries] = useState([]);
-  const [mealHistory, setMealHistory] = useState([]);
-  const [notificationSettings, setNotificationSettings] = useState(null);
-  const [userDataId, setUserDataId] = useState(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);

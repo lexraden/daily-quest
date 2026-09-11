@@ -11,6 +11,7 @@ import {
 } from '../lib/progress.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import {
+  CATEGORIES,
   sanitizeQuestData,
   sortByLevel,
   zeroedByCategory,
@@ -103,6 +104,14 @@ const mealBody = z
   .strict();
 
 const mealPatchBody = mealBody.partial().strict();
+
+/** One quest in the six-by-three grid, named by where it sits. */
+const questPatchBody = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    emoji: z.string().max(16).default(''),
+  })
+  .strict();
 
 /**
  * A journal entry. Append-only: nothing in the app edits or deletes one, so
@@ -674,6 +683,57 @@ export default async function questDataRoutes(app: FastifyInstance) {
     });
 
     reply.code(201);
+    return toWire(row);
+  });
+
+  /**
+   * One quest, by category and level.
+   *
+   * quest_data was the last column still sent whole — by the tracker's autosave
+   * and by the coach chat. Two devices editing different quests meant the later
+   * save carried its own copy of all eighteen and quietly reverted the other.
+   * The grid is fixed, so a quest is addressed by where it sits rather than by
+   * an id, and only that slot is written.
+   */
+  app.patch('/quests/:category/:level', async (request) => {
+    const parsed = questPatchBody.safeParse(request.body);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw badRequest(`Cannot save the quest — ${issue?.message ?? 'invalid data'}`);
+    }
+    const { category, level: rawLevel } = request.params as { category: string; level: string };
+    if (!CATEGORIES.includes(category as never)) throw badRequest('No such category');
+
+    const level = Number(rawLevel);
+    if (!Number.isInteger(level) || level < 1 || level > 3) throw badRequest('No such quest level');
+
+    const userId = currentUserId(request);
+    const row = await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ quest_data: unknown }[]>`
+        SELECT quest_data FROM quest_data WHERE user_id = ${userId} FOR UPDATE`;
+      if (locked.length === 0) throw notFound('Finish onboarding before saving quests');
+
+      const quests = sanitizeQuestData(locked[0]?.quest_data);
+      const list = quests[category] ?? [];
+      const index = list.findIndex((q) => q.level === level);
+      if (index === -1) throw notFound('That quest is no longer there');
+
+      const next = {
+        ...quests,
+        [category]: list.map((q, idx) =>
+          idx === index
+            ? { ...q, name: parsed.data.name, emoji: parsed.data.emoji || q.emoji }
+            : q,
+        ),
+      };
+
+      return tx.questData.update({
+        where: { userId },
+        data: { questData: toJson(sortByLevel(next)) },
+        include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+      });
+    });
+
     return toWire(row);
   });
 

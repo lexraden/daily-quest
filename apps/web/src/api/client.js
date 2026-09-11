@@ -200,6 +200,16 @@ export const api = {
       request('/api/quest-data/streak', { method: 'POST', body: { day } }),
 
     /**
+     * One quest, by where it sits in the grid. The server rewrites only that
+     * slot, so an edit made elsewhere is not reverted by this one.
+     */
+    saveQuest: (category, level, quest) =>
+      request(`/api/quest-data/quests/${encodeURIComponent(category)}/${level}`, {
+        method: 'PATCH',
+        body: { name: quest.name, emoji: quest.emoji || '' },
+      }),
+
+    /**
      * Journal entries, appended one at a time. Append-only by design — nothing
      * edits or deletes one — and the id makes a retry a no-op.
      */

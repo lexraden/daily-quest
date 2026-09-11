@@ -877,6 +877,86 @@ describe('meals are changed one at a time', () => {
   });
 });
 
+describe('quests are edited one slot at a time', () => {
+  async function onboard(actor: Actor) {
+    await prisma.questData.deleteMany({ where: { userId: actor.id } });
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+  }
+
+  const save = (actor: Actor, category: string, level: number, body: unknown) =>
+    call(`/api/quest-data/quests/${category}/${level}`, {
+      token: actor.token, method: 'PATCH', body,
+    });
+
+  // The bug this replaces: both the tracker's autosave and the coach sent all
+  // eighteen quests, so the later write reverted the other device's edit.
+  // Both in the same category on purpose: that is the contended case, since
+  // the two writes touch the same array inside the same JSON column.
+  test('two devices editing different quests keep both edits', async () => {
+    await onboard(alice);
+
+    const [a, b] = await Promise.all([
+      save(alice, 'health', 1, { name: 'Walk 30 minutes', emoji: '🚶' }),
+      save(alice, 'health', 3, { name: 'Swim 1km', emoji: '🏊' }),
+    ]);
+    assert.equal(a.status, 200);
+    assert.equal(b.status, 200);
+
+    const row = await (await call('/api/quest-data', { token: alice.token })).json();
+    const byLevel = (l: number) =>
+      row.quest_data.health.find((q: { level: number }) => q.level === l).name;
+    assert.equal(byLevel(1), 'Walk 30 minutes');
+    assert.equal(byLevel(3), 'Swim 1km');
+    assert.equal(byLevel(2), 'Walk 10k', 'the quest neither write touched is unchanged');
+  });
+
+  test('the other levels in the same category are untouched', async () => {
+    await onboard(alice);
+    const before = await (await call('/api/quest-data', { token: alice.token })).json();
+    const untouched = before.quest_data.health
+      .filter((q: { level: number }) => q.level !== 2)
+      .map((q: { name: string }) => q.name);
+
+    const row = await (await save(alice, 'health', 2, { name: 'Swim', emoji: '🏊' })).json();
+
+    assert.equal(row.quest_data.health.find((q: { level: number }) => q.level === 2).name, 'Swim');
+    assert.deepEqual(
+      row.quest_data.health.filter((q: { level: number }) => q.level !== 2).map((q: { name: string }) => q.name),
+      untouched,
+    );
+  });
+
+  test('an unknown category or level is refused', async () => {
+    await onboard(alice);
+    assert.equal((await save(alice, 'crypto', 1, { name: 'HODL' })).status, 400);
+    assert.equal((await save(alice, 'health', 9, { name: 'x' })).status, 400);
+    assert.equal((await save(alice, 'health', 1, { name: '  ' })).status, 400);
+    assert.equal((await save(alice, 'health', 1, { name: 'x', sneaky: 1 })).status, 400);
+  });
+
+  test("one user cannot edit another user's quests", async () => {
+    await onboard(alice);
+    await onboard(bob);
+    await save(bob, 'health', 1, { name: "Bob's own quest", emoji: '🏃' });
+
+    const alices = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.notEqual(
+      alices.quest_data.health.find((q: { level: number }) => q.level === 1).name,
+      "Bob's own quest",
+    );
+  });
+
+  test('the quest route is closed without a token', async () => {
+    const res = await call('/api/quest-data/quests/health/1', {
+      method: 'PATCH', body: { name: 'x' },
+    });
+    assert.equal(res.status, 401);
+  });
+});
+
 describe('journal entries are appended, not rewritten', () => {
   const entry = (id: string, text: string) => ({
     id,
