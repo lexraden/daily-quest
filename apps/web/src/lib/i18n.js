@@ -280,6 +280,10 @@ const translations = {
       75: { emoji: '🌠', title: '75 дней подряд!', message: 'Три четверти века стрика! Невероятно!' },
       100: { emoji: '✨', title: '100 дней подряд!', message: 'СТО ДНЕЙ! Ты — абсолютная легенда!' },
     },
+    sound: {
+      title: 'Звуки',
+      hint: 'Квесты, серии и новые уровни',
+    },
     levelUp: {
       kicker: 'Новый уровень',
       reached: 'Уровень {level} достигнут.',
@@ -704,6 +708,10 @@ const translations = {
       50: { emoji: '👑', title: '50 days in a row!', message: 'Fifty days! You\'re elite!' },
       75: { emoji: '🌠', title: '75 days in a row!', message: 'Three quarters of a century streak! Insane!' },
       100: { emoji: '✨', title: '100 days in a row!', message: '100 DAYS! You\'re an absolute legend!' },
+    },
+    sound: {
+      title: 'Sound effects',
+      hint: 'Quests, streaks and level-ups',
     },
     levelUp: {
       kicker: 'Level up',

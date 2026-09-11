@@ -41,6 +41,7 @@ import { LEVEL_DEFS } from '@/lib/levels';
 import { sanitizeQuestData } from '@/lib/sanitizeQuestData';
 import { todayKey } from '@/lib/dates';
 import { aiErrorMessage } from '@/lib/aiErrors';
+import { playSfx, buzz } from '@/lib/sfx';
 import { setTheme, getTheme } from '@/lib/theme';
 import { useTheme } from '@/lib/useTheme';
 
@@ -808,7 +809,10 @@ export default function DailyTracker() {
   // Levelling up is the rarest thing that happens here — ten times in the life
   // of an account — so it gets the confetti unconditionally.
   useEffect(() => {
-    if (levelUp) fireConfetti();
+    if (!levelUp) return;
+    fireConfetti();
+    playSfx('levelUp');
+    buzz([0, 60, 60, 120]);
     // fireConfetti is redefined every render and is not a reason to re-fire.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [levelUp]);
@@ -871,6 +875,7 @@ export default function DailyTracker() {
     
     if (wasCompleted) {
       // Отменить выполнение
+      playSfx('uncomplete');
       const xpToRemove = currentQuest.level || 1;
       setCompletedToday(prev => {
         const newState = { ...prev };
@@ -936,31 +941,8 @@ export default function DailyTracker() {
       // Конфетти
       fireConfetti();
 
-      // Звук
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const celebrationSound = () => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
-        oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
-        oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
-
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-      };
-      try { celebrationSound(); } catch (e) {}
-
-      // Вибрация
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
-      }
+      playSfx('complete');
+      buzz(40);
       
       // Повысить счетчик категории
       setCategoryTotalCompleted(prev => ({
@@ -982,6 +964,7 @@ export default function DailyTracker() {
         setTimeout(() => {
           setCategoryLevelUp({ category, level: newLevel });
           fireConfetti();
+          playSfx('categoryLevelUp');
         }, 800);
       }
 
@@ -1267,6 +1250,7 @@ export default function DailyTracker() {
                   setTimeout(() => {
                     setShowStreakCelebration(true);
                     fireConfetti();
+                    playSfx('streak');
                   }, 1000);
                 }
               })

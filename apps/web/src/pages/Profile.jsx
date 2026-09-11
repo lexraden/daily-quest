@@ -10,6 +10,7 @@ import { LEVEL_DEFS } from '@/lib/levels';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import NotificationSettings from '@/components/profile/NotificationSettings';
+import SoundSettings from '@/components/profile/SoundSettings';
 import { getCachedUser, getCachedUserData, invalidateCache, updateCachedUserData, setCachedUser } from '@/components/UserDataCache';
 
 import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
@@ -207,6 +208,8 @@ export default function Profile() {
           categoryLevels={stats.categoryLevels}
           theme={theme}
         />
+
+        <SoundSettings theme={theme} />
 
         {/* Notification Settings */}
         <NotificationSettings
