@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { RotateCcw, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -7,6 +7,7 @@ import { api } from '@/api/client';
 import { toast } from 'sonner';
 import { t, getLang } from '@/lib/i18n';
 import { LEVEL_DEFS } from '@/lib/levels';
+import { todayKey } from '@/lib/dates';
 import OnboardingModal from '@/components/daily/OnboardingModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import NotificationSettings from '@/components/profile/NotificationSettings';
@@ -39,6 +40,7 @@ function levelOf(data, totalCompleted) {
 export default function Profile() {
   const i = t();
   const theme = useTheme();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
 
   // The shared cache has to move with the profile, not just this page's state:
@@ -300,12 +302,19 @@ export default function Profile() {
               try {
                 // Same server endpoint DailyTracker uses for onboarding.
                 const { quest_data } = await api.ai.generateQuests(answers, getLang());
-                await api.questData.create({ quest_data, onboarding_answers: answers });
+                await api.questData.create({
+                  quest_data,
+                  onboarding_answers: answers,
+                  last_visit_date: todayKey(),
+                });
                 invalidateCache();
 
-                setShowOnboarding(false);
+                // Straight to the tracker. Closing the modal first and then
+                // reloading the page showed the profile for half a second and
+                // threw away the whole app to get somewhere it could already
+                // route to; the new quests are the thing to look at.
                 toast.success(i.profilePage.questsUpdated);
-                setTimeout(() => { window.location.href = '/DailyTracker'; }, 500);
+                navigate('/DailyTracker', { replace: true });
               } catch (error) {
                 console.error('Error:', error);
                 toast.error(aiErrorMessage(error, i.profilePage.questsUpdateError));

@@ -470,10 +470,21 @@ export default function DailyTracker() {
       const newUserData = await api.questData.create({
         quest_data: sanitizedResult,
         onboarding_answers: answers,
+        // The server clears today's ticks when quests are replaced, and needs
+        // the local day to know which day that is — its UTC fallback is a
+        // different date for anyone far enough east late in the evening.
+        last_visit_date: getTodayKey(),
       });
       setUserDataId(newUserData.id);
       setTrialStartedAt(newUserData.trial_started_at);
       setIsPremium(newUserData.is_premium);
+
+      // Take the server's cleared history rather than keeping the ticks this
+      // screen was already holding: they belong to the quests just replaced,
+      // and every one of them would show against whichever new quest took
+      // that category and level.
+      applyServerProgress(newUserData);
+      setCompletedToday({});
 
       setShowOnboarding(false);
       toast.success(t().onboarding.questsReady);

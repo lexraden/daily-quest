@@ -209,35 +209,67 @@ export default async function questDataRoutes(app: FastifyInstance) {
 
     const userId = currentUserId(request);
     const quests = sortByLevel(sanitizeQuestData(parsed.data.quest_data));
+    const today = parsed.data.last_visit_date ?? utcToday();
 
     // The trial clock is set here, server-side. The client cannot backdate it.
-    const row = await prisma.questData.upsert({
-      where: { userId },
-      create: {
-        userId,
-        questData: toJson(quests),
-        onboardingAnswers: toJson(parsed.data.onboarding_answers ?? {}),
-        categoryLevels: onesByCategory(),
-        categoryTotalCompleted: zeroedByCategory(),
-        completionHistory: {},
-        caloriesBurned: {},
-        moodLog: {},
-        notificationSettings: {},
-        journalEntries: [],
-        mealHistory: [],
-        totalCompleted: 0,
-        streak: 0,
-        streakFreezes: 1,
-        lastVisitDate: parsed.data.last_visit_date ?? utcToday(),
-      },
-      // Re-onboarding replaces the quests and answers but must not reset a
-      // paid subscription, or restart an already-spent trial.
-      update: {
-        questData: toJson(quests),
-        onboardingAnswers: toJson(parsed.data.onboarding_answers ?? {}),
-        lastVisitDate: parsed.data.last_visit_date ?? utcToday(),
-      },
-      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+    const row = await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ completion_history: unknown }[]>`
+        SELECT completion_history FROM quest_data WHERE user_id = ${userId} FOR UPDATE`;
+
+      if (locked.length === 0) {
+        return tx.questData.create({
+          data: {
+            userId,
+            questData: toJson(quests),
+            onboardingAnswers: toJson(parsed.data.onboarding_answers ?? {}),
+            categoryLevels: onesByCategory(),
+            categoryTotalCompleted: zeroedByCategory(),
+            completionHistory: {},
+            caloriesBurned: {},
+            moodLog: {},
+            notificationSettings: {},
+            journalEntries: [],
+            mealHistory: [],
+            totalCompleted: 0,
+            streak: 0,
+            streakFreezes: 1,
+            lastVisitDate: today,
+          },
+          include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+        });
+      }
+
+      /**
+       * Re-onboarding. The quests and answers are replaced; a paid
+       * subscription and an already-spent trial are not touched.
+       *
+       * Today's ticks go with the old quests. A completion is keyed by
+       * category and level, not by name, so every one of them would land on
+       * whichever new quest took that slot — the user finished onboarding and
+       * found a fresh set already ticked off. Their XP goes too, for the same
+       * reason: it was earned by quests that no longer exist, and leaving it
+       * behind would show progress against nothing visible.
+       *
+       * Earlier days are untouched. The confirmation dialog promises that
+       * history and achievements survive, and they do — this is only today.
+       */
+      const history = asHistory(locked[0]?.completion_history);
+      delete history[today];
+      const progress = deriveProgress(history);
+
+      return tx.questData.update({
+        where: { userId },
+        data: {
+          questData: toJson(quests),
+          onboardingAnswers: toJson(parsed.data.onboarding_answers ?? {}),
+          lastVisitDate: today,
+          completionHistory: toJson(history),
+          totalCompleted: progress.totalCompleted,
+          categoryTotalCompleted: toJson(progress.categoryTotalCompleted),
+          categoryLevels: toJson(progress.categoryLevels),
+        },
+        include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+      });
     });
 
     // The trial clock is started by the first AI call (see requireAiAccess),

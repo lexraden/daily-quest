@@ -425,6 +425,76 @@ describe('progress is derived, not trusted', () => {
   });
 });
 
+describe('re-onboarding', () => {
+  const day = '2031-07-10';
+
+  async function onboard(actor: Actor, on = day) {
+    const res = await call('/api/quest-data', {
+      token: actor.token,
+      method: 'POST',
+      body: { quest_data: QUESTS, last_visit_date: on },
+    });
+    assert.equal(res.status, 201);
+    return res.json();
+  }
+
+  test("resetting quests clears today's ticks but keeps earlier days", async () => {
+    await prisma.questData.deleteMany({ where: { userId: alice.id } });
+    await onboard(alice);
+
+    // One completion yesterday, one today.
+    for (const [on, level] of [['2031-07-09', 2], [day, 3]] as [string, number][]) {
+      const res = await call('/api/quest-data/completions', {
+        token: alice.token,
+        method: 'POST',
+        body: { day: on, category: 'health', quest_name: 'x', level },
+      });
+      assert.equal(res.status, 201);
+    }
+
+    const before = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.equal(before.total_completed, 5);
+    assert.equal(before.completion_history[day].length, 1);
+
+    const after = await onboard(alice);
+
+    assert.deepEqual(
+      after.completion_history[day],
+      undefined,
+      "today's ticks belong to the quests that were just replaced",
+    );
+    assert.equal(
+      after.completion_history['2031-07-09'].length,
+      1,
+      'the dialog promises earlier history survives',
+    );
+    assert.equal(after.total_completed, 2, "XP follows the ticks it was earned by");
+  });
+
+  test('re-onboarding does not restart a spent trial or drop premium', async () => {
+    await prisma.questData.deleteMany({ where: { userId: alice.id } });
+    await onboard(alice);
+
+    const started = new Date('2031-01-01T00:00:00Z');
+    await prisma.user.update({
+      where: { id: alice.id },
+      data: { trialStartedAt: started, isPremium: true },
+    });
+
+    const after = await onboard(alice);
+    assert.equal(after.is_premium, true);
+    assert.equal(after.trial_started_at, started.toISOString());
+  });
+
+  test('a first onboarding still starts from nothing', async () => {
+    await prisma.questData.deleteMany({ where: { userId: alice.id } });
+    const row = await onboard(alice);
+    assert.equal(row.total_completed, 0);
+    assert.deepEqual(row.completion_history, {});
+    assert.equal(row.streak, 0);
+  });
+});
+
 describe('levels and avatars', () => {
   async function onboard(actor: Actor) {
     await prisma.questData.deleteMany({ where: { userId: actor.id } });
