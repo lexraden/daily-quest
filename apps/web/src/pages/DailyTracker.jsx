@@ -159,8 +159,23 @@ export default function DailyTracker() {
         ...(entry.questLevel ? { questLevel: entry.questLevel } : {}),
       })
       .then((row) => setJournalEntries(row.journal_entries || []))
-      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
+      .catch(() => {
+        // Take the entry back off the list; it is not in the journal.
+        setJournalEntries((prev) => prev.filter((e) => e.id !== entry.id));
+        toast.error(t().errors?.saveFailed || 'Could not save that — try again');
+      });
   }, []);
+
+  /**
+   * The grid as it stands right now.
+   *
+   * handleSaveQuestCb is memoised with no dependencies so the quest cards do
+   * not re-render on every keystroke elsewhere; reading questData directly
+   * inside it would capture the very first render's copy and roll an edit back
+   * to something ancient.
+   */
+  const questDataRef = useRef(questData);
+  questDataRef.current = questData;
 
   const applyServerProgress = useCallback((row) => {
     if (!row) return;
@@ -286,6 +301,7 @@ export default function DailyTracker() {
     // Optimistic, then the server's grid wins: it writes only this slot, so a
     // quest edited on another device survives instead of being reverted by the
     // copy this screen happens to hold.
+    const questDataBefore = questDataRef.current;
     setQuestData(prev => ({
       ...prev,
       [categoryKey]: prev[categoryKey].map(q =>
@@ -295,7 +311,13 @@ export default function DailyTracker() {
     api.questData
       .saveQuest(categoryKey, questLevel, updatedData)
       .then((row) => setQuestData(sanitizeQuestData(row.quest_data, DEFAULT_QUEST_DATA)))
-      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
+      .catch(() => {
+        // Put the old wording back rather than leaving an edit that was never
+        // saved looking like it was.
+        setQuestData(questDataBefore);
+        playSfx('error');
+        toast.error(t().errors?.saveFailed || 'Could not save that — try again');
+      });
   };
 
   const handleQuestSuggestion = useCallback((suggestion) => {
@@ -898,6 +920,19 @@ export default function DailyTracker() {
     const wasCompleted = completedToday[questKey];
     const today = getTodayKey();
 
+    // Everything the optimistic updates below are about to change, so a failed
+    // write can be undone. A toast on its own left the tick and the XP on
+    // screen: the quest looked done and the level looked earned while the
+    // server had neither, and the screen kept saying so until a reload. On a
+    // phone that drops signal in a lift, that is a routine afternoon.
+    const before = {
+      completedToday,
+      totalCompleted,
+      completionHistory,
+      categoryTotalCompleted,
+      categoryLevels,
+    };
+
     // The state updates below keep the UI instant; this is what actually
     // counts. The server appends or removes the one completion under a row
     // lock and recomputes the totals, so a sibling tab cannot erase it.
@@ -911,7 +946,15 @@ export default function DailyTracker() {
         })
     )
       .then(applyServerProgress)
-      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
+      .catch(() => {
+        setCompletedToday(before.completedToday);
+        setTotalCompleted(before.totalCompleted);
+        setCompletionHistory(before.completionHistory);
+        setCategoryTotalCompleted(before.categoryTotalCompleted);
+        setCategoryLevels(before.categoryLevels);
+        playSfx('error');
+        toast.error(t().errors?.saveFailed || 'Could not save that — try again');
+      });
 
     
     if (wasCompleted) {
@@ -1018,6 +1061,7 @@ export default function DailyTracker() {
     // Optimistic, then the server's grid wins: it writes only this slot, so a
     // quest edited on another device survives instead of being reverted by the
     // copy this screen happens to hold.
+    const questDataBefore = questDataRef.current;
     setQuestData(prev => ({
       ...prev,
       [categoryKey]: prev[categoryKey].map(q =>
@@ -1027,7 +1071,13 @@ export default function DailyTracker() {
     api.questData
       .saveQuest(categoryKey, questLevel, updatedData)
       .then((row) => setQuestData(sanitizeQuestData(row.quest_data, DEFAULT_QUEST_DATA)))
-      .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
+      .catch(() => {
+        // Put the old wording back rather than leaving an edit that was never
+        // saved looking like it was.
+        setQuestData(questDataBefore);
+        playSfx('error');
+        toast.error(t().errors?.saveFailed || 'Could not save that — try again');
+      });
   }, []);
 
   const handleCategoryClick = useCallback((categoryKey) => {
