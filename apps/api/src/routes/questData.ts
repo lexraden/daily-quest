@@ -106,6 +106,14 @@ const mealBody = z
 
 const mealPatchBody = mealBody.partial().strict();
 
+/** Calories burned on one local day, as the watch or the user reports them. */
+const caloriesBurnedBody = z
+  .object({
+    day: dayString,
+    value: z.number().int().min(0).max(100000),
+  })
+  .strict();
+
 /** How many quests one category may hold. The carousel gets unusable past this. */
 const MAX_QUESTS_PER_CATEGORY = 6;
 
@@ -807,6 +815,44 @@ export default async function questDataRoutes(app: FastifyInstance) {
       return writeQuests(tx, userId, {
         ...quests,
         [category]: list.filter((q) => q.level !== level),
+      });
+    });
+
+    return toWire(row);
+  });
+
+  /**
+   * Calories burned for one day.
+   *
+   * The last column the client still sent whole. It is a map keyed by local
+   * day, so a debounced save carrying this screen's copy would revert a figure
+   * entered on another device — and with this endpoint the tracker has nothing
+   * left to autosave at all.
+   */
+  app.put('/calories-burned', async (request) => {
+    const parsed = caloriesBurnedBody.safeParse(request.body);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw badRequest(`Cannot save that — ${issue?.message ?? 'invalid data'}`);
+    }
+    const userId = currentUserId(request);
+
+    const row = await prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ calories_burned: unknown }[]>`
+        SELECT calories_burned FROM quest_data WHERE user_id = ${userId} FOR UPDATE`;
+      if (locked.length === 0) throw notFound('Finish onboarding before saving progress');
+
+      const value = locked[0]?.calories_burned;
+      const burned =
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? { ...(value as Record<string, unknown>) }
+          : {};
+      burned[parsed.data.day] = parsed.data.value;
+
+      return tx.questData.update({
+        where: { userId },
+        data: { caloriesBurned: toJson(burned) },
+        include: { user: { select: { trialStartedAt: true, isPremium: true } } },
       });
     });
 

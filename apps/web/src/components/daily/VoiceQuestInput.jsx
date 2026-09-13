@@ -56,6 +56,7 @@ const VoiceQuestInput = React.memo(function VoiceQuestInput({ onQuestSuggestion,
       setIsRecording(false);
       const finalText = accumulatedTextRef.current.trim();
       if (finalText) {
+        // eslint-disable-next-line no-use-before-define -- run-time call, not a dependency array
         processVoiceInput(finalText);
       }
     };

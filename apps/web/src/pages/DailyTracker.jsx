@@ -33,9 +33,8 @@ const getConfetti = () => {
 import { toast } from 'sonner';
 import { useLocation } from 'react-router-dom';
 import { api } from '@/api/client';
-import { getCachedUser, getCachedUserData, setCachedUser, invalidateCache, registerPendingFlush } from '@/components/UserDataCache';
+import { getCachedUser, getCachedUserData, setCachedUser, invalidateCache } from '@/components/UserDataCache';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
-import useSaveUserData from '@/hooks/useSaveUserData';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { t, getLang } from '@/lib/i18n';
 import { LEVEL_DEFS, resolveAvatar } from '@/lib/levels';
@@ -141,42 +140,6 @@ export default function DailyTracker() {
   const levelUpRef = useRef(null);
   levelUpRef.current = levelUp;
 
-  /**
-   * Appends one journal entry server-side. The optimistic copy is already on
-   * screen; this is what makes it survive, and the server's list replaces the
-   * local one so an entry written elsewhere appears too.
-   */
-  const saveJournalEntry = useCallback((entry) => {
-    api.questData.journal
-      .add({
-        id: String(entry.id),
-        date: entry.date,
-        category: entry.category,
-        emoji: entry.emoji || '',
-        text: entry.text,
-        rawText: entry.rawText || '',
-        type: entry.type,
-        ...(entry.questLevel ? { questLevel: entry.questLevel } : {}),
-      })
-      .then((row) => setJournalEntries(row.journal_entries || []))
-      .catch(() => {
-        // Take the entry back off the list; it is not in the journal.
-        setJournalEntries((prev) => prev.filter((e) => e.id !== entry.id));
-        toast.error(t().errors?.saveFailed || 'Could not save that — try again');
-      });
-  }, []);
-
-  /**
-   * The grid as it stands right now.
-   *
-   * handleSaveQuestCb is memoised with no dependencies so the quest cards do
-   * not re-render on every keystroke elsewhere; reading questData directly
-   * inside it would capture the very first render's copy and roll an edit back
-   * to something ancient.
-   */
-  const questDataRef = useRef(questData);
-  questDataRef.current = questData;
-
   const applyServerProgress = useCallback((row) => {
     if (!row) return;
     setTotalCompleted(row.total_completed ?? 0);
@@ -214,6 +177,43 @@ export default function DailyTracker() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [questSuggestion, setQuestSuggestion] = useState(null);
   const [journalEntries, setJournalEntries] = useState([]);
+
+  /**
+   * Appends one journal entry server-side. The optimistic copy is already on
+   * screen; this is what makes it survive, and the server's list replaces the
+   * local one so an entry written elsewhere appears too.
+   */
+  const saveJournalEntry = useCallback((entry) => {
+    api.questData.journal
+      .add({
+        id: String(entry.id),
+        date: entry.date,
+        category: entry.category,
+        emoji: entry.emoji || '',
+        text: entry.text,
+        rawText: entry.rawText || '',
+        type: entry.type,
+        ...(entry.questLevel ? { questLevel: entry.questLevel } : {}),
+      })
+      .then((row) => setJournalEntries(row.journal_entries || []))
+      .catch(() => {
+        // Take the entry back off the list; it is not in the journal.
+        setJournalEntries((prev) => prev.filter((e) => e.id !== entry.id));
+        toast.error(t().errors?.saveFailed || 'Could not save that — try again');
+      });
+  }, []);
+
+  /**
+   * The grid as it stands right now.
+   *
+   * handleSaveQuestCb is memoised with no dependencies so the quest cards do
+   * not re-render on every keystroke elsewhere; reading questData directly
+   * inside it would capture the very first render's copy and roll an edit back
+   * to something ancient.
+   */
+  const questDataRef = useRef(questData);
+  questDataRef.current = questData;
+
   const [aiResponse, setAiResponse] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [user, setUser] = useState(null);
@@ -225,12 +225,15 @@ export default function DailyTracker() {
   const [pendingMeal, setPendingMeal] = useState(null);
   const [categoryLevelUp, setCategoryLevelUp] = useState(null); // { category, level }
   const [caloriesBurned, setCaloriesBurned] = useState({}); // { "YYYY-MM-DD": number }
+
+  const caloriesBurnedRef = useRef(caloriesBurned);
+  caloriesBurnedRef.current = caloriesBurned;
+
   const [trialStartedAt, setTrialStartedAt] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
 
   const premiumStatus = usePremiumStatus({ isPremium, trialStartedAt });
   const location = useLocation();
-  const skipNextSaveRef = useRef(false);
 
   const getTodayKey = () => todayKey();
 
@@ -429,6 +432,7 @@ export default function DailyTracker() {
         } else if (intent === 'COMPLETED_QUEST') {
       // Найти подходящий квест в текущей категории
       const categoryQuests = questData[category] || [];
+      // eslint-disable-next-line no-use-before-define -- run-time call, not a dependency array
       const currentQuest = getCurrentQuest(category);
       const userInput = (aiResponse.userInput || '').toLowerCase();
       
@@ -452,6 +456,7 @@ export default function DailyTracker() {
       
       // Отметить найденный квест или текущий
       const questToComplete = foundQuest || currentQuest;
+      // eslint-disable-next-line no-use-before-define -- run-time call, not a dependency array
       toggleQuest(category, questToComplete.level);
       
       // Добавить в журнал
@@ -615,7 +620,15 @@ export default function DailyTracker() {
 
   const handleCaloriesOutChange = useCallback((value) => {
     const today = getTodayKey();
-    setCaloriesBurned(prev => ({ ...prev, [today]: value }));
+    const before = caloriesBurnedRef.current;
+    setCaloriesBurned({ ...before, [today]: value });
+
+    api.questData.setCaloriesBurned(today, value).catch(() => {
+      // Put the old figure back rather than leaving one that was never saved.
+      setCaloriesBurned(before);
+      playSfx('error');
+      toast.error(t().errors?.saveFailed || 'Could not save that — try again');
+    });
   }, []);
 
   // Загрузка данных из базы данных
@@ -760,67 +773,34 @@ export default function DailyTracker() {
       }
       }, [user]);
 
-  // React Query optimistic save with debounce and rollback
-  // Progress — XP, category totals and levels, the completion history, the
-  // streak and its freezes — is no longer part of this snapshot. The server
-  // owns it and applies each change atomically through its own endpoints, so
-  // a debounced whole-document save can no longer overwrite a completion made
-  // in another tab with the numbers this one happened to load at mount.
-  const getStateSnapshot = useCallback(() => ({
-    // meal_history is not here either, for the same reason. It is appended,
-    // edited and deleted one meal at a time through its own endpoints; sending
-    // the whole array on a debounce would put it back to whatever this screen
-    // was holding and silently undo a meal logged somewhere else.
-    calories_burned: caloriesBurned,
-    // trial_started_at and is_premium are owned by the server and rejected by
-    // the API's field allowlist — they are read from responses, never sent.
-    last_visit_date: getTodayKey()
-  }), [caloriesBurned]);
+  /**
+   * The last thing the old debounced autosave carried.
+   *
+   * It used to send the whole document and has been shedding columns ever
+   * since: progress, then meals, then the journal, then the quests, each moved
+   * to an endpoint that changes one item under a row lock. Calories burned went
+   * the same way, which left a debounce, a rollback and a pending-write queue
+   * existing to write one date — on every completion, every edit, every meal.
+   *
+   * The visit date is what the streak check reads on the next launch, and it
+   * only changes once a day, so it is sent once when the row is known.
+   */
+  useEffect(() => {
+    if (!isLoaded || !userDataId) return;
+    api.questData.update({ last_visit_date: getTodayKey() }).catch(() => {
+      // Missing it costs a streak prompt on the next launch, not data.
+    });
+  }, [isLoaded, userDataId]);
 
-  const restoreSnapshot = useCallback((snapshot) => {
-    setCaloriesBurned(snapshot.calories_burned || {});
-  }, []);
-
-  const { save: saveUserData, cancelPendingSave, flushPendingSave, hasPendingWrite } = useSaveUserData({
-    userDataId,
-    isLoaded,
-    getStateSnapshot,
-    restoreSnapshot,
-  });
-
-  // Let the other tabs settle this page's queued save before they read the row.
-  useEffect(() => registerPendingFlush(flushPendingSave), [flushPendingSave]);
-
-  // Stable refs so the re-sync effect doesn't re-run when these identities change
-  const cancelPendingSaveRef = useRef(cancelPendingSave);
-  const hasPendingWriteRef = useRef(hasPendingWrite);
-  useEffect(() => { cancelPendingSaveRef.current = cancelPendingSave; }, [cancelPendingSave]);
-  useEffect(() => { hasPendingWriteRef.current = hasPendingWrite; }, [hasPendingWrite]);
-
-  // Listen for meal updates broadcasted from Profile/History — apply immediately
+  // Meals edited from Profile or History arrive here so the tracker agrees
+  // without a reload.
   useEffect(() => {
     const handler = (e) => {
-      if (e.detail?.meal_history) {
-        cancelPendingSaveRef.current?.();
-        skipNextSaveRef.current = true;
-        setMealHistory(e.detail.meal_history);
-      }
+      if (e.detail?.meal_history) setMealHistory(e.detail.meal_history);
     };
     window.addEventListener('meal-history-updated', handler);
     return () => window.removeEventListener('meal-history-updated', handler);
   }, []);
-
-  // Trigger debounced save whenever data changes
-  useEffect(() => {
-    if (!isLoaded || !userDataId) return;
-    if (skipNextSaveRef.current) {
-      // This change originated from a re-sync (cache → state), not a user action.
-      // Don't write the same data back to the DB.
-      skipNextSaveRef.current = false;
-      return;
-    }
-    saveUserData();
-  }, [questData, categoryLevels, categoryTotalCompleted, totalCompleted, streak, lastCompletedDate, completedToday, completionHistory, streakFreezes, journalEntries, mealHistory, caloriesBurned, isLoaded, userDataId, saveUserData]);
 
   // Экспорт данных
   const exportData = useCallback(() => {

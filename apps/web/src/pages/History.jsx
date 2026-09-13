@@ -102,6 +102,7 @@ export default function History() {
   const formatTitle = () => {
     if (viewMode === 'day') return `${dayNames[currentDate.getDay()]}, ${currentDate.getDate()} ${monthsGen[currentDate.getMonth()]}`;
     if (viewMode === 'week') {
+      // eslint-disable-next-line no-use-before-define -- run-time call, not a dependency array
       const start = getWeekStart(currentDate);
       const end = new Date(start);
       end.setDate(end.getDate() + 6);

@@ -1029,6 +1029,67 @@ describe('quests are edited one slot at a time', () => {
   });
 });
 
+describe('calories burned are set one day at a time', () => {
+  async function onboard(actor: Actor) {
+    await prisma.questData.deleteMany({ where: { userId: actor.id } });
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+  }
+
+  const set = (actor: Actor, day: string, value: number) =>
+    call('/api/quest-data/calories-burned', {
+      token: actor.token, method: 'PUT', body: { day, value },
+    });
+
+  test('two days written at once both survive', async () => {
+    await onboard(alice);
+    const [a, b] = await Promise.all([
+      set(alice, '2031-10-01', 400),
+      set(alice, '2031-10-02', 700),
+    ]);
+    assert.equal(a.status, 200);
+    assert.equal(b.status, 200);
+
+    const row = await (await call('/api/quest-data', { token: alice.token })).json();
+    assert.equal(row.calories_burned['2031-10-01'], 400);
+    assert.equal(row.calories_burned['2031-10-02'], 700);
+  });
+
+  test('setting a day again replaces only that day', async () => {
+    await onboard(alice);
+    await set(alice, '2031-10-01', 400);
+    await set(alice, '2031-10-02', 700);
+    const row = await (await set(alice, '2031-10-01', 550)).json();
+
+    assert.equal(row.calories_burned['2031-10-01'], 550);
+    assert.equal(row.calories_burned['2031-10-02'], 700);
+  });
+
+  test('a bad day or figure is refused', async () => {
+    await onboard(alice);
+    for (const body of [
+      { day: 'today', value: 100 },
+      { day: '2031-10-01', value: -1 },
+      { day: '2031-10-01', value: 1.5 },
+      { day: '2031-10-01', value: 100, sneaky: true },
+    ]) {
+      const res = await call('/api/quest-data/calories-burned', {
+        token: alice.token, method: 'PUT', body,
+      });
+      assert.equal(res.status, 400, JSON.stringify(body));
+    }
+  });
+
+  test('the route is closed without a token', async () => {
+    const res = await call('/api/quest-data/calories-burned', {
+      method: 'PUT', body: { day: '2031-10-01', value: 100 },
+    });
+    assert.equal(res.status, 401);
+  });
+});
+
 describe('journal entries are appended, not rewritten', () => {
   const entry = (id: string, text: string) => ({
     id,

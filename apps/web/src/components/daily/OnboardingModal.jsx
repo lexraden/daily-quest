@@ -284,6 +284,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     if (currentStep < ONBOARDING_QUESTIONS.length - 1) {
       setCurrentStep(prev => prev + 1);
     } else {
+      // eslint-disable-next-line no-use-before-define -- run-time call, not a dependency array
       handleComplete();
     }
   };

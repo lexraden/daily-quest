@@ -208,6 +208,9 @@ export const api = {
         method: 'PATCH',
         body: { name: quest.name, emoji: quest.emoji || '' },
       }),
+    /** Calories burned on one day. Nothing else in the row is touched. */
+    setCaloriesBurned: (day, value) =>
+      request('/api/quest-data/calories-burned', { method: 'PUT', body: { day, value } }),
     addQuest: (category, quest) =>
       request(`/api/quest-data/quests/${encodeURIComponent(category)}`, {
         method: 'POST',

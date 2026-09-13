@@ -55,6 +55,22 @@ export default [
         { ignore: ["cmdk-input-wrapper", "toast-close"] },
       ],
       "react-hooks/rules-of-hooks": "error",
+      /**
+       * Reading a const before its declaration.
+       *
+       * This has taken the app down twice: a hook placed above the useState it
+       * depends on. The body of a hook runs after render and gets away with it,
+       * but the dependency array is evaluated during render, so [mealHistory]
+       * above `const [mealHistory] = useState(...)` throws — and the whole page
+       * goes white on a binding that reads fine to a human.
+       *
+       * Functions are exempt: they hoist, and the codebase leans on that for
+       * handlers defined below their JSX.
+       */
+      "no-use-before-define": [
+        "error",
+        { functions: false, classes: false, variables: true, allowNamedExports: true },
+      ],
     },
   },
 ];
