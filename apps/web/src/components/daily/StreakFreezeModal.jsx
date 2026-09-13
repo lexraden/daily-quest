@@ -9,7 +9,13 @@ export default function StreakFreezeModal({ streak, freezesLeft, onUseFreeze, on
   const sf = i.streakFreeze;
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-5">
+      {/*
+        Centred on every width, not just tablets up. `items-end` below the sm
+        breakpoint put this at the bottom of a phone screen, where a panel
+        taller than the space left ran off the edge — which is exactly what a
+        "you missed yesterday" dialog with two buttons does.
+      */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-5">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -21,7 +27,7 @@ export default function StreakFreezeModal({ streak, freezesLeft, onUseFreeze, on
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className={`relative w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-8 text-center border ${
+          className={`relative w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl p-8 text-center border ${
             theme === 'light'
               ? 'bg-white border-cyan-200 shadow-2xl'
               : 'bg-[#1e2836] border-cyan-500/30'

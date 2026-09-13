@@ -16,11 +16,11 @@ export default function QuestSuggestionModal({ suggestion, categories, onAccept,
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onReject}
     >
       <div 
-        className={`rounded-t-2xl sm:rounded-2xl max-w-md w-full border ${
+        className={`rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border ${
           theme === 'light' 
             ? 'bg-white border-gray-200' 
             : 'bg-[#1e2836] border-white/10'

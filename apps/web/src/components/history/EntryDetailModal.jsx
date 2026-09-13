@@ -23,11 +23,11 @@ export default function EntryDetailModal({ entry, onClose, onEditMeal, theme }) 
   const isMeal = entry.type === 'meal';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[85vh] flex flex-col ${
+        className={`relative w-full max-w-sm rounded-2xl overflow-hidden max-h-[85vh] flex flex-col ${
           theme === 'light' ? 'bg-white shadow-xl' : 'bg-[#1e2836]'
         }`}
       >

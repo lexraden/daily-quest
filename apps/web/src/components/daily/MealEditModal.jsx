@@ -64,7 +64,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
         onClick={onClose}
       >
         <motion.div
@@ -72,7 +72,7 @@ export default function MealEditModal({ meal, mealIndex, onSave, onDelete, onClo
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           onClick={e => e.stopPropagation()}
-          className={`w-full max-w-sm rounded-2xl overflow-hidden ${
+          className={`w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl ${
             theme === 'light' ? 'bg-white shadow-xl' : 'bg-[#1e2836]'
           }`}
         >

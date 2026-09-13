@@ -21,8 +21,8 @@ export default function QuestEditor({ questData, categories, onSave, onClose, th
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className={`rounded-t-2xl sm:rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border ${
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className={`rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border ${
         theme === 'light' 
           ? 'bg-white border-gray-200' 
           : 'bg-[#1e2836] border-white/10'
