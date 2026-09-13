@@ -15,6 +15,7 @@ import { PrismaClient } from '@prisma/client';
 import { isDue, minutesSince } from '../src/jobs/window.js';
 import { validProposal } from '../src/lib/coachProposal.js';
 import { configurePush, notifyUser, setSender } from '../src/lib/push.js';
+import { reminderCopy, situationFor, firstName } from '../src/jobs/copy.js';
 import webpush from 'web-push';
 
 /** One pair for the whole suite; the pair only has to be internally consistent. */
@@ -1323,6 +1324,87 @@ describe('push subscriptions', () => {
     assert.equal((await call('/api/push/subscribe', {
       method: 'POST', body: sub('https://push.example.com/x'),
     })).status, 401);
+  });
+});
+
+describe('what a reminder says', () => {
+  const ctx = { name: 'Alexander', streak: 6, quest: 'Walk 15 minutes' };
+
+  test('two runs on the same day say the same thing', () => {
+    // A retry, or a manual trigger beside the schedule, must not contradict
+    // what is already sitting in the notification shade.
+    const a = reminderCopy('en', 'reminder_streak', ctx, 'user-1', '2031-05-01');
+    const b = reminderCopy('en', 'reminder_streak', ctx, 'user-1', '2031-05-01');
+    assert.deepEqual(a, b);
+  });
+
+  test('the line changes from one day to the next', () => {
+    const days = ['2031-05-01', '2031-05-02', '2031-05-03', '2031-05-04', '2031-05-05'];
+    const titles = new Set(
+      days.map((day) => reminderCopy('en', 'reminder_streak', ctx, 'user-1', day).title),
+    );
+    assert.ok(titles.size > 1, `the same line every day is a robot: ${[...titles]}`);
+  });
+
+  test('two people do not get the same line on the same evening', () => {
+    const users = ['u1', 'u2', 'u3', 'u4', 'u5', 'u6'];
+    const titles = new Set(
+      users.map((u) => reminderCopy('ru', 'reminder_streak', ctx, u, '2031-05-01').title),
+    );
+    assert.ok(titles.size > 1);
+  });
+
+  test('the name and the streak actually reach the text', () => {
+    const seen = { name: false, streak: false };
+    for (const day of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
+      const { title, body } = reminderCopy('en', 'reminder_streak', ctx, 'u', day);
+      if (`${title} ${body}`.includes('Alexander')) seen.name = true;
+      if (/\b6\b|\b7\b/.test(`${title} ${body}`)) seen.streak = true;
+    }
+    assert.ok(seen.name, 'some lines address the user by name');
+    assert.ok(seen.streak, 'some lines name the streak');
+  });
+
+  test('with no name and no quest every line still reads', () => {
+    const bare = { name: '', streak: 0 };
+    for (const lang of ['en', 'ru'] as const) {
+      for (const day of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
+        const { title, body } = reminderCopy(lang, 'reminder_cold', bare, 'u', day);
+        for (const text of [title, body]) {
+          assert.ok(text.length > 0, 'no empty text');
+          assert.ok(!text.includes('undefined'), `leaked undefined: ${text}`);
+          assert.ok(!/"\s*"|«\s*»/.test(text), `empty quotes left behind: ${text}`);
+          assert.ok(!text.startsWith(','), `dangling comma: ${text}`);
+        }
+      }
+    }
+  });
+
+  test('a name that is not a name is dropped rather than used', () => {
+    assert.equal(firstName('Alexander Egorov'), 'Alexander');
+    assert.equal(firstName('  Лекс  '), 'Лекс');
+    assert.equal(firstName('user42@example.com'), '', 'an email address is not a greeting');
+    assert.equal(firstName('X'), '', 'one letter reads as a typo');
+    assert.equal(firstName(null), '');
+    assert.equal(firstName('Bartholomewwwwwwwwwwwwwwwww'), '', 'absurdly long is not a name');
+  });
+
+  test('the situation follows the streak and what was done', () => {
+    assert.equal(situationFor(6, true, true), null, 'nothing is sent once the day is done');
+    assert.equal(situationFor(6, false, true), 'streak_warning');
+    assert.equal(situationFor(6, false, false), 'reminder_streak', 'warning off, still a reminder');
+    assert.equal(situationFor(0, false, true), 'reminder_cold', 'no streak to warn about');
+  });
+
+  test('both languages carry every situation', () => {
+    for (const lang of ['en', 'ru'] as const) {
+      for (const situation of ['streak_warning', 'reminder_streak', 'reminder_cold'] as const) {
+        const { title, body } = reminderCopy(lang, situation, ctx, 'u', 'd');
+        assert.ok(title && body, `${lang}/${situation} is missing text`);
+        // Android truncates a long title to nothing useful.
+        assert.ok(title.length <= 60, `${lang}/${situation} title too long: ${title}`);
+      }
+    }
   });
 });
 

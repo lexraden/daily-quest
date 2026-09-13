@@ -3,7 +3,7 @@ import { Bell, BellOff, Clock, Flame, Shield, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { t } from '@/lib/i18n';
+import { t, getLang } from '@/lib/i18n';
 import { toast } from 'sonner';
 import { enablePush, disablePush, isSubscribed, permission } from '@/lib/push';
 
@@ -89,6 +89,9 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
       reminder_time: reminderTime,
       streak_warning: streakWarning,
       timezone,
+      // The reminders job runs with no browser, so the language has to be
+      // recorded here or every notification goes out in the default one.
+      lang: getLang(),
       push_token: settings?.push_token || null,
     });
     setDirty(false);

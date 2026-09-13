@@ -14,20 +14,23 @@ import { prisma } from '../db.js';
 import { jobEnv } from '../env.job.js';
 import { isDue } from './window.js';
 import { configurePush, notifyUser } from '../lib/push.js';
+import { reminderCopy, situationFor, firstName } from './copy.js';
+import { sanitizeQuestData } from '../lib/questData.js';
 
 /**
- * Notification copy. Short, and naming the streak: "keep your 6 days" is a
- * reason to open the app, "you have reminders" is not.
+ * A quest worth naming in the reminder.
+ *
+ * The easiest one there is, because the line exists to make starting feel
+ * small. Nothing is returned when the set is empty, and the copy has a form
+ * that works without it.
  */
-const pushCopy = {
-  reminderTitle: 'Time for today\'s quests',
-  reminderBody: (streak: number) =>
-    streak > 0 ? `Keep your ${streak}-day streak going.` : 'A few minutes is enough to start one.',
-  streakTitle: 'Your streak ends tonight',
-  streakBody: (streak: number) =>
-    `${streak} days. One quest keeps it alive.`,
-};
-
+function undoneQuest(questData: unknown): string | undefined {
+  const set = sanitizeQuestData(questData);
+  const easiest = Object.values(set)
+    .flat()
+    .sort((a, b) => a.level - b.level)[0];
+  return easiest?.name || undefined;
+}
 
 interface NotificationSettings {
   enabled?: boolean;
@@ -35,6 +38,9 @@ interface NotificationSettings {
   streak_warning?: boolean;
   timezone?: string;
   push_token?: string | null;
+  // The app language at the time the settings were saved. The job has no other
+  // way to know which language to write in.
+  lang?: string;
 }
 
 /** Wall-clock hour and minute in the user's own timezone. */
@@ -93,7 +99,10 @@ async function main() {
       totalCompleted: true,
       completionHistory: true,
       notificationSettings: true,
-      user: { select: { email: true } },
+      // The name is what makes a reminder read as addressed to someone rather
+      // than broadcast, and the quests let it name what is actually waiting.
+      questData: true,
+      user: { select: { email: true, fullName: true } },
     },
   });
 
@@ -139,12 +148,28 @@ async function main() {
       continue;
     }
 
-    const type =
-      settings.streak_warning && row.streak > 0 ? 'streak_warning' : 'reminder';
-    const subject =
-      type === 'streak_warning'
-        ? `🔥 Your ${row.streak}-day streak is at risk!`
-        : '⚡ Time for your daily quests!';
+    const situation = situationFor(row.streak, doneToday, settings.streak_warning !== false);
+    if (!situation) {
+      results.skipped++;
+      continue;
+    }
+
+    const copy = reminderCopy(
+      settings.lang === 'en' ? 'en' : 'ru',
+      situation,
+      {
+        name: firstName(row.user.fullName),
+        streak: row.streak,
+        quest: undoneQuest(row.questData),
+      },
+      row.userId,
+      dayKey,
+    );
+
+    // The email keeps its old shape; only the subject follows the new copy, so
+    // the two channels at least say the same thing.
+    const type = situation === 'streak_warning' ? 'streak_warning' : 'reminder';
+    const subject = copy.title;
 
     // Claim the day before sending, not after. The predicate is the whole
     // mechanism: `IS DISTINCT FROM` matches a row whose last reminder is null or
@@ -179,13 +204,12 @@ async function main() {
      * as the fallback rather than being replaced.
      */
     const pushed = await notifyUser(row.userId, {
-      title: type === 'streak_warning' ? pushCopy.streakTitle : pushCopy.reminderTitle,
-      body:
-        type === 'streak_warning'
-          ? pushCopy.streakBody(row.streak)
-          : pushCopy.reminderBody(row.streak),
+      title: copy.title,
+      body: copy.body,
       url: '/',
-      tag: type,
+      // One tag for all of them: a reminder that replaced yesterday's is
+      // right, two stacked in the shade is nagging.
+      tag: 'dailyq-reminder',
     }).catch((err) => {
       // A push service outage must not cost the email as well.
       console.error(`push failed for ${row.userId}:`, err);
