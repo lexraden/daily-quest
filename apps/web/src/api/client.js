@@ -257,6 +257,14 @@ export const api = {
       request('/api/quest-data/streak/freeze', { method: 'POST', body: { action } }),
   },
 
+  push: {
+    key: () => request('/api/push/key'),
+    subscribe: (subscription) =>
+      request('/api/push/subscribe', { method: 'POST', body: subscription }),
+    unsubscribe: (endpoint) =>
+      request('/api/push/subscribe', { method: 'DELETE', body: { endpoint } }),
+  },
+
   ai: {
     /**
      * The coach chat. `send` returns { reply, proposal } — the proposal is an

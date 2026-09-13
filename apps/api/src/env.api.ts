@@ -28,6 +28,16 @@ const schema = z.object({
   OPENAI_MODEL_MEAL: z.string().default('gpt-4o-mini'),
   OPENAI_MODEL_VISION: z.string().default('gpt-4o'),
 
+  /**
+   * Web Push signing pair. Optional: without them the app runs and simply never
+   * notifies, which is better than refusing to boot over a feature that was
+   * added later. Generate once with `npx web-push generate-vapid-keys` and keep
+   * them — changing the pair invalidates every device already subscribed.
+   */
+  VAPID_PUBLIC_KEY: z.string().default(''),
+  VAPID_PRIVATE_KEY: z.string().default(''),
+  VAPID_SUBJECT: z.string().default('mailto:noreply@dailyq.app'),
+
   UPLOAD_DIR: z.string().default('/data/uploads'),
   MAX_UPLOAD_BYTES: z.coerce.number().default(8 * 1024 * 1024),
 

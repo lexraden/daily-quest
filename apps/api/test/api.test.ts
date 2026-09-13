@@ -14,6 +14,11 @@ import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { isDue, minutesSince } from '../src/jobs/window.js';
 import { validProposal } from '../src/lib/coachProposal.js';
+import { configurePush, notifyUser, setSender } from '../src/lib/push.js';
+import webpush from 'web-push';
+
+/** One pair for the whole suite; the pair only has to be internally consistent. */
+const VAPID = webpush.generateVAPIDKeys();
 import {
   issueAccessToken,
   issueRefreshToken,
@@ -1233,6 +1238,189 @@ describe('coach chat', () => {
       token: alice.token, method: 'POST', body: { message: 'hi' },
     });
     assert.equal(res.status, 404);
+  });
+});
+
+describe('push subscriptions', () => {
+  const sub = (endpoint: string) => ({
+    endpoint,
+    keys: { p256dh: 'BKxQ'.repeat(8), auth: 'c2VjcmV0' },
+  });
+
+  const subscribe = (actor: Actor, body: unknown) =>
+    call('/api/push/subscribe', { token: actor.token, method: 'POST', body });
+
+  test('the key endpoint says whether push is configured at all', async () => {
+    const res = await call('/api/push/key', { token: alice.token });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(Object.keys(body).sort(), ['enabled', 'public_key']);
+    // Without a VAPID pair the server must say so rather than hand out a key.
+    if (!body.enabled) assert.equal(body.public_key, null);
+  });
+
+  test('a device subscribes once however many times it asks', async () => {
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    const endpoint = 'https://push.example.com/alice-phone';
+
+    assert.equal((await subscribe(alice, sub(endpoint))).status, 201);
+    assert.equal((await subscribe(alice, sub(endpoint))).status, 201);
+
+    const rows = await prisma.pushSubscription.findMany({ where: { userId: alice.id } });
+    assert.equal(rows.length, 1, 'resubscribing updates rather than duplicates');
+  });
+
+  test('one account can hold several devices', async () => {
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    await subscribe(alice, sub('https://push.example.com/alice-phone'));
+    await subscribe(alice, sub('https://push.example.com/alice-laptop'));
+
+    assert.equal(await prisma.pushSubscription.count({ where: { userId: alice.id } }), 2);
+  });
+
+  test("one user cannot unsubscribe another user's device", async () => {
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    const endpoint = 'https://push.example.com/alice-private';
+    await subscribe(alice, sub(endpoint));
+
+    const res = await call('/api/push/subscribe', {
+      token: bob.token, method: 'DELETE', body: { endpoint },
+    });
+    assert.equal(res.status, 200, 'it answers, it just must not delete anything');
+    assert.equal(await prisma.pushSubscription.count({ where: { userId: alice.id } }), 1);
+
+    // Alice can, and it is gone.
+    await call('/api/push/subscribe', { token: alice.token, method: 'DELETE', body: { endpoint } });
+    assert.equal(await prisma.pushSubscription.count({ where: { userId: alice.id } }), 0);
+  });
+
+  test('a device that switches account moves rather than being shared', async () => {
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    await prisma.pushSubscription.deleteMany({ where: { userId: bob.id } });
+    const endpoint = 'https://push.example.com/shared-browser';
+
+    await subscribe(alice, sub(endpoint));
+    await subscribe(bob, sub(endpoint));
+
+    assert.equal(await prisma.pushSubscription.count({ where: { userId: alice.id } }), 0,
+      'the previous owner stops being notified on a browser that is no longer theirs');
+    assert.equal(await prisma.pushSubscription.count({ where: { userId: bob.id } }), 1);
+  });
+
+  test('a malformed subscription is refused', async () => {
+    for (const body of [
+      { endpoint: 'not-a-url', keys: { p256dh: 'a', auth: 'b' } },
+      { endpoint: 'https://push.example.com/x' },
+      { endpoint: 'https://push.example.com/x', keys: { p256dh: 'a' } },
+      { endpoint: 'https://push.example.com/x', keys: { p256dh: 'a', auth: 'b' }, sneaky: 1 },
+    ]) {
+      assert.equal((await subscribe(alice, body)).status, 400, JSON.stringify(body));
+    }
+  });
+
+  test('the push routes are closed without a token', async () => {
+    assert.equal((await call('/api/push/key')).status, 401);
+    assert.equal((await call('/api/push/subscribe', {
+      method: 'POST', body: sub('https://push.example.com/x'),
+    })).status, 401);
+  });
+});
+
+describe('sending a push', () => {
+  const keys = { p256dh: 'fake-public-key', auth: 'fake-auth-secret' };
+
+  /** Records what was sent, and answers however the case needs. */
+  function recordingSender(answer: (endpoint: string) => Promise<unknown>) {
+    const sent: { endpoint: string; payload: string }[] = [];
+    setSender(async (subscription, payload) => {
+      sent.push({ endpoint: subscription.endpoint, payload });
+      return answer(subscription.endpoint);
+    });
+    return sent;
+  }
+
+  const refused = (statusCode: number) => Promise.reject(Object.assign(new Error('nope'), { statusCode }));
+
+  before(() => {
+    configurePush({ publicKey: VAPID.publicKey, privateKey: VAPID.privateKey, subject: 'mailto:t@t.local' });
+  });
+
+  after(() => setSender(null));
+
+  test('every device a user has is sent to', async () => {
+    const sent = recordingSender(() => Promise.resolve({ statusCode: 201 }));
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    for (const name of ['phone', 'laptop']) {
+      await prisma.pushSubscription.create({
+        data: { userId: alice.id, endpoint: `https://push.example.com/${name}`, ...keys },
+      });
+    }
+
+    const delivered = await notifyUser(alice.id, { title: 'Streak', body: '6 days' });
+
+    assert.equal(delivered, 2);
+    assert.deepEqual(sent.map((s) => s.endpoint).sort(), [
+      'https://push.example.com/laptop',
+      'https://push.example.com/phone',
+    ]);
+    assert.deepEqual(JSON.parse(sent[0].payload), { title: 'Streak', body: '6 days' });
+  });
+
+  // A subscription dies when the app is uninstalled or site data cleared, and
+  // the push service says so forever. Retrying it nightly is pointless.
+  test('a subscription the service reports as gone is deleted', async () => {
+    recordingSender(() => refused(410));
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    await prisma.pushSubscription.create({
+      data: { userId: alice.id, endpoint: 'https://push.example.com/dead', ...keys },
+    });
+
+    assert.equal(await notifyUser(alice.id, { title: 'x', body: 'y' }), 0);
+    assert.equal(await prisma.pushSubscription.count({ where: { userId: alice.id } }), 0);
+  });
+
+  test('a service merely having a bad day keeps its subscriptions', async () => {
+    recordingSender(() => refused(500));
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    await prisma.pushSubscription.create({
+      data: { userId: alice.id, endpoint: 'https://push.example.com/flaky', ...keys },
+    });
+
+    assert.equal(await notifyUser(alice.id, { title: 'x', body: 'y' }), 0);
+    assert.equal(
+      await prisma.pushSubscription.count({ where: { userId: alice.id } }),
+      1,
+      'an outage must not unsubscribe everyone',
+    );
+  });
+
+  test('one dead device does not stop the others', async () => {
+    recordingSender((endpoint) => (endpoint.endsWith('dead') ? refused(404) : Promise.resolve({})));
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    for (const name of ['dead', 'alive']) {
+      await prisma.pushSubscription.create({
+        data: { userId: alice.id, endpoint: `https://push.example.com/${name}`, ...keys },
+      });
+    }
+
+    assert.equal(await notifyUser(alice.id, { title: 'x', body: 'y' }), 1);
+    const left = await prisma.pushSubscription.findMany({ where: { userId: alice.id } });
+    assert.deepEqual(left.map((r) => r.endpoint), ['https://push.example.com/alive']);
+  });
+
+  test('with no keys configured nothing is sent and nothing throws', async () => {
+    configurePush(null);
+    const sent = recordingSender(() => Promise.resolve({}));
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
+    await prisma.pushSubscription.create({
+      data: { userId: alice.id, endpoint: 'https://push.example.com/x', ...keys },
+    });
+
+    assert.equal(await notifyUser(alice.id, { title: 'x', body: 'y' }), 0);
+    assert.equal(sent.length, 0, 'it does not even try');
+
+    configurePush({ publicKey: VAPID.publicKey, privateKey: VAPID.privateKey, subject: 'mailto:t@t.local' });
+    await prisma.pushSubscription.deleteMany({ where: { userId: alice.id } });
   });
 });
 

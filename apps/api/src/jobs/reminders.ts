@@ -13,6 +13,20 @@ import { Resend } from 'resend';
 import { prisma } from '../db.js';
 import { jobEnv } from '../env.job.js';
 import { isDue } from './window.js';
+import { configurePush, notifyUser } from '../lib/push.js';
+
+/**
+ * Notification copy. Short, and naming the streak: "keep your 6 days" is a
+ * reason to open the app, "you have reminders" is not.
+ */
+const pushCopy = {
+  reminderTitle: 'Time for today\'s quests',
+  reminderBody: (streak: number) =>
+    streak > 0 ? `Keep your ${streak}-day streak going.` : 'A few minutes is enough to start one.',
+  streakTitle: 'Your streak ends tonight',
+  streakBody: (streak: number) =>
+    `${streak} days. One quest keeps it alive.`,
+};
 
 
 interface NotificationSettings {
@@ -83,7 +97,19 @@ async function main() {
     },
   });
 
-  const results = { checked: 0, sent: 0, skipped: 0, failed: 0 };
+  // Without a VAPID pair notifyUser is a no-op and every reminder goes by
+  // email, which is exactly how this ran before push existed.
+  configurePush(
+    jobEnv.VAPID_PUBLIC_KEY && jobEnv.VAPID_PRIVATE_KEY
+      ? {
+          publicKey: jobEnv.VAPID_PUBLIC_KEY,
+          privateKey: jobEnv.VAPID_PRIVATE_KEY,
+          subject: jobEnv.VAPID_SUBJECT,
+        }
+      : null,
+  );
+
+  const results = { checked: 0, sent: 0, pushed: 0, skipped: 0, failed: 0 };
 
   for (const row of rows) {
     results.checked++;
@@ -143,7 +169,35 @@ async function main() {
       continue;
     }
 
-    // TODO: send a push notification instead once settings.push_token is populated.
+    /**
+     * Push first, email only if nothing was pushed.
+     *
+     * A notification on the phone is what a streak reminder is for; an email
+     * about a habit tracker is read hours later, if at all. But a user with no
+     * device subscribed — a desktop browser, a permission never granted, an app
+     * reinstalled since — would otherwise hear nothing at all, so email stays
+     * as the fallback rather than being replaced.
+     */
+    const pushed = await notifyUser(row.userId, {
+      title: type === 'streak_warning' ? pushCopy.streakTitle : pushCopy.reminderTitle,
+      body:
+        type === 'streak_warning'
+          ? pushCopy.streakBody(row.streak)
+          : pushCopy.reminderBody(row.streak),
+      url: '/',
+      tag: type,
+    }).catch((err) => {
+      // A push service outage must not cost the email as well.
+      console.error(`push failed for ${row.userId}:`, err);
+      return 0;
+    });
+
+    if (pushed > 0) {
+      results.pushed++;
+      results.sent++;
+      continue;
+    }
+
     let failure: unknown = null;
     try {
       // Resend reports API failures in the result rather than by throwing, so

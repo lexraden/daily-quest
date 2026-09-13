@@ -44,6 +44,7 @@ model User {
   files         File[]
   refreshTokens RefreshToken[]
   chatMessages  ChatMessage[]
+  pushSubs      PushSubscription[]
 
   @@map("users")
 }
@@ -150,6 +151,37 @@ model ChatMessage {
 
   @@index([userId, createdAt])
   @@map("chat_messages")
+}
+
+/**
+ * One browser's permission to be notified.
+ *
+ * Per device, not per account: a phone and a laptop each hand back their own
+ * endpoint, and a reminder should reach whichever is to hand. The endpoint is
+ * the identity — reinstalling the app or clearing site data mints a new one and
+ * silently abandons the old, so the sender deletes any the push service reports
+ * as gone rather than retrying them forever.
+ */
+model PushSubscription {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+
+  // The push service's URL for this browser. Unique across users: the same
+  // endpoint cannot belong to two accounts, and re-subscribing on one device
+  // updates the row rather than adding another.
+  endpoint String @unique
+
+  // The browser's keys for encrypting the payload to it.
+  p256dh String
+  auth   String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 // Per-user monthly AI spend guard. Rows are cheap; one per user per period.

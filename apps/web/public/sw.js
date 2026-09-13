@@ -20,7 +20,7 @@
  *
  * Bump CACHE to retire everything the previous version stored.
  */
-const CACHE = 'dailyq-v2';
+const CACHE = 'dailyq-v3';
 const SHELL = '/';
 
 self.addEventListener('install', (event) => {
@@ -91,5 +91,56 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request)
       .then(keep)
       .catch(() => caches.match(event.request).then((hit) => hit || Response.error())),
+  );
+});
+
+/**
+ * A reminder arriving while the app is closed.
+ *
+ * The payload is JSON the server encrypted to this browser. A push that cannot
+ * be read still has to show something: a notification is mandatory once the
+ * event fires, and a browser that gets none may revoke the permission or show
+ * its own "site updated in the background" instead.
+ */
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+
+  const title = data.title || 'DailyQ';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      // Same tag replaces rather than stacks: a second evening reminder should
+      // not sit under the first one in the shade.
+      tag: data.tag || 'dailyq-reminder',
+      renotify: true,
+      data: { url: data.url || '/' },
+    }),
+  );
+});
+
+/**
+ * Tapping it. Focuses the app if it is already open somewhere rather than
+ * opening a second copy — the streak is on the screen the user already has.
+ */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || '/', self.location.origin);
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      for (const client of windows) {
+        if (new URL(client.url).origin === target.origin) {
+          return client.focus().then((focused) => focused?.navigate?.(target.href));
+        }
+      }
+      return self.clients.openWindow(target.href);
+    }),
   );
 });

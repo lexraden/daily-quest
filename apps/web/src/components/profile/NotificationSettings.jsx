@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, BellOff, Clock, Flame, Shield } from 'lucide-react';
+import { Bell, BellOff, Clock, Flame, Shield, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { t } from '@/lib/i18n';
+import { toast } from 'sonner';
+import { enablePush, disablePush, isSubscribed, permission } from '@/lib/push';
 
 const TIME_OPTIONS = [];
 for (let h = 6; h <= 23; h++) {
@@ -29,6 +31,51 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
     setStreakWarning(settings?.streak_warning !== false);
     setDirty(false);
   }, [settings]);
+
+  /**
+   * Push lives in the browser, not in the saved settings, so it is read from
+   * the device on mount rather than from the row.
+   */
+  const [pushState, setPushState] = useState('default');
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPushState(permission());
+    isSubscribed().then((on) => {
+      if (!cancelled) setPushOn(on);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const togglePush = async (next) => {
+    if (pushBusy) return;
+    setPushBusy(true);
+    try {
+      if (next) {
+        const { ok, reason } = await enablePush();
+        setPushState(permission());
+        setPushOn(ok);
+        if (!ok) {
+          toast.error(
+            reason === 'server_disabled'
+              ? ns.pushServerOff || 'Notifications are not configured on the server yet'
+              : reason === 'denied'
+                ? ns.pushDenied || 'Blocked — allow notifications in site settings'
+                : ns.pushFailed || 'Could not turn that on',
+          );
+        }
+      } else {
+        await disablePush();
+        setPushOn(false);
+      }
+    } catch {
+      toast.error(ns.pushFailed || 'Could not turn that on');
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const handleChange = (setter) => (val) => {
     setter(val);
@@ -117,13 +164,40 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
             />
           </div>
 
-          {/* Push not available banner */}
-          {!settings?.push_token && (
+          {/*
+            Notifications on this device.
+            Per device rather than per account: permission belongs to the
+            browser, so a phone and a laptop each answer for themselves, and
+            turning it off here leaves the other one alone.
+          */}
+          <div className="flex items-center justify-between min-h-[44px]">
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-purple-500" />
+              <div>
+                <span className={`text-sm ${labelClass}`}>{ns.pushOnDevice || 'Notify this device'}</span>
+                <p className={`text-xs ${subClass}`}>
+                  {pushState === 'unsupported'
+                    ? ns.pushUnsupported || 'This browser cannot show notifications'
+                    : pushState === 'denied'
+                      ? ns.pushDenied || 'Blocked — allow notifications in site settings'
+                      : ns.pushOnDeviceDesc || 'Reminders arrive with the app closed'}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={pushOn}
+              disabled={pushBusy || pushState === 'unsupported' || pushState === 'denied'}
+              onCheckedChange={togglePush}
+              aria-label={ns.pushOnDevice || 'Notify this device'}
+            />
+          </div>
+
+          {pushState !== 'unsupported' && pushState !== 'denied' && !pushOn && (
             <div className={`flex items-center gap-2 p-3 rounded-xl text-xs ${
               theme === 'light' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
             }`}>
               <Shield className="w-4 h-4 flex-shrink-0" />
-              <span>{ns.pushNotReady || 'Push notifications will be available soon. Settings will be saved.'}</span>
+              <span>{ns.pushOffHint || 'Without this, reminders are sent by email only.'}</span>
             </div>
           )}
         </>

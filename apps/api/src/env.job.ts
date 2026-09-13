@@ -10,6 +10,12 @@ const schema = z.object({
   REMINDER_FROM: z.string().default('DailyQ <noreply@dailyq.app>'),
   // Used for the "open the app" link in reminder emails.
   APP_ORIGIN: z.string().url(),
+
+  // The same pair the API hands to browsers when they subscribe. Without them
+  // the job falls back to email alone.
+  VAPID_PUBLIC_KEY: z.string().default(''),
+  VAPID_PRIVATE_KEY: z.string().default(''),
+  VAPID_SUBJECT: z.string().default('mailto:noreply@dailyq.app'),
 });
 
 export const jobEnv = parseEnv(schema, 'reminders');
