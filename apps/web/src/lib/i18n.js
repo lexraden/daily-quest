@@ -364,7 +364,7 @@ const translations = {
       streakReset: 'Серия сброшена. Начинай заново! 💪',
     },
     protectStreak: {
-      title: "Защита стрика", description: "Твой N‑дневный стрик сгорит сегодня ночью", cta: "Сделать 1 квест сейчас"
+      title: "Защита стрика", description: "Твой {{n}}‑дневный стрик сгорит сегодня ночью", cta: "Сделать 1 квест сейчас"
     },
     // Motivational
     motivation: {
@@ -856,7 +856,7 @@ const translations = {
       streakReset: 'Streak reset. Start again! 💪',
     },
     protectStreak: {
-      title: "Streak protection", description: "Your N‑day streak will burn out tonight", cta: "Do 1 quest now"
+      title: "Streak protection", description: "Your {{n}}‑day streak will burn out tonight", cta: "Do 1 quest now"
     },
     motivation: {
       phrases: [

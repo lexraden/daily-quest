@@ -1318,11 +1318,11 @@ export default function DailyTracker() {
               <Flame className="w-6 h-6 text-orange-500" />
               <div>
                 <h3 className="text-lg font-semibold">{t().protectStreak.title}</h3>
-                <p className="text-sm">{t().protectStreak.description}</p>
+                <p className="text-sm">{t().protectStreak.description.replace('{{n}}', streak)}</p>
               </div>
             </div>
             <Button
-              onClick={() => {}}
+              onClick={() => document.getElementById('quests-section')?.scrollIntoView({ behavior: 'smooth' })}
               className="w-full mt-2"
             >
               {t().protectStreak.cta}
