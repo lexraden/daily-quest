@@ -21,11 +21,13 @@ import PullToRefresh from '@/components/navigation/PullToRefresh';
 import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 import PlanCard from '@/components/profile/PlanCard';
 import UpdateCheck from '@/components/profile/UpdateCheck';
+import GuestCard from '@/components/profile/GuestCard';
 import PremiumModal from '@/components/daily/PremiumModal';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { aiErrorMessage } from '@/lib/aiErrors';
 import { canInstall, promptInstall, onInstallAvailability } from '@/lib/installPrompt';
 import { useTheme } from '@/lib/useTheme';
+import { useAuth } from '@/lib/AuthContext';
 
 
 const LEVELS = LEVEL_DEFS.map((l) => ({ ...l, name: t().levels[l.level] }));
@@ -46,6 +48,7 @@ export default function Profile() {
   const i = t();
   const theme = useTheme();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [user, setUser] = useState(null);
 
   // The shared cache has to move with the profile, not just this page's state:
@@ -213,6 +216,21 @@ export default function Profile() {
           onUserUpdate={handleUserUpdate}
           earnedLevel={stats.currentLevel?.level || 1}
         />
+
+        {/* A throwaway account says so before anything else on the page: what
+            you are looking at is worth knowing before what it can do. */}
+        {user?.is_guest && (
+          <GuestCard
+            theme={theme}
+            onSignIn={() => {
+              // Signing out is the only route to the Google button, and it ends
+              // the guest account — so it is asked for, not assumed.
+              if (window.confirm(i.guestAccount?.confirm || 'Sign out of the guest account?')) {
+                logout();
+              }
+            }}
+          />
+        )}
 
         {/* What this account is entitled to. The tracker has no room for it and
             the Premium screen was unreachable, so the grant had nowhere to show. */}

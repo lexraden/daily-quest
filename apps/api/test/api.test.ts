@@ -166,6 +166,35 @@ describe('authentication', () => {
     }
   });
 
+  /**
+   * The app has no other way to tell. A guest session restores from its cookie
+   * like any other, so without this flag "continue as guest" silently became
+   * the account someone kept opening, with nothing saying that signing out ends
+   * it for good.
+   *
+   * Driven off the `guest:` subject namespace rather than the @guest.invalid
+   * email, so there is one definition of guest and /auth/guest owns it.
+   */
+  test('the session says whether it is a guest one', async () => {
+    const real = await call('/api/auth/me', { token: alice.token });
+    assert.equal((await real.json()).is_guest, false);
+
+    const guest = await prisma.user.upsert({
+      where: { googleSub: 'guest:wire-test' },
+      create: {
+        googleSub: 'guest:wire-test',
+        email: 'guest-wire-test@guest.invalid',
+        fullName: 'Guest',
+      },
+      update: {},
+    });
+    const token = issueAccessToken(guest).token;
+
+    const res = await call('/api/auth/me', { token });
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).is_guest, true);
+  });
+
   test('rejects an alg:none forged token', async () => {
     const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
     const forged = `${b64({ alg: 'none', typ: 'JWT' })}.${b64({

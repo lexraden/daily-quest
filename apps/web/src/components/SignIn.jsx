@@ -106,14 +106,23 @@ export default function SignIn() {
           className={`w-full flex justify-center ${status === 'ready' ? '' : 'hidden'}`}
         />
 
+        {/* Deliberately the lesser of the two: Google keeps the account, this
+            does not. The consequence is stated here rather than discovered
+            later, because a guest session restores on every load and quietly
+            becomes the account someone keeps using. */}
         {guestAllowed && status === 'ready' && (
-          <button
-            type="button"
-            onClick={handleGuest}
-            className="text-sm underline text-muted-foreground hover:text-foreground min-h-[44px]"
-          >
-            {t().auth?.guest || 'Continue as guest'}
-          </button>
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={handleGuest}
+              className="text-sm underline text-muted-foreground hover:text-foreground min-h-[44px]"
+            >
+              {t().auth?.guest || 'Continue as guest'}
+            </button>
+            <p className="text-xs text-muted-foreground text-center">
+              {t().auth?.guestNote || 'No sign-in — progress will not be kept'}
+            </p>
+          </div>
         )}
 
         {message && (

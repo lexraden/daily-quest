@@ -46,9 +46,19 @@ const updateMeBody = z.object({
   avatar_choice: avatarChoice.nullable().optional(),
 });
 
+/**
+ * A guest account, by the namespace its subject was minted in.
+ *
+ * The prefix is the same one /auth/guest writes and grantPro.ts filters on, so
+ * there is one definition of "guest" rather than three places pattern-matching
+ * an email address.
+ */
+const GUEST_PREFIX = 'guest:';
+
 const publicUser = (u: {
   id: string;
   email: string;
+  googleSub: string;
   fullName: string | null;
   avatarUrl: string | null;
   role: string;
@@ -65,6 +75,12 @@ const publicUser = (u: {
   role: u.role,
   trial_started_at: u.trialStartedAt?.toISOString() ?? null,
   is_premium: u.isPremium,
+  /**
+   * Whether this session is a throwaway one. The app has no other way to know:
+   * a guest looks like any other account, so it silently became the account
+   * someone kept using, with no sign that signing out would end it for good.
+   */
+  is_guest: u.googleSub.startsWith(GUEST_PREFIX),
 });
 
 export default async function authRoutes(app: FastifyInstance) {

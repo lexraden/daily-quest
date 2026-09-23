@@ -46,6 +46,9 @@ const translations = {
       loading: 'Загружаем вход…',
       signingIn: 'Входим…',
       guest: 'Продолжить как гость',
+      // Said on the sign-in screen, before the choice, rather than discovered
+      // after it.
+      guestNote: 'Без входа — прогресс не сохранится',
       signOut: 'Выйти',
     },
     // Navigation
@@ -400,6 +403,13 @@ const translations = {
       add: 'Добавить',
     },
     // Premium
+    // The banner a throwaway account gets, and the consequence spelled out.
+    guestAccount: {
+      title: 'Гостевой аккаунт',
+      body: 'У него нет входа: если выйти, вернуться в него будет нельзя, и прогресс пропадёт. Войди через Google, чтобы он сохранился.',
+      signIn: 'Войти через Google',
+      confirm: 'Выйти из гостевого аккаунта? Прогресс в нём пропадёт навсегда.',
+    },
     // The "check for updates" card on the profile.
     update: {
       check: 'Проверить обновление',
@@ -593,6 +603,7 @@ const translations = {
       loading: 'Loading sign-in…',
       signingIn: 'Signing you in…',
       guest: 'Continue as guest',
+      guestNote: 'No sign-in — progress will not be kept',
       signOut: 'Sign out',
     },
     nav: {
@@ -925,6 +936,12 @@ const translations = {
       emojiLabel: 'Emoji',
       questName: 'Quest name',
       add: 'Add',
+    },
+    guestAccount: {
+      title: 'Guest account',
+      body: 'It has no sign-in: once you sign out you cannot get back in, and the progress goes with it. Sign in with Google to keep it.',
+      signIn: 'Sign in with Google',
+      confirm: 'Sign out of the guest account? Its progress is gone for good.',
     },
     update: {
       check: 'Check for updates',
