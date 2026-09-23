@@ -270,11 +270,27 @@ check is `/api/health`, which does a real database round-trip.
 This service serves the SPA as well as the API, so there is one domain, no CORS,
 and no cookie `SameSite` problems.
 
-**`dailyq-reminders`** — same repo, also at the repo root, but override the
-start command to `npm run reminders` and set a cron schedule; every 30 minutes
-is a good default, and the job no longer depends on the period being exact. It
-needs the Telegram bot token and username as well as the VAPID pair, since it is
-the process that actually sends.
+**`dailyq-reminders`** — same repo, also at the repo root, but point its
+**Config-as-code path at `railway.reminders.json`** and set a cron schedule;
+every 30 minutes is a good default, and the job no longer depends on the period
+being exact.
+
+The separate config file is the whole trick. Railway applies the repo's
+`railway.json` to every service built from it, and config-as-code takes
+precedence over the dashboard — so this service would inherit the API's start
+command, the API's `/api/health` healthcheck (which a job that exits by design
+can never answer) and `ON_FAILURE` restarts, and a start command typed into the
+dashboard would be ignored. `railway.reminders.json` sets what a cron job
+actually needs: build only the API, run `npm run reminders`, never restart. It
+also skips building the web bundle, which this service has no use for.
+
+Note that it does **not** run `prisma migrate deploy` — only `dailyq-api` does.
+Two services migrating the same database on every deploy is a race for no gain.
+
+It needs `DATABASE_URL`, `APP_ORIGIN`, the VAPID pair and the Telegram bot token
+and username, since it is the process that actually sends. `RESEND_API_KEY` and
+`REMINDER_FROM` are optional: without them email is simply not one of the
+channels. None of the API's signing secrets or its OpenAI key belong here.
 
 Delivery is at-most-once per local day. The job claims the day with a
 conditional `UPDATE ... WHERE last_reminder_day IS DISTINCT FROM $day` and only

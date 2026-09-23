@@ -89,7 +89,9 @@ function body(type: 'reminder' | 'streak_warning', streak: number, total: number
 }
 
 async function main() {
-  const resend = new Resend(jobEnv.RESEND_API_KEY);
+  // Null when no key is configured: email is then simply not one of the
+  // channels, the same way no VAPID pair means push is not.
+  const resend = jobEnv.RESEND_API_KEY ? new Resend(jobEnv.RESEND_API_KEY) : null;
 
   // Only rows that opted in. The Base44 version listed every record and
   // filtered in memory, which stopped scaling the moment the table grew.
@@ -130,7 +132,16 @@ async function main() {
       : null,
   );
 
-  const results = { checked: 0, sent: 0, telegrammed: 0, pushed: 0, skipped: 0, failed: 0 };
+  const results = {
+    checked: 0,
+    sent: 0,
+    telegrammed: 0,
+    pushed: 0,
+    // Written to the log with no channel able to deliver it tonight.
+    logOnly: 0,
+    skipped: 0,
+    failed: 0,
+  };
 
   for (const row of rows) {
     results.checked++;
@@ -267,6 +278,16 @@ async function main() {
     if (pushed > 0) {
       results.pushed++;
       results.sent++;
+      continue;
+    }
+
+    /**
+     * Nothing left to try. The line is already in the in-app log, so the user
+     * still sees it next time they open the app — counted separately from a
+     * failure, because there is nothing broken to fix here.
+     */
+    if (!resend) {
+      results.logOnly++;
       continue;
     }
 
