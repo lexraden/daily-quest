@@ -76,7 +76,12 @@ const completionBody = z
     day: dayString,
     category: z.string().min(1).max(64),
     quest_name: z.string().min(1).max(200),
-    level: z.number().int().min(1).max(3),
+    // A category can legitimately hold more than three quests: accepting an
+    // AI suggestion when all three slots are taken mints level 4 and up
+    // (the client bumps past taken levels, and POST /quests/:cat/:level
+    // itself accepts 1..99). Capping here made every tap on such a quest a
+    // 400, which the tracker shows as a save error and a rollback.
+    level: z.number().int().min(1).max(99),
     emoji: z.string().max(16).optional(),
   })
   .strict();
@@ -85,7 +90,7 @@ const completionRemoveBody = z
   .object({
     day: dayString,
     category: z.string().min(1).max(64),
-    level: z.number().int().min(1).max(3),
+    level: z.number().int().min(1).max(99),
   })
   .strict();
 
