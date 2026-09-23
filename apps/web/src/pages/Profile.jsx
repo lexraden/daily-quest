@@ -19,6 +19,9 @@ import DailyCaloriesCard from '@/components/profile/DailyCaloriesCard';
 import CategoryLevelsCard from '@/components/profile/CategoryLevelsCard';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
+import PlanCard from '@/components/profile/PlanCard';
+import PremiumModal from '@/components/daily/PremiumModal';
+import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { aiErrorMessage } from '@/lib/aiErrors';
 import { canInstall, promptInstall, onInstallAvailability } from '@/lib/installPrompt';
 import { useTheme } from '@/lib/useTheme';
@@ -90,6 +93,9 @@ export default function Profile() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+  const [trialStartedAt, setTrialStartedAt] = useState(null);
   const [canInstallApp, setCanInstallApp] = useState(canInstall);
 
   // The prompt usually arrives before this page is opened, so subscribe rather
@@ -135,6 +141,8 @@ export default function Profile() {
         setJournalEntries(data.journal_entries || []);
         setMealHistory(data.meal_history || []);
         setNotificationSettings(data.notification_settings || null);
+        setIsPremium(!!data.is_premium);
+        setTrialStartedAt(data.trial_started_at || null);
         setUserDataId(id);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -153,6 +161,7 @@ export default function Profile() {
   };
 
   const levelProgress = getLevelProgress();
+  const premiumStatus = usePremiumStatus({ isPremium, trialStartedAt });
   const bgClass = theme === 'light'
     ? 'bg-gradient-to-b from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
     : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';
@@ -200,6 +209,14 @@ export default function Profile() {
           theme={theme}
           onUserUpdate={handleUserUpdate}
           earnedLevel={stats.currentLevel?.level || 1}
+        />
+
+        {/* What this account is entitled to. The tracker has no room for it and
+            the Premium screen was unreachable, so the grant had nowhere to show. */}
+        <PlanCard
+          premiumStatus={premiumStatus}
+          theme={theme}
+          onOpen={() => setShowPremium(true)}
         />
 
 
@@ -340,6 +357,14 @@ export default function Profile() {
               }
             }}
             theme={theme}
+          />
+        )}
+
+        {showPremium && (
+          <PremiumModal
+            onClose={() => setShowPremium(false)}
+            theme={theme}
+            premiumStatus={premiumStatus}
           />
         )}
       </div>
