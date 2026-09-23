@@ -10,6 +10,7 @@ import { ensureUploadDir } from './lib/storage.js';
 import authRoutes from './routes/auth.js';
 import questDataRoutes from './routes/questData.js';
 import pushRoutes from './routes/push.js';
+import notificationRoutes from './routes/notifications.js';
 import { configurePush } from './lib/push.js';
 import aiRoutes from './routes/ai.js';
 import fileRoutes from './routes/files.js';
@@ -94,6 +95,7 @@ await app.register(questDataRoutes, { prefix: '/api/quest-data' });
 await app.register(aiRoutes, { prefix: '/api/ai' });
 await app.register(fileRoutes, { prefix: '/api/files' });
 await app.register(pushRoutes, { prefix: '/api/push' });
+await app.register(notificationRoutes, { prefix: '/api/notifications' });
 
 // Serve the built SPA. Absent in local API-only dev, where Vite serves it.
 const here = dirname(fileURLToPath(import.meta.url));

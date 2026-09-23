@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity, Sun, Moon, MessageCircle } from 'lucide-react';
+import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity, Sun, Moon, MessageCircle, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 // CalendarView replaced by History page
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
@@ -20,6 +20,7 @@ const MealReportModal = React.lazy(() => import('@/components/daily/MealReportMo
 const CategoryLevelUpModal = React.lazy(() => import('@/components/daily/CategoryLevelUpModal.jsx'));
 const LevelUpModal = React.lazy(() => import('@/components/daily/LevelUpModal.jsx'));
 const CoachChat = React.lazy(() => import('@/components/daily/CoachChat.jsx'));
+const NotificationCenter = React.lazy(() => import('@/components/daily/NotificationCenter.jsx'));
 import { isCategoryLevelMilestone } from '@/components/daily/CategoryLevelUpModal.jsx';
 
 // Dynamic import for confetti — only loaded on first quest completion
@@ -231,6 +232,16 @@ export default function DailyTracker() {
 
   const [trialStartedAt, setTrialStartedAt] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+
+  /**
+   * The notification log's badge, and whether the list is open.
+   *
+   * Only the count is held here — the list itself is fetched when the sheet
+   * opens, so a user who never taps the bell never downloads forty lines of
+   * text they have already had on their lock screen.
+   */
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showInbox, setShowInbox] = useState(false);
 
   const premiumStatus = usePremiumStatus({ isPremium, trialStartedAt });
   const location = useLocation();
@@ -792,6 +803,47 @@ export default function DailyTracker() {
     });
   }, [isLoaded, userDataId]);
 
+  /**
+   * The badge, fetched once the row is known and again whenever the app comes
+   * back to the foreground.
+   *
+   * Coming back is when it matters: a reminder is pushed while the app is
+   * closed, so the count that was right at load is stale by the time the user
+   * taps the notification and lands here. `visibilitychange` covers both the
+   * tab and an installed PWA being resumed.
+   */
+  const refreshUnread = useCallback(async () => {
+    try {
+      const { unread } = await api.notifications.unread();
+      setUnreadNotifications(unread || 0);
+    } catch {
+      // A badge is not worth a toast. Leave the last known count alone.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded || !userDataId) return;
+
+    refreshUnread();
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshUnread();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    // A push delivered to a tab that is merely in the background: the service
+    // worker says so, because visibilitychange never fires for it.
+    const onWorkerMessage = (event) => {
+      if (event.data?.type === 'notification-arrived') refreshUnread();
+    };
+    navigator.serviceWorker?.addEventListener?.('message', onWorkerMessage);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      navigator.serviceWorker?.removeEventListener?.('message', onWorkerMessage);
+    };
+  }, [isLoaded, userDataId, refreshUnread]);
+
   // Meals edited from Profile or History arrive here so the tracker agrees
   // without a reload.
   useEffect(() => {
@@ -1127,6 +1179,7 @@ export default function DailyTracker() {
         setUserDataId(id);
       }
     }
+    refreshUnread();
   };
 
   return (
@@ -1164,6 +1217,30 @@ export default function DailyTracker() {
               {i.levels[currentLevel.level] || currentLevel.name}
             </div>
           </div>
+
+          {/*
+            The bell sits before the theme toggle so the two controls on this
+            row read left to right as "what happened" then "how it looks". The
+            badge is a count up to nine and a plus after that — the exact number
+            past that point is not information anyone acts on.
+          */}
+          <Button
+            onClick={() => setShowInbox(true)}
+            variant="ghost"
+            size="icon"
+            aria-label={`${i.inbox?.title || 'Notifications'}${unreadNotifications > 0 ? ` (${unreadNotifications})` : ''}`}
+            className={`relative h-10 w-10 shrink-0 rounded-full ${theme === 'light' ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'}`}
+          >
+            <Bell className="w-5 h-5" />
+            {unreadNotifications > 0 && (
+              <span
+                className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white"
+                aria-hidden="true"
+              >
+                {unreadNotifications > 9 ? '9+' : unreadNotifications}
+              </span>
+            )}
+          </Button>
 
           <Button
             onClick={toggleTheme}
@@ -1411,6 +1488,13 @@ export default function DailyTracker() {
       )}
       {levelUp && (
         <LevelUpModal level={levelUp} onClose={dismissLevelUp} theme={theme} />
+      )}
+      {showInbox && (
+        <NotificationCenter
+          onClose={() => setShowInbox(false)}
+          onUnreadChange={setUnreadNotifications}
+          theme={theme}
+        />
       )}
       {showCoach && (
         <CoachChat

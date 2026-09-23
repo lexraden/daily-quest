@@ -16,6 +16,7 @@ import { isDue } from './window.js';
 import { configurePush, notifyUser } from '../lib/push.js';
 import { reminderCopy, situationFor, firstName } from './copy.js';
 import { sanitizeQuestData } from '../lib/questData.js';
+import { record as recordNotification } from '../lib/notifications.js';
 
 /**
  * A quest worth naming in the reminder.
@@ -195,7 +196,24 @@ async function main() {
     }
 
     /**
-     * Push first, email only if nothing was pushed.
+     * The log first, and unconditionally.
+     *
+     * This is the channel that cannot be missed: a phone that was off, a
+     * permission never granted, an email in a promotions tab — the reminder
+     * still exists in the app the next time it is opened, which is the only
+     * place the user is certain to look. Keyed on the day, so the claim above
+     * and this agree: one line per user per day whatever happens below.
+     */
+    await recordNotification(row.userId, {
+      kind: situation === 'streak_warning' ? 'streak_warning' : 'reminder',
+      title: copy.title,
+      body: copy.body,
+      data: { streak: row.streak },
+      dedupeKey: `reminder-${dayKey}`,
+    });
+
+    /**
+     * Push next, email only if nothing was pushed.
      *
      * A notification on the phone is what a streak reminder is for; an email
      * about a habit tracker is read hours later, if at all. But a user with no

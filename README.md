@@ -284,6 +284,35 @@ so a provider outage costs a retry rather than everyone's reminder; the residual
 risk is a send that succeeded but reported failure, and one duplicate beats
 silently dropping a day.
 
+### Notifications
+
+Three channels for the same events, in the order they are tried.
+
+**The in-app log** (`notifications` table, the bell in the tracker header) is
+written first and unconditionally, so it does not depend on either of the
+others working. It is the only channel that cannot be missed: a phone that was
+off, a permission never granted, a subscription the browser dropped when site
+data was cleared, an email in a promotions tab — the line is still there the
+next time the app is opened. Rows carry the text as it was rendered, in the
+language the user had at the time, because a log records what was said rather
+than retelling it in whatever language is current. Writes are idempotent through
+a `(user_id, dedupe_key)` unique index, and the table is trimmed to the newest
+forty rows per user on write, so it is bounded rather than paginated.
+
+Events logged: the daily reminder and the streak warning (from the job), a new
+overall level, a streak milestone (3, 7, 14, 30, 50, 100, 150, 200, 365 days), a
+spent streak freeze, and a lost streak.
+
+**Web push** goes next, to every browser the user has subscribed — `POST
+/api/push/subscribe` per device, keyed on the endpoint, with a 404 or 410 from
+the push service meaning the subscription is gone and the row is deleted. The
+service worker also messages any open page when a push lands, so the bell's
+badge updates without waiting for the app to be resumed.
+
+**Email** only if nothing was pushed. An email about a habit tracker is read
+hours later if at all, but a user with no device subscribed would otherwise hear
+nothing, so it stays as the fallback rather than being replaced.
+
 The window is one-sided — the reminder time has to have passed — and wider than
 the cron period so a late run still delivers. It used to be plus-or-minus 30
 minutes, which is 61 minutes wide: against a 30-minute cron a 09:00 reminder
@@ -354,5 +383,7 @@ allowlist as every other field; there is no separate mood endpoint.
   tables when they get long.
 - **The Statistics page needs three check-ins** before it shows charts; below
   that it explains what to do instead of drawing an empty axis.
-- **Push notifications are stubbed.** `notification_settings.push_token` exists
-  and the reminders job has the hook for it, but delivery is email only.
+- **Push needs a VAPID pair to do anything.** Without `VAPID_PUBLIC_KEY` and
+  `VAPID_PRIVATE_KEY` on both services the endpoints answer "not enabled", the
+  Profile switch says so, and reminders fall back to email. The in-app log works
+  either way — see **Notifications** below.

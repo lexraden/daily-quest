@@ -16,6 +16,8 @@ import { isDue, minutesSince } from '../src/jobs/window.js';
 import { validProposal } from '../src/lib/coachProposal.js';
 import { configurePush, notifyUser, setSender } from '../src/lib/push.js';
 import { reminderCopy, situationFor, firstName } from '../src/jobs/copy.js';
+import { record as recordNotification, MAX_PER_USER } from '../src/lib/notifications.js';
+import { isStreakMilestone, copyFor } from '../src/lib/notificationCopy.js';
 import webpush from 'web-push';
 
 /** One pair for the whole suite; the pair only has to be internally consistent. */
@@ -1666,6 +1668,286 @@ describe('reminders', () => {
     assert.equal(tomorrow, 1);
 
     await prisma.questData.deleteMany({ where: { userId: alice.id } });
+  });
+});
+
+describe('what an in-app notification says', () => {
+  test('milestones are the ones worth interrupting someone for', () => {
+    assert.ok(isStreakMilestone(3));
+    assert.ok(isStreakMilestone(7));
+    assert.ok(isStreakMilestone(365));
+    assert.ok(!isStreakMilestone(1), 'day one is the streak starting, not a milestone');
+    assert.ok(!isStreakMilestone(4));
+    assert.ok(!isStreakMilestone(0));
+  });
+
+  test('the last freeze is said differently from the others', () => {
+    const ru = copyFor('ru');
+    assert.match(ru.freezeUsed(2).body, /2/);
+    assert.match(ru.freezeUsed(0).body, /последняя/i);
+    assert.doesNotMatch(ru.freezeUsed(0).body, /0/, 'not "0 freezes left"');
+
+    const en = copyFor('en');
+    assert.match(en.freezeUsed(1).body, /1 freeze left/, 'singular');
+    assert.match(en.freezeUsed(3).body, /3 freezes left/, 'plural');
+    assert.match(en.freezeUsed(0).body, /last freeze/);
+  });
+
+  test('a lost streak of nothing does not claim a number', () => {
+    for (const lang of ['ru', 'en'] as const) {
+      assert.doesNotMatch(copyFor(lang).streakLost(0).body, /\b0\b/);
+      assert.match(copyFor(lang).streakLost(9).body, /9/);
+    }
+  });
+
+  test('an unknown language falls back to Russian rather than to nothing', () => {
+    // The language is whatever the browser last saved; a value from an older
+    // build must not leave a notification with no text at all.
+    assert.deepEqual(copyFor('de' as 'ru'), copyFor('ru'));
+  });
+});
+
+describe('the in-app notification log', () => {
+  async function onboard(actor: Actor) {
+    await prisma.notification.deleteMany({ where: { userId: actor.id } });
+    await prisma.questData.deleteMany({ where: { userId: actor.id } });
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+  }
+
+  /** XP the way the app earns it — one completion per day, three each. */
+  async function earnXp(actor: Actor, xp: number) {
+    for (let i = 0; i < Math.ceil(xp / 3); i += 1) {
+      await call('/api/quest-data/completions', {
+        token: actor.token,
+        method: 'POST',
+        body: { day: `2032-06-${String(i + 1).padStart(2, '0')}`, category: 'health', quest_name: `q${i}`, level: 3 },
+      });
+    }
+  }
+
+  const list = async (actor: Actor) =>
+    (await (await call('/api/notifications', { token: actor.token })).json()) as {
+      notifications: { id: string; kind: string; title: string; body: string; data: unknown; read: boolean }[];
+      unread: number;
+    };
+
+  test('the log is private to its owner', async () => {
+    assert.equal((await call('/api/notifications')).status, 401);
+    assert.equal((await call('/api/notifications/unread')).status, 401);
+    assert.equal((await call('/api/notifications/read', { method: 'POST' })).status, 401);
+  });
+
+  test('a level-up is logged once, however many devices acknowledge it', async () => {
+    await onboard(bob);
+    await earnXp(bob, 30); // past the level 3 threshold
+
+    const ack = () => call('/api/quest-data/level-celebrated', {
+      token: bob.token, method: 'POST', body: { level: 3 },
+    });
+
+    // Two tabs showing the same modal, plus a retry after a dropped response.
+    await Promise.all([ack(), ack()]);
+    await ack();
+
+    const { notifications } = await list(bob);
+    const levelUps = notifications.filter((n) => n.kind === 'level_up');
+    assert.equal(levelUps.length, 1, 'one row, not one per acknowledgement');
+    assert.deepEqual(levelUps[0]?.data, { level: 3 });
+    assert.match(levelUps[0]?.title ?? '', /3/, 'the line names the level');
+  });
+
+  test('a streak milestone is logged on the day it is reached, and only then', async () => {
+    await onboard(bob);
+
+    const countDay = (day: string) =>
+      call('/api/quest-data/streak', { token: bob.token, method: 'POST', body: { day } });
+
+    await countDay('2032-07-01');
+    await countDay('2032-07-02');
+    assert.equal(
+      (await list(bob)).notifications.filter((n) => n.kind === 'streak_milestone').length,
+      0,
+      'two days is not a milestone',
+    );
+
+    await countDay('2032-07-03');
+    const atThree = (await list(bob)).notifications.filter((n) => n.kind === 'streak_milestone');
+    assert.equal(atThree.length, 1);
+    assert.deepEqual(atThree[0]?.data, { streak: 3 });
+
+    // The same day again does not count towards the streak, so it says nothing.
+    await countDay('2032-07-03');
+    assert.equal(
+      (await list(bob)).notifications.filter((n) => n.kind === 'streak_milestone').length,
+      1,
+      'a second call for the same day is silent',
+    );
+
+    await countDay('2032-07-04');
+    assert.equal(
+      (await list(bob)).notifications.filter((n) => n.kind === 'streak_milestone').length,
+      1,
+      'four is not a milestone either',
+    );
+  });
+
+  test('a spent freeze is logged with what is left of them', async () => {
+    await onboard(bob);
+    const used = await call('/api/quest-data/streak/freeze', {
+      token: bob.token, method: 'POST', body: { action: 'use' },
+    });
+    assert.equal((await used.json()).applied, true);
+
+    const rows = (await list(bob)).notifications.filter((n) => n.kind === 'freeze_used');
+    assert.equal(rows.length, 1);
+    assert.deepEqual(rows[0]?.data, { freezes: 0 }, 'the count after spending, not before');
+
+    // Nothing left to spend, so nothing more to say.
+    const again = await call('/api/quest-data/streak/freeze', {
+      token: bob.token, method: 'POST', body: { action: 'use' },
+    });
+    assert.equal((await again.json()).applied, false);
+    assert.equal((await list(bob)).notifications.filter((n) => n.kind === 'freeze_used').length, 1);
+  });
+
+  /**
+   * The value in the line is the streak the user just lost, which no longer
+   * exists anywhere by the time the row is read back. RETURNING hands back the
+   * new row — zero — so this would have logged "It was 0 days" without the CTE
+   * that reads the pre-update snapshot.
+   */
+  test('a lost streak is logged with the number it was, not the zero it became', async () => {
+    await onboard(bob);
+    for (const day of ['2032-08-01', '2032-08-02', '2032-08-03', '2032-08-04', '2032-08-05']) {
+      await call('/api/quest-data/streak', { token: bob.token, method: 'POST', body: { day } });
+    }
+
+    const lost = await call('/api/quest-data/streak/freeze', {
+      token: bob.token, method: 'POST', body: { action: 'lose' },
+    });
+    const row = await lost.json();
+    assert.equal(row.streak, 0);
+
+    const logged = (await list(bob)).notifications.filter((n) => n.kind === 'streak_lost');
+    assert.equal(logged.length, 1);
+    assert.deepEqual(logged[0]?.data, { streak: 5 });
+    assert.match(logged[0]?.body ?? '', /5/);
+  });
+
+  test('opening the list is what marks it read', async () => {
+    await onboard(bob);
+    await earnXp(bob, 30);
+    await call('/api/quest-data/level-celebrated', {
+      token: bob.token, method: 'POST', body: { level: 3 },
+    });
+
+    const before = await list(bob);
+    assert.ok(before.unread >= 1);
+    assert.ok(before.notifications.some((n) => !n.read), 'a new entry reads as new');
+
+    const read = await (await call('/api/notifications/read', { token: bob.token, method: 'POST' })).json();
+    assert.equal(read.unread, 0);
+
+    const unread = await (await call('/api/notifications/unread', { token: bob.token })).json();
+    assert.equal(unread.unread, 0);
+
+    const after = await list(bob);
+    assert.ok(after.notifications.every((n) => n.read));
+    assert.equal(after.unread, 0);
+  });
+
+  test("one notification can be marked read without touching the rest", async () => {
+    await onboard(bob);
+    await prisma.notification.createMany({
+      data: [
+        { userId: bob.id, kind: 'reminder', title: 'one', body: 'b', dedupeKey: 'one' },
+        { userId: bob.id, kind: 'reminder', title: 'two', body: 'b', dedupeKey: 'two' },
+      ],
+    });
+
+    const { notifications } = await list(bob);
+    const target = notifications.find((n) => n.title === 'one');
+    const res = await (await call('/api/notifications/read', {
+      token: bob.token, method: 'POST', body: { id: target?.id },
+    })).json();
+    assert.equal(res.unread, 1, 'the other one is still unread');
+  });
+
+  test("another account's notification cannot be marked read or cleared", async () => {
+    await onboard(bob);
+    await prisma.notification.deleteMany({ where: { userId: alice.id } });
+    const mine = await prisma.notification.create({
+      data: { userId: alice.id, kind: 'reminder', title: 'alice only', body: 'b' },
+    });
+
+    // Bob knows the id and asks for it by name.
+    const res = await call('/api/notifications/read', {
+      token: bob.token, method: 'POST', body: { id: mine.id },
+    });
+    assert.equal(res.status, 200, 'it matches nothing rather than erroring');
+    assert.equal((await prisma.notification.findUnique({ where: { id: mine.id } }))?.readAt, null);
+
+    await call('/api/notifications', { token: bob.token, method: 'DELETE' });
+    assert.ok(
+      await prisma.notification.findUnique({ where: { id: mine.id } }),
+      "clearing your own log leaves someone else's alone",
+    );
+
+    assert.deepEqual((await list(bob)).notifications, [], 'and Bob only ever saw his own');
+    await prisma.notification.deleteMany({ where: { userId: alice.id } });
+  });
+
+  /**
+   * The log is bounded on write rather than paginated on read, so this is the
+   * only thing stopping the table growing for the life of an account.
+   */
+  test('the log keeps the newest and drops the rest', async () => {
+    await onboard(bob);
+    for (let i = 0; i < MAX_PER_USER + 12; i += 1) {
+      await recordNotification(bob.id, {
+        kind: 'reminder',
+        title: `n${String(i).padStart(3, '0')}`,
+        body: 'b',
+        dedupeKey: `trim-${i}`,
+      });
+    }
+
+    const stored = await prisma.notification.count({ where: { userId: bob.id } });
+    assert.equal(stored, MAX_PER_USER);
+
+    const { notifications } = await list(bob);
+    assert.equal(notifications[0]?.title, `n${String(MAX_PER_USER + 11).padStart(3, '0')}`);
+    assert.ok(
+      notifications.every((n) => Number(n.title.slice(1)) >= 12),
+      'the twelve oldest are gone, not twelve arbitrary ones',
+    );
+  });
+
+  test('the same dedupe key writes one row, whichever run gets there first', async () => {
+    await onboard(bob);
+    const write = () =>
+      recordNotification(bob.id, {
+        kind: 'reminder',
+        title: 'the evening reminder',
+        body: 'b',
+        dedupeKey: 'reminder-2032-09-01',
+      });
+
+    const [a, b, c] = await Promise.all([write(), write(), write()]);
+    assert.equal([a, b, c].filter(Boolean).length, 1, 'exactly one insert lands');
+    assert.equal(await prisma.notification.count({ where: { userId: bob.id } }), 1);
+
+    assert.equal(await write(), false, 'and a later run that day adds nothing');
+  });
+
+  test('an event with no dedupe key may happen twice', async () => {
+    await onboard(bob);
+    await recordNotification(bob.id, { kind: 'streak_lost', title: 'gone', body: 'b' });
+    await recordNotification(bob.id, { kind: 'streak_lost', title: 'gone again', body: 'b' });
+    assert.equal(await prisma.notification.count({ where: { userId: bob.id } }), 2);
   });
 });
 

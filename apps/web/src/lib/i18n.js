@@ -312,6 +312,19 @@ const translations = {
       title: 'Звуки',
       hint: 'Квесты, серии и новые уровни',
     },
+    /* The notification log behind the bell in the header. */
+    inbox: {
+      title: 'Уведомления',
+      loading: 'Загружаем…',
+      emptyTitle: 'Пока пусто',
+      emptyHint: 'Здесь будут напоминания, серии и новые уровни.',
+      clear: 'Очистить',
+      now: 'сейчас',
+      minutesAgo: '{n} мин',
+      hoursAgo: '{n} ч',
+      yesterday: 'вчера',
+      daysAgo: '{n} дн',
+    },
     levelUp: {
       kicker: 'Новый уровень',
       reached: 'Уровень {level} достигнут.',
@@ -775,6 +788,18 @@ const translations = {
     sound: {
       title: 'Sound effects',
       hint: 'Quests, streaks and level-ups',
+    },
+    inbox: {
+      title: 'Notifications',
+      loading: 'Loading…',
+      emptyTitle: 'Nothing yet',
+      emptyHint: 'Reminders, streaks and level-ups will show up here.',
+      clear: 'Clear all',
+      now: 'now',
+      minutesAgo: '{n} min',
+      hoursAgo: '{n} h',
+      yesterday: 'yesterday',
+      daysAgo: '{n} d',
     },
     levelUp: {
       kicker: 'Level up',

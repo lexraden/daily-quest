@@ -111,18 +111,38 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title || 'DailyQ';
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || '',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      // Same tag replaces rather than stacks: a second evening reminder should
-      // not sit under the first one in the shade.
-      tag: data.tag || 'dailyq-reminder',
-      renotify: true,
-      data: { url: data.url || '/' },
-    }),
-  );
+
+  /**
+   * Tell any open copy of the app that the log has grown.
+   *
+   * The badge in the header is a number fetched from the server, and the app
+   * cannot know a reminder arrived unless something says so — a push delivered
+   * while the tab is merely in the background would otherwise leave the bell
+   * looking empty until the next time the app was resumed.
+   */
+  const tellTheApp = self.clients
+    .matchAll({ type: 'window', includeUncontrolled: true })
+    .then((windows) => {
+      for (const client of windows) client.postMessage({ type: 'notification-arrived' });
+    })
+    .catch(() => {
+      // Nothing open, or messaging refused. The notification is what matters.
+    });
+
+  const show = self.registration.showNotification(title, {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    // Same tag replaces rather than stacks: a second evening reminder should
+    // not sit under the first one in the shade.
+    tag: data.tag || 'dailyq-reminder',
+    renotify: true,
+    data: { url: data.url || '/' },
+  });
+
+  // Showing it is the part the browser insists on, so it is the part that must
+  // not be held up by the message failing.
+  event.waitUntil(Promise.all([show, tellTheApp]));
 });
 
 /**

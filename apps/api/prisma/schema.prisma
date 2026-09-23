@@ -45,6 +45,7 @@ model User {
   refreshTokens RefreshToken[]
   chatMessages  ChatMessage[]
   pushSubs      PushSubscription[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -193,4 +194,55 @@ model AiUsage {
 
   @@unique([userId, period])
   @@map("ai_usage")
+}
+
+/**
+ * The in-app notification log.
+ *
+ * Push and email are fire-and-forget: a phone that was off, a permission never
+ * granted, a browser that dropped the subscription — and the reminder simply
+ * never happened. This table is the channel that cannot be missed, so the app
+ * can show what it tried to tell someone whether or not the phone rang.
+ *
+ * The text is stored rendered rather than as a template, in the language the
+ * user was using at the time. That is deliberate: a log records what was said,
+ * so switching language later leaves old entries alone instead of retelling
+ * them. `data` carries the numbers behind the line for anything the UI wants to
+ * do with them.
+ */
+model Notification {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+
+  // 'reminder' | 'streak_warning' | 'level_up' | 'streak_milestone' |
+  // 'freeze_used' | 'streak_lost'. Not an enum for the same reason as
+  // ChatMessage.role: adding a kind should not need a migration.
+  kind  String
+  title String
+  body  String @db.Text
+
+  // { level?, streak?, freezes? } — whatever the line was rendered from.
+  data Json?
+
+  readAt DateTime? @map("read_at")
+
+  /**
+   * What makes writing one idempotent.
+   *
+   * Null means "always insert" — an event that genuinely can happen twice. A
+   * value means at most one row per user per key, enforced by the database
+   * rather than by checking first: the reminders job claims a day and writes
+   * `reminder-2026-09-23`, so a retry, a manual run, or a second replica adds
+   * nothing. Postgres treats NULLs as distinct, so the unique index leaves the
+   * unkeyed rows alone.
+   */
+  dedupeKey String? @map("dedupe_key")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

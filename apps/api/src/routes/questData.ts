@@ -19,6 +19,8 @@ import {
   onesByCategory,
 } from '../lib/questData.js';
 import { toJson } from '../lib/json.js';
+import { record as recordNotification, langFor } from '../lib/notifications.js';
+import { copyFor, isStreakMilestone } from '../lib/notificationCopy.js';
 
 const dayString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a YYYY-MM-DD date');
 
@@ -573,6 +575,22 @@ export default async function questDataRoutes(app: FastifyInstance) {
     });
     if (!row) throw notFound('Finish onboarding before saving progress');
 
+    /**
+     * A milestone is worth a line in the log. Only when the day was actually
+     * counted, so the second call of the day says nothing, and keyed on the day
+     * as well as the number: a streak that is lost and climbs back to seven
+     * deserves saying again, twice on one evening does not.
+     */
+    if (counted > 0 && isStreakMilestone(row.streak)) {
+      const copy = copyFor(await langFor(userId)).streakMilestone(row.streak);
+      await recordNotification(userId, {
+        kind: 'streak_milestone',
+        ...copy,
+        data: { streak: row.streak },
+        dedupeKey: `streak-${row.streak}-${day}`,
+      });
+    }
+
     return { ...toWire(row), counted: counted > 0 };
   });
 
@@ -587,14 +605,36 @@ export default async function questDataRoutes(app: FastifyInstance) {
     const userId = currentUserId(request);
 
     let applied: number;
+    // What the streak was before it was let go, for the log line. Read from the
+    // same statement that clears it rather than beforehand: a separate SELECT
+    // could be overtaken by another write and name the wrong number.
+    let lostStreak = 0;
+
     if (parsed.data.action === 'use') {
       applied = await prisma.$executeRaw`
         UPDATE quest_data
            SET streak_freezes = streak_freezes - 1, updated_at = now()
          WHERE user_id = ${userId} AND streak_freezes > 0`;
     } else {
-      applied = await prisma.$executeRaw`
-        UPDATE quest_data SET streak = 0, updated_at = now() WHERE user_id = ${userId}`;
+      /**
+       * A CTE rather than an UPDATE … RETURNING, because RETURNING hands back
+       * the new row and the new value is zero by definition. Every CTE in one
+       * statement sees the same snapshot from before it ran, so `previous` reads
+       * the streak the UPDATE is about to clear.
+       */
+      const [result] = await prisma.$queryRaw<{ streak: number; applied: bigint }[]>`
+        WITH previous AS (
+          SELECT streak FROM quest_data WHERE user_id = ${userId}
+        ), cleared AS (
+          UPDATE quest_data SET streak = 0, updated_at = now()
+           WHERE user_id = ${userId}
+          RETURNING 1
+        )
+        SELECT COALESCE((SELECT streak FROM previous), 0) AS streak,
+               (SELECT count(*) FROM cleared) AS applied`;
+
+      lostStreak = Number(result?.streak ?? 0);
+      applied = Number(result?.applied ?? 0);
     }
 
     const row = await prisma.questData.findUnique({
@@ -602,6 +642,26 @@ export default async function questDataRoutes(app: FastifyInstance) {
       include: { user: { select: { trialStartedAt: true, isPremium: true } } },
     });
     if (!row) throw notFound('Finish onboarding before saving progress');
+
+    /**
+     * Both outcomes are worth recording — one is a save, the other is the thing
+     * the app exists to prevent — and both only when the write landed, so the
+     * tab that lost the race stays quiet. No dedupe key: losing a streak twice
+     * in a month is two separate events, and the guards above already mean one
+     * row per action that actually took effect.
+     */
+    if (applied > 0) {
+      const copy = copyFor(await langFor(userId));
+      const line =
+        parsed.data.action === 'use'
+          ? {
+              kind: 'freeze_used',
+              ...copy.freezeUsed(row.streakFreezes),
+              data: { freezes: row.streakFreezes },
+            }
+          : { kind: 'streak_lost', ...copy.streakLost(lostStreak), data: { streak: lostStreak } };
+      await recordNotification(userId, line);
+    }
 
     return { ...toWire(row), applied: applied > 0 };
   });
@@ -619,10 +679,29 @@ export default async function questDataRoutes(app: FastifyInstance) {
     if (!parsed.success) throw badRequest('Cannot record the level — expected a level of 1 to 10');
     const userId = currentUserId(request);
 
-    await prisma.questData.updateMany({
+    const { count } = await prisma.questData.updateMany({
       where: { userId, celebratedLevel: { lt: parsed.data.level } },
       data: { celebratedLevel: parsed.data.level },
     });
+
+    /**
+     * The modal is the moment; this is so it is still findable tomorrow.
+     *
+     * Hung off the acknowledgement rather than off the completion that earned
+     * the level, because the guard is already here: `count` is non-zero only for
+     * the one request that actually moved the mark, so two devices showing the
+     * same modal write one row between them. The dedupe key is belt and braces
+     * for a retry that arrives after the mark has moved.
+     */
+    if (count > 0) {
+      const copy = copyFor(await langFor(userId)).levelUp(parsed.data.level);
+      await recordNotification(userId, {
+        kind: 'level_up',
+        ...copy,
+        data: { level: parsed.data.level },
+        dedupeKey: `level-${parsed.data.level}`,
+      });
+    }
 
     const row = await prisma.questData.findUnique({
       where: { userId },

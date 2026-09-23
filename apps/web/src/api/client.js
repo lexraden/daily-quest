@@ -257,6 +257,19 @@ export const api = {
       request('/api/quest-data/streak/freeze', { method: 'POST', body: { action } }),
   },
 
+  /**
+   * The in-app notification log — the same events push tries to deliver, kept
+   * where they can be read after the fact.
+   */
+  notifications: {
+    list: () => request('/api/notifications'),
+    /** Just the badge number — the list is not needed to draw a dot. */
+    unread: () => request('/api/notifications/unread'),
+    /** No id marks every unread one read. */
+    read: (id) => request('/api/notifications/read', { method: 'POST', body: id ? { id } : {} }),
+    clear: () => request('/api/notifications', { method: 'DELETE' }),
+  },
+
   push: {
     key: () => request('/api/push/key'),
     subscribe: (subscription) =>
