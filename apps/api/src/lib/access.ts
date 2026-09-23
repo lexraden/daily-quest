@@ -6,6 +6,18 @@ export const TRIAL_DAYS = 3;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
+ * Pro, from either direction: a standing grant that never lapses, or paid time
+ * that has not run out yet.
+ *
+ * `isPremium` is checked first and on its own, so comping an account stays a
+ * decision rather than a date someone has to keep pushing forward.
+ */
+export function hasPro(user: { isPremium: boolean; premiumUntil: Date | null }): boolean {
+  if (user.isPremium) return true;
+  return user.premiumUntil !== null && user.premiumUntil.getTime() > Date.now();
+}
+
+/**
  * The same rule as the frontend's usePremiumStatus, evaluated against the
  * database instead of client state. The browser copy drives what the UI offers;
  * this one decides whether the call actually runs, so flipping a local flag no
@@ -19,11 +31,11 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export async function requireAiAccess(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { isPremium: true, trialStartedAt: true },
+    select: { isPremium: true, premiumUntil: true, trialStartedAt: true },
   });
 
   if (!user) throw unauthorized('Account no longer exists');
-  if (user.isPremium) return;
+  if (hasPro(user)) return;
 
   // The gate is off: still a real account, still inside the monthly quota, but
   // the trial does not decide anything. The clock below is left alone so

@@ -328,6 +328,47 @@ the flag in the token would be faster and would silently mean a grant did nothin
 until the user signed out, which is the moment nobody would connect to the
 change — there is a test pinning this.
 
+### Paying for Pro
+
+Pro is bought with **Telegram Stars**, through the same bot that delivers the
+reminders. Telegram is the merchant of record, so there is no merchant account,
+no card data on our side and nothing to certify — and it works inside the iOS
+app, where a card form would not. The cost is Telegram's cut and that payouts go
+through them.
+
+`PRO_PRICE_STARS` and `PRO_PERIOD_DAYS` set the price and what it buys. Both are
+read when an invoice is minted, so changing them needs a restart but not a
+release, and never touches what someone already paid for.
+
+The flow is three moves:
+
+1. the app calls `POST /api/billing/invoice`, which mints a Telegram invoice
+   link and returns it;
+2. Telegram asks the webhook whether to allow the checkout
+   (`pre_checkout_query`) and gives ten seconds to answer;
+3. Telegram reports the completed payment (`successful_payment`).
+
+Nothing is written before step 3, so a user who opens an invoice and walks away
+leaves nothing to clean up.
+
+Which account an invoice belongs to travels inside `invoice_payload`, the one
+field that survives the round trip — **signed**, because the string is handed to
+a Telegram client, and an unsigned account id there would let anyone who can mint
+an invoice name someone else's account as the beneficiary. The signature is
+re-checked on `successful_payment` rather than trusted from the pre-checkout
+step: they are separate HTTP requests and only the second one grants anything.
+
+Payments are recorded in `payments` with the provider's charge id as a unique
+column, and that is the whole idempotency mechanism: Telegram redelivers any
+update it did not hear a 200 for, and the insert and the grant are one
+transaction, so a redelivered payment adds nothing. The extension is
+`max(now, premium_until) + days`, so paying again mid-period stacks instead of
+truncating, and paying again after a lapse starts from today.
+
+Entitlement is read as `isPremium || premiumUntil > now` (`hasPro` in
+`lib/access.ts`). The two are deliberately separate: `isPremium` is a standing
+grant that no clock turns off, so a comped account is never quietly cancelled.
+
 ### Notifications
 
 Three channels for the same events, in the order they are tried.
@@ -441,9 +482,16 @@ allowlist as every other field; there is no separate mood endpoint.
 
 ## Known limitations
 
-- **Billing is not built.** `is_premium` is a flag with no payment path behind
-  it. Stripe was listed as a dependency in the Base44 version but never
-  imported; those packages have been removed.
+- **Pro buys two features, not a tier.** Voice capture and photo calories are
+  the only things the gate refuses; the tracker, streaks, freezes and reminders
+  are free and are meant to stay that way. The Pro screen says so rather than
+  listing a wall of features that do not exist.
+- **Subscriptions do not renew.** A Stars payment buys a fixed period and the
+  account lapses at the end of it. Telegram supports recurring Stars
+  subscriptions; this uses one-off invoices, so a user who wants another month
+  pays for another month.
+- **Refunds are manual.** The charge id is stored against every payment, which
+  is what `refundStarPayment` needs, but nothing in the app calls it.
 - **Tabs stay mounted once visited**, so a page that loads on mount alone never
   loads again. History and Profile key their load on the route and read past
   the cache's 30-second TTL, which is why arriving from the tracker shows what

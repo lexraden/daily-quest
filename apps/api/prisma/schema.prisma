@@ -30,7 +30,12 @@ model User {
   // Entitlement lives on the account: quest_data is deleted when a user resets
   // onboarding, which would otherwise hand out a fresh trial each time.
   trialStartedAt DateTime? @map("trial_started_at")
+  // A grant with no end: the launch accounts, and anything handed out by
+  // scripts/grantPro.ts. Outranks premiumUntil rather than being expressed
+  // through it, so a comped account is never quietly turned off by a clock.
   isPremium      Boolean   @default(false) @map("is_premium")
+  // Paid access, and when it runs out. Each payment extends it.
+  premiumUntil   DateTime? @map("premium_until")
 
   // Which unlocked level avatar the user is wearing, as "level-<n>". Null means
   // avatarUrl is in charge — an uploaded photo always outranks the unlockables,
@@ -47,6 +52,7 @@ model User {
   pushSubs      PushSubscription[]
   notifications Notification[]
   telegram      TelegramLink?
+  payments      Payment[]
 
   @@map("users")
 }
@@ -288,4 +294,41 @@ model TelegramLink {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("telegram_links")
+}
+
+/**
+ * One completed purchase.
+ *
+ * Kept as a ledger rather than folded into the user row, because `premium_until`
+ * alone cannot answer who paid what — and a refund, which Telegram allows for
+ * Stars, needs the charge id to act on.
+ */
+model Payment {
+  id String @id @default(cuid())
+
+  userId String @map("user_id")
+
+  /** 'telegram_stars' today; the column exists so a second one can be added. */
+  provider String
+
+  /**
+   * The provider's own id for the charge. Unique, and that is the whole
+   * idempotency mechanism: Telegram redelivers a webhook it did not hear a 200
+   * for, and a redelivered successful_payment must not buy a second month.
+   */
+  chargeId String @unique @map("charge_id")
+
+  /** In the provider's smallest unit. For Stars that is one star. */
+  amount   Int
+  currency String
+
+  /** How much access this bought, so the ledger explains the expiry. */
+  days Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("payments")
 }

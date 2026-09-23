@@ -2007,7 +2007,12 @@ interface StubCall {
   method: string;
   chat_id: string;
   text: string;
+  /** Everything the API sent, for the methods that are not "say this to a chat". */
+  body: Record<string, unknown>;
 }
+
+/** What createInvoiceLink returns. Telegram hands back a t.me link, so does this. */
+const STUB_INVOICE_LINK = 'https://t.me/$stub-invoice-link';
 
 const telegramCalls: StubCall[] = [];
 let telegramStub: import('node:http').Server | null = null;
@@ -2021,14 +2026,27 @@ async function startTelegramStub() {
     });
     req.on('end', () => {
       const method = (req.url ?? '').split('/').pop() ?? '';
+      let body: Record<string, unknown> = {};
       try {
-        const body = JSON.parse(raw || '{}');
-        telegramCalls.push({ method, chat_id: String(body.chat_id ?? ''), text: String(body.text ?? '') });
+        body = JSON.parse(raw || '{}') as Record<string, unknown>;
+        telegramCalls.push({
+          method,
+          chat_id: String(body.chat_id ?? ''),
+          text: String(body.text ?? ''),
+          body,
+        });
       } catch {
-        telegramCalls.push({ method, chat_id: '', text: raw });
+        telegramCalls.push({ method, chat_id: '', text: raw, body: {} });
       }
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, result: {} }));
+      // Most methods return true; createInvoiceLink returns the link itself,
+      // and the API refuses to hand out anything else.
+      res.end(
+        JSON.stringify({
+          ok: true,
+          result: method === 'createInvoiceLink' ? STUB_INVOICE_LINK : {},
+        }),
+      );
     });
   });
   await new Promise<void>((resolve) => telegramStub!.listen(TELEGRAM_STUB_PORT, '127.0.0.1', resolve));
@@ -2251,6 +2269,215 @@ describe('connecting Telegram', () => {
       const res = await webhook(body);
       assert.equal(res.status, 200, JSON.stringify(body));
     }
+  });
+});
+
+/**
+ * Paying for Pro with Telegram Stars.
+ *
+ * Money is the one path that cannot be checked by trying it, so all of it is
+ * checked here: that the invoice names the right price in the right currency,
+ * that a checkout is approved only against a payload we signed, that a payment
+ * grants exactly one period, and — the part a retry would otherwise break —
+ * that Telegram redelivering the same charge does not buy a second month.
+ */
+describe('paying for Pro', () => {
+  before(async () => {
+    await startTelegramStub();
+  });
+
+  after(async () => {
+    await new Promise<void>((resolve) => telegramStub?.close(() => resolve()));
+  });
+
+  const webhook = (body: unknown) =>
+    fetch(`${BASE}/api/telegram/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Bot-Api-Secret-Token': WEBHOOK_SECRET,
+      },
+      body: JSON.stringify(body),
+    });
+
+  /** An account whose trial is long gone, which is who this is for. */
+  async function lapsedUser(name: string) {
+    const actor = await makeUser(name);
+    await prisma.user.update({
+      where: { id: actor.id },
+      data: { trialStartedAt: new Date(Date.now() - 10 * 864e5), isPremium: false },
+    });
+    return actor;
+  }
+
+  /** Asks for an invoice and returns the payload the API put inside it. */
+  async function invoicePayload(actor: Actor): Promise<string> {
+    telegramCalls.length = 0;
+    const res = await call('/api/billing/invoice', { token: actor.token, method: 'POST' });
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).url, STUB_INVOICE_LINK);
+
+    const minted = telegramCalls.find((c) => c.method === 'createInvoiceLink');
+    assert.ok(minted, 'the API should have called createInvoiceLink');
+    return String(minted.body.payload);
+  }
+
+  const paymentUpdate = (chatId: number, payload: string, chargeId: string) => ({
+    message: {
+      chat: { id: chatId },
+      successful_payment: {
+        currency: 'XTR',
+        total_amount: 150,
+        invoice_payload: payload,
+        telegram_payment_charge_id: chargeId,
+      },
+    },
+  });
+
+  const premiumUntil = async (id: string) =>
+    (await prisma.user.findUnique({ where: { id }, select: { premiumUntil: true } }))?.premiumUntil ??
+    null;
+
+  test('the plan names a price in Stars', async () => {
+    const actor = await lapsedUser('plan-reader');
+    const plan = await (await call('/api/billing/plan', { token: actor.token })).json();
+
+    assert.equal(plan.enabled, true);
+    assert.equal(plan.currency, 'XTR');
+    assert.equal(plan.provider, 'telegram_stars');
+    assert.ok(plan.price > 0);
+    assert.ok(plan.days > 0);
+    assert.equal(plan.is_pro, false);
+  });
+
+  test('the invoice is for Stars, with no provider token', async () => {
+    const actor = await lapsedUser('invoice-buyer');
+    telegramCalls.length = 0;
+    await call('/api/billing/invoice', { token: actor.token, method: 'POST' });
+
+    const minted = telegramCalls.find((c) => c.method === 'createInvoiceLink');
+    assert.ok(minted);
+    assert.equal(minted.body.currency, 'XTR');
+    // Telegram rejects a Stars invoice that carries one.
+    assert.equal(minted.body.provider_token, '');
+    const prices = minted.body.prices as { amount: number }[];
+    assert.equal(prices.length, 1, 'XTR allows exactly one line item');
+    assert.ok(prices[0]!.amount > 0);
+  });
+
+  test('an invoice needs a session', async () => {
+    assert.equal((await call('/api/billing/invoice', { method: 'POST' })).status, 401);
+  });
+
+  test('checkout is approved for our payload and refused for a forged one', async () => {
+    const actor = await lapsedUser('checkout');
+    const payload = await invoicePayload(actor);
+
+    telegramCalls.length = 0;
+    await webhook({ pre_checkout_query: { id: 'q1', invoice_payload: payload } });
+    const approved = telegramCalls.find((c) => c.method === 'answerPreCheckoutQuery');
+    assert.ok(approved);
+    assert.equal(approved.body.ok, true);
+
+    /**
+     * The same payload with the account swapped for someone else's. Without the
+     * signature this is all it would take to have a stranger's payment credited
+     * to your own account — or your own payment credited to an account you do
+     * not own, which is the same hole from the other side.
+     */
+    const other = await lapsedUser('checkout-victim');
+    const forged = payload.replace(/:[^:]+:/, `:${other.id}:`);
+
+    telegramCalls.length = 0;
+    await webhook({ pre_checkout_query: { id: 'q2', invoice_payload: forged } });
+    const refused = telegramCalls.find((c) => c.method === 'answerPreCheckoutQuery');
+    assert.ok(refused, 'silence would read to the user as a failed payment');
+    assert.equal(refused.body.ok, false);
+  });
+
+  test('a payment grants the period, and unlocks the AI the trial had locked', async () => {
+    const actor = await lapsedUser('payer');
+
+    const blocked = await call('/api/ai/meal/text', {
+      token: actor.token, method: 'POST', body: { text: 'a burger' },
+    });
+    assert.equal((await blocked.json()).code, 'premium_required');
+
+    const payload = await invoicePayload(actor);
+    telegramCalls.length = 0;
+    assert.equal((await webhook(paymentUpdate(930001, payload, 'charge-1'))).status, 200);
+
+    const until = await premiumUntil(actor.id);
+    assert.ok(until, 'the account should now have paid time');
+    const days = (until.getTime() - Date.now()) / 864e5;
+    assert.ok(days > 29 && days < 31, `expected ~30 days, got ${days}`);
+
+    const row = await prisma.payment.findUnique({ where: { chargeId: 'charge-1' } });
+    assert.equal(row?.userId, actor.id);
+    assert.equal(row?.amount, 150);
+    assert.equal(row?.provider, 'telegram_stars');
+
+    assert.ok(
+      telegramCalls.some((c) => /Pro/.test(c.text)),
+      'the bot should confirm the purchase',
+    );
+
+    const allowed = await call('/api/ai/meal/text', {
+      token: actor.token, method: 'POST', body: { text: 'a burger' },
+    });
+    assert.notEqual(allowed.status, 403, 'a paid account passes the gate');
+  });
+
+  /**
+   * Telegram redelivers any update it did not hear a 200 for, and a network
+   * blip between the grant and our response is enough. Recording the charge id
+   * first, in the same transaction, is what makes the second delivery free.
+   */
+  test('the same charge delivered twice buys one period', async () => {
+    const actor = await lapsedUser('double-delivery');
+    const payload = await invoicePayload(actor);
+
+    await webhook(paymentUpdate(930002, payload, 'charge-2'));
+    const first = await premiumUntil(actor.id);
+
+    telegramCalls.length = 0;
+    await webhook(paymentUpdate(930002, payload, 'charge-2'));
+    const second = await premiumUntil(actor.id);
+
+    assert.equal(second?.getTime(), first?.getTime(), 'the expiry must not move');
+    assert.equal(await prisma.payment.count({ where: { userId: actor.id } }), 1);
+    assert.equal(
+      telegramCalls.filter((c) => c.method === 'sendMessage').length,
+      0,
+      'and the user is thanked once, not twice',
+    );
+  });
+
+  test('paying again adds to the time left instead of replacing it', async () => {
+    const actor = await lapsedUser('renewer');
+    const payload = await invoicePayload(actor);
+
+    await webhook(paymentUpdate(930003, payload, 'charge-3a'));
+    const first = await premiumUntil(actor.id);
+    assert.ok(first);
+
+    await webhook(paymentUpdate(930003, await invoicePayload(actor), 'charge-3b'));
+    const second = await premiumUntil(actor.id);
+    assert.ok(second);
+
+    const added = (second.getTime() - first.getTime()) / 864e5;
+    assert.ok(added > 29 && added < 31, `the second month should stack, added ${added}`);
+  });
+
+  test('a payment whose payload does not verify grants nothing', async () => {
+    const actor = await lapsedUser('forger');
+    const payload = await invoicePayload(actor);
+    const forged = `${payload.slice(0, -1)}${payload.endsWith('a') ? 'b' : 'a'}`;
+
+    assert.equal((await webhook(paymentUpdate(930004, forged, 'charge-4'))).status, 200);
+
+    assert.equal(await premiumUntil(actor.id), null);
+    assert.equal(await prisma.payment.count({ where: { chargeId: 'charge-4' } }), 0);
   });
 });
 

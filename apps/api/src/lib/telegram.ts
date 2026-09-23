@@ -49,11 +49,19 @@ export const botUsername = (): string | null => configured?.username ?? null;
  */
 export type SendOutcome = 'sent' | 'gone' | 'failed';
 
-export type Sender = (
-  token: string,
-  method: string,
-  payload: unknown,
-) => Promise<{ ok: boolean; status: number; description?: string }>;
+export interface SendResult {
+  ok: boolean;
+  status: number;
+  description?: string;
+  /**
+   * Whatever the method returned. Most of them return `true` and nothing here
+   * reads it, but createInvoiceLink returns the link itself, which is the
+   * entire point of calling it.
+   */
+  result?: unknown;
+}
+
+export type Sender = (token: string, method: string, payload: unknown) => Promise<SendResult>;
 
 const liveSender: Sender = async (token, method, payload) => {
   const res = await fetch(`${apiBase}/bot${token}/${method}`, {
@@ -64,8 +72,17 @@ const liveSender: Sender = async (token, method, payload) => {
     signal: AbortSignal.timeout(10_000),
   });
 
-  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
-  return { ok: res.ok && body.ok === true, status: res.status, description: body.description };
+  const body = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    description?: string;
+    result?: unknown;
+  };
+  return {
+    ok: res.ok && body.ok === true,
+    status: res.status,
+    description: body.description,
+    result: body.result,
+  };
 };
 
 let sender: Sender = liveSender;
@@ -84,6 +101,31 @@ export function setSender(next: Sender | null): void {
  */
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Any Bot API method, for callers that need its return value rather than
+ * whether a chat received something. Returns `result` on success and null on
+ * anything else, so a caller cannot mistake a failure for a reply.
+ *
+ * Errors are swallowed for the same reason they are in sendToChat: Telegram
+ * being unreachable is not a reason for the request that triggered this to
+ * fail differently from Telegram saying no.
+ */
+export async function call(method: string, payload: unknown): Promise<unknown | null> {
+  if (!configured) return null;
+
+  try {
+    const result = await sender(configured.token, method, payload);
+    if (!result.ok) {
+      console.error(`telegram ${method} failed:`, result.status, result.description);
+      return null;
+    }
+    return result.result ?? null;
+  } catch (err) {
+    console.error(`telegram ${method} threw:`, err);
+    return null;
+  }
 }
 
 export interface Message {

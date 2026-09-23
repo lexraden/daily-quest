@@ -54,6 +54,17 @@ const schema = z.object({
   // Overridable only so the tests can point at a stub. Leave it unset.
   TELEGRAM_API_BASE: z.string().default(''),
 
+  /**
+   * What Pro costs, in Telegram Stars, and how long one purchase lasts.
+   *
+   * Configurable rather than baked in because a price is a decision that gets
+   * revisited, and a redeploy is a bad way to revisit one. Changing it affects
+   * only invoices minted afterwards: what someone already paid is in the
+   * payments ledger.
+   */
+  PRO_PRICE_STARS: z.coerce.number().int().positive().default(150),
+  PRO_PERIOD_DAYS: z.coerce.number().int().positive().default(30),
+
   UPLOAD_DIR: z.string().default('/data/uploads'),
   MAX_UPLOAD_BYTES: z.coerce.number().default(8 * 1024 * 1024),
 

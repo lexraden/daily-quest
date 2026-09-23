@@ -282,6 +282,12 @@ export const api = {
     disconnect: () => request('/api/telegram/link', { method: 'DELETE' }),
   },
 
+  billing: {
+    plan: () => request('/api/billing/plan'),
+    // Returns the t.me link that opens Telegram's payment sheet.
+    invoice: () => request('/api/billing/invoice', { method: 'POST' }),
+  },
+
   push: {
     key: () => request('/api/push/key'),
     subscribe: (subscription) =>

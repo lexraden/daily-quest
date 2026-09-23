@@ -232,6 +232,7 @@ export default function DailyTracker() {
 
   const [trialStartedAt, setTrialStartedAt] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [premiumUntil, setPremiumUntil] = useState(null);
 
   /**
    * The notification log's badge, and whether the list is open.
@@ -243,7 +244,7 @@ export default function DailyTracker() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showInbox, setShowInbox] = useState(false);
 
-  const premiumStatus = usePremiumStatus({ isPremium, trialStartedAt });
+  const premiumStatus = usePremiumStatus({ isPremium, premiumUntil, trialStartedAt });
   const location = useLocation();
 
   const getTodayKey = () => todayKey();
@@ -546,6 +547,7 @@ export default function DailyTracker() {
       setUserDataId(newUserData.id);
       setTrialStartedAt(newUserData.trial_started_at);
       setIsPremium(newUserData.is_premium);
+      setPremiumUntil(newUserData.premium_until || null);
 
       // Take the server's cleared history rather than keeping the ticks this
       // screen was already holding: they belong to the quests just replaced,
@@ -687,6 +689,7 @@ export default function DailyTracker() {
           // Trial / Premium status
           setTrialStartedAt(data.trial_started_at || null);
           setIsPremium(!!data.is_premium);
+          setPremiumUntil(data.premium_until || null);
 
           // A level earned on another device, or one whose modal was closed by
           // the app being killed, is still waiting here on the next load.
@@ -1321,7 +1324,7 @@ export default function DailyTracker() {
           onMealAnalyzed={handleMealAnalyzed}
           theme={theme}
           questData={questData}
-          hasAccess={true}
+          hasAccess={premiumStatus.hasAccess}
           onLocked={() => setShowPremium(true)}
         />
 

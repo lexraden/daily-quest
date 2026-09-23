@@ -6,6 +6,7 @@ import { apiEnv } from '../env.api.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
 import { badRequest, forbidden } from '../lib/errors.js';
 import { botUsername, telegramEnabled, sendToChat } from '../lib/telegram.js';
+import { answerPreCheckout, applyPayment, verifyPayload } from '../lib/billing.js';
 import { langFor } from '../lib/notifications.js';
 
 /**
@@ -38,6 +39,10 @@ const BOT_COPY = {
       title: 'Отключено',
       body: 'Напоминания сюда больше не придут. Включить обратно — в профиле приложения.',
     },
+    paid: {
+      title: '⭐️ Pro активен',
+      body: 'Спасибо! Голосовой ввод и распознавание еды по фото снова доступны. Срок виден в профиле.',
+    },
   },
   en: {
     connected: {
@@ -47,6 +52,10 @@ const BOT_COPY = {
     stopped: {
       title: 'Disconnected',
       body: 'Nothing more will arrive here. You can reconnect from your profile.',
+    },
+    paid: {
+      title: '⭐️ Pro is active',
+      body: 'Thank you! Voice capture and photo calorie tracking are available again. Your profile shows the end date.',
     },
   },
 } as const;
@@ -186,9 +195,31 @@ export default async function telegramRoutes(app: FastifyInstance) {
       // Telegram must not retry it, so this is a 200 with nothing done.
       if (!update.success) return reply.send({ ok: true });
 
+      /**
+       * Checkout approval comes first and answers fastest, because the ten
+       * seconds Telegram allows are counted from here. The only thing worth
+       * refusing on is a payload that does not verify — if it does, the price
+       * and the account are both ours and already agreed.
+       */
+      const preCheckout = update.data.pre_checkout_query;
+      if (preCheckout) {
+        await answerPreCheckout(preCheckout.id, verifyPayload(preCheckout.invoice_payload) !== null);
+        return reply.send({ ok: true });
+      }
+
       const { message } = update.data;
+      if (!message) return reply.send({ ok: true });
+
       const chatId = String(message.chat.id);
       const text = (message.text ?? '').trim();
+
+      // A completed purchase. Handled before the command parsing below, which
+      // would otherwise fall through to "what is this bot" on a message that
+      // carries no text.
+      if (message.successful_payment) {
+        await handlePayment(chatId, message.successful_payment);
+        return reply.send({ ok: true });
+      }
 
       if (text === '/stop') {
         await handleStop(chatId);
@@ -227,17 +258,43 @@ function sameSecret(presented: string, expected: string): boolean {
  * schema failing is how they get ignored, so nothing here is optional that
  * matters.
  */
+const successfulPaymentSchema = z.object({
+  currency: z.string(),
+  total_amount: z.number(),
+  invoice_payload: z.string(),
+  telegram_payment_charge_id: z.string(),
+});
+
 const updateSchema = z.object({
-  message: z.object({
-    chat: z.object({
-      id: z.number(),
-      // Group chats are not refused outright — a user may well add the bot to a
-      // group — but the username is only read for display.
-      username: z.string().optional(),
-    }),
-    from: z.object({ username: z.string().optional() }).optional(),
-    text: z.string().optional(),
-  }),
+  /**
+   * Optional now that this is not the only kind of update handled. Everything
+   * downstream checks before reading it, and an update with neither field is a
+   * 200 with nothing done.
+   */
+  message: z
+    .object({
+      chat: z.object({
+        id: z.number(),
+        // Group chats are not refused outright — a user may well add the bot to
+        // a group — but the username is only read for display.
+        username: z.string().optional(),
+      }),
+      from: z.object({ username: z.string().optional() }).optional(),
+      text: z.string().optional(),
+      successful_payment: successfulPaymentSchema.optional(),
+    })
+    .optional(),
+
+  /**
+   * Telegram asking whether to let a payment through. It gives ten seconds and
+   * treats anything else as a refusal the user sees as a failure.
+   */
+  pre_checkout_query: z
+    .object({
+      id: z.string(),
+      invoice_payload: z.string(),
+    })
+    .optional(),
 });
 
 /**
@@ -295,6 +352,49 @@ async function handleStart(
   });
   const lang = link ? await langFor(link.userId) : 'ru';
   await sendToChat(chatId, BOT_COPY[lang].connected);
+}
+
+/**
+ * `successful_payment`: the money has moved and Telegram is telling us so.
+ *
+ * Which account it was for comes from the signed payload, not from the chat —
+ * paying does not require having linked Telegram to the account, and the chat
+ * this arrives in may belong to nobody we know. The signature is re-checked
+ * here rather than trusted from the pre-checkout step, because the two updates
+ * are separate HTTP requests and only this one is authorisation to grant
+ * anything.
+ *
+ * The confirmation is sent only when this call was the one that applied the
+ * payment. Telegram redelivers what it did not hear a 200 for, and a user who
+ * paid once should be told once.
+ */
+async function handlePayment(
+  chatId: string,
+  payment: {
+    currency: string;
+    total_amount: number;
+    invoice_payload: string;
+    telegram_payment_charge_id: string;
+  },
+): Promise<void> {
+  const userId = verifyPayload(payment.invoice_payload);
+  if (!userId) {
+    // Nothing to do but say so: refusing is not an option once the money has
+    // moved, and a retry will not make the payload verify.
+    console.error('telegram payment with an unverifiable payload', {
+      chargeId: payment.telegram_payment_charge_id,
+    });
+    return;
+  }
+
+  const applied = await applyPayment(userId, {
+    chargeId: payment.telegram_payment_charge_id,
+    amount: payment.total_amount,
+    currency: payment.currency,
+  });
+  if (!applied) return;
+
+  await sendToChat(chatId, BOT_COPY[await langFor(userId)].paid);
 }
 
 /** `/stop`: unlinking from Telegram's side, which the platform expects to work. */

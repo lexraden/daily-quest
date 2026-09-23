@@ -24,7 +24,10 @@ export default function PlanCard({ premiumStatus, theme, onOpen }) {
     ? {
         Icon: Crown,
         title: p.proActive || 'Pro',
-        detail: p.proActiveDesc || '',
+        // A paid account shows its end date; a comped one has none to show.
+        detail: status.paidUntil
+          ? `${p.proUntil || 'until'} ${status.paidUntil.toLocaleDateString()}`
+          : p.proActiveDesc || '',
         accent: light ? 'text-amber-600' : 'text-amber-400',
         badge: light ? 'bg-amber-100 text-amber-700' : 'bg-amber-500/20 text-amber-300',
         label: 'PRO',

@@ -12,6 +12,7 @@ import questDataRoutes from './routes/questData.js';
 import pushRoutes from './routes/push.js';
 import notificationRoutes from './routes/notifications.js';
 import telegramRoutes from './routes/telegram.js';
+import billingRoutes from './routes/billing.js';
 import { configureTelegram } from './lib/telegram.js';
 import { configurePush } from './lib/push.js';
 import aiRoutes from './routes/ai.js';
@@ -111,6 +112,7 @@ await app.register(fileRoutes, { prefix: '/api/files' });
 await app.register(pushRoutes, { prefix: '/api/push' });
 await app.register(notificationRoutes, { prefix: '/api/notifications' });
 await app.register(telegramRoutes, { prefix: '/api/telegram' });
+await app.register(billingRoutes, { prefix: '/api/billing' });
 
 // Serve the built SPA. Absent in local API-only dev, where Vite serves it.
 const here = dirname(fileURLToPath(import.meta.url));

@@ -96,6 +96,7 @@ export default function Profile() {
   const [showPremium, setShowPremium] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [trialStartedAt, setTrialStartedAt] = useState(null);
+  const [premiumUntil, setPremiumUntil] = useState(null);
   const [canInstallApp, setCanInstallApp] = useState(canInstall);
 
   // The prompt usually arrives before this page is opened, so subscribe rather
@@ -143,6 +144,7 @@ export default function Profile() {
         setNotificationSettings(data.notification_settings || null);
         setIsPremium(!!data.is_premium);
         setTrialStartedAt(data.trial_started_at || null);
+        setPremiumUntil(data.premium_until || null);
         setUserDataId(id);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -161,7 +163,7 @@ export default function Profile() {
   };
 
   const levelProgress = getLevelProgress();
-  const premiumStatus = usePremiumStatus({ isPremium, trialStartedAt });
+  const premiumStatus = usePremiumStatus({ isPremium, premiumUntil, trialStartedAt });
   const bgClass = theme === 'light'
     ? 'bg-gradient-to-b from-gray-50 via-purple-50 to-cyan-50 text-gray-900'
     : 'bg-gradient-to-b from-[#0f1419] via-[#1a1f2e] to-[#0f1419] text-white';

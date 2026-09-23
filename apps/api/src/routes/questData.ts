@@ -201,7 +201,7 @@ const toWire = (row: {
   lastVisitDate: string | null;
   // Entitlement lives on the user row; it is echoed here because the app reads
   // both off the quest-data payload.
-  user: { trialStartedAt: Date | null; isPremium: boolean };
+  user: { trialStartedAt: Date | null; isPremium: boolean; premiumUntil: Date | null };
 }) => ({
   id: row.id,
   quest_data: row.questData,
@@ -229,6 +229,8 @@ const toWire = (row: {
   last_visit_date: row.lastVisitDate,
   trial_started_at: row.user.trialStartedAt?.toISOString() ?? null,
   is_premium: row.user.isPremium,
+  // When paid access runs out. Null for a comped account, which has no end.
+  premium_until: row.user.premiumUntil?.toISOString() ?? null,
 });
 
 type History = Record<string, unknown[]>;
@@ -257,7 +259,7 @@ async function writeDerived(
       categoryTotalCompleted: toJson(progress.categoryTotalCompleted),
       categoryLevels: toJson(progress.categoryLevels),
     },
-    include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+    include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
   });
 }
 
@@ -281,7 +283,7 @@ function writeQuests(tx: Prisma.TransactionClient, userId: string, quests: Quest
   return tx.questData.update({
     where: { userId },
     data: { questData: toJson(sortByLevel(quests)) },
-    include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+    include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
   });
 }
 
@@ -301,7 +303,7 @@ function writeMeals(tx: Prisma.TransactionClient, userId: string, meals: unknown
   return tx.questData.update({
     where: { userId },
     data: { mealHistory: toJson(meals) },
-    include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+    include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
   });
 }
 
@@ -328,7 +330,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
   app.get('/', async (request, reply) => {
     const row = await prisma.questData.findUnique({
       where: { userId: currentUserId(request) },
-      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+      include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
     });
     if (!row) return reply.code(204).send();
     return toWire(row);
@@ -366,7 +368,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
             streakFreezes: 1,
             lastVisitDate: today,
           },
-          include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+          include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
         });
       }
 
@@ -399,7 +401,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
           categoryTotalCompleted: toJson(progress.categoryTotalCompleted),
           categoryLevels: toJson(progress.categoryLevels),
         },
-        include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+        include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
       });
     });
 
@@ -458,7 +460,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
         ...(b.meal_history !== undefined ? { mealHistory: toJson(b.meal_history) } : {}),
         ...(b.last_visit_date !== undefined ? { lastVisitDate: b.last_visit_date } : {}),
       },
-      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+      include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
     });
 
     return toWire(row);
@@ -571,7 +573,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
 
     const row = await prisma.questData.findUnique({
       where: { userId },
-      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+      include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
     });
     if (!row) throw notFound('Finish onboarding before saving progress');
 
@@ -639,7 +641,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
 
     const row = await prisma.questData.findUnique({
       where: { userId },
-      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+      include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
     });
     if (!row) throw notFound('Finish onboarding before saving progress');
 
@@ -705,7 +707,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
 
     const row = await prisma.questData.findUnique({
       where: { userId },
-      include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+      include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
     });
     if (!row) throw notFound('Finish onboarding before saving progress');
 
@@ -806,7 +808,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
       return tx.questData.update({
         where: { userId },
         data: { journalEntries: toJson(already ? entries : [entry, ...entries]) },
-        include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+        include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
       });
     });
 
@@ -931,7 +933,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
       return tx.questData.update({
         where: { userId },
         data: { caloriesBurned: toJson(burned) },
-        include: { user: { select: { trialStartedAt: true, isPremium: true } } },
+        include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
       });
     });
 
