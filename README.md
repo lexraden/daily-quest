@@ -302,6 +302,31 @@ so a provider outage costs a retry rather than everyone's reminder; the residual
 risk is a send that succeeded but reported failure, and one duplicate beats
 silently dropping a day.
 
+### Which service is which
+
+Both services deploy the same image from the same repository and differ only in
+what they run. Railway's mechanism for that is a per-service config-as-code
+path, and `railway.reminders.json` is it: `npm run reminders`, no healthcheck,
+`restartPolicyType: NEVER` because a job that has finished is not a crash.
+
+`SERVICE_ROLE=reminders` does the same job a second way, for when that setting
+is wrong. It is worth having because the failure is silent in the worst
+direction: a reminders service without it inherits the root `railway.json`, so
+it runs `prisma migrate deploy`, binds a port, and dies on API secrets it was
+never meant to hold — which looks like a broken job rather than a misconfigured
+one, and happened twice.
+
+The two do not conflict. A service whose config-as-code points at
+`railway.reminders.json` never reaches the dispatcher; that file names the job
+directly. `scripts/start.mjs` only decides for a service running the root
+config's start command, and there the default stays the API, because the web
+service is the one that has to keep working when nobody has set anything.
+
+The dispatcher runs the child in its own process group and signals the group,
+not the child. Underneath is `npm run` → `sh -c` → `node`, and npm does not pass
+signals down: signalling the child alone killed npm and left the server holding
+its port and its database connections until the container was killed outright.
+
 ### Granting Pro
 
 `isPremium` on the user row is the paid flag; without it access comes from the
