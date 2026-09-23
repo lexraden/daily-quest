@@ -351,6 +351,11 @@ The flow is three moves:
 Nothing is written before step 3, so a user who opens an invoice and walks away
 leaves nothing to clean up.
 
+Step 2 arrives on its own update type, so the webhook's `allowed_updates` has to
+name `pre_checkout_query` — without it Telegram never asks, the ten-second
+window lapses and every checkout fails while the bot otherwise looks healthy. A
+completed payment arrives inside a `message`, which is already allowed.
+
 Which account an invoice belongs to travels inside `invoice_payload`, the one
 field that survives the round trip — **signed**, because the string is handed to
 a Telegram client, and an unsigned account id there would let anyone who can mint
@@ -396,7 +401,9 @@ reminder is nagging and nagging is how the permission gets revoked.
 their profile and linked an account — where a push permission is a prompt
 somebody tapped through once. Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`
 and `TELEGRAM_WEBHOOK_SECRET` (see `.env.example` for the one-off `setWebhook`
-call); leave them empty and the profile hides the button.
+call); leave them empty and the profile hides the button. `GET
+/api/telegram/config` answers whether the API actually got them — `enabled:
+false` there means the channel is off whatever the dashboard shows.
 
 The link is made by a one-time code, because the alternative is asking users to
 find their own numeric chat id. `POST /api/telegram/link` mints one, hands back
