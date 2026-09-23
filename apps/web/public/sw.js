@@ -95,6 +95,18 @@ self.addEventListener('fetch', (event) => {
 });
 
 /**
+ * The app asking to be updated now.
+ *
+ * Our install handler already calls skipWaiting(), so a worker sitting in
+ * `waiting` is the exception rather than the rule — but when the browser does
+ * hold one back, this is what releases it, and the "check for update" button
+ * has nothing else to pull.
+ */
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'skip-waiting') self.skipWaiting();
+});
+
+/**
  * A reminder arriving while the app is closed.
  *
  * The payload is JSON the server encrypted to this browser. A push that cannot

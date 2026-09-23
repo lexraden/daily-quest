@@ -400,6 +400,17 @@ const translations = {
       add: 'Добавить',
     },
     // Premium
+    // The "check for updates" card on the profile.
+    update: {
+      check: 'Проверить обновление',
+      checkShort: 'Проверить',
+      checking: 'Проверяю…',
+      upToDate: 'Установлена последняя версия',
+      available: 'Доступно обновление',
+      unknown: 'Не удалось проверить',
+      reload: 'Обновить',
+      version: 'Версия',
+    },
     premium: {
       title: 'Premium Features',
       subtitle: 'Расширенные возможности трекера',
@@ -914,6 +925,16 @@ const translations = {
       emojiLabel: 'Emoji',
       questName: 'Quest name',
       add: 'Add',
+    },
+    update: {
+      check: 'Check for updates',
+      checkShort: 'Check',
+      checking: 'Checking…',
+      upToDate: 'You have the latest version',
+      available: 'Update available',
+      unknown: 'Could not check',
+      reload: 'Update',
+      version: 'Version',
     },
     premium: {
       title: 'Premium Features',

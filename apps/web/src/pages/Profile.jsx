@@ -20,6 +20,7 @@ import CategoryLevelsCard from '@/components/profile/CategoryLevelsCard';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
 import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 import PlanCard from '@/components/profile/PlanCard';
+import UpdateCheck from '@/components/profile/UpdateCheck';
 import PremiumModal from '@/components/daily/PremiumModal';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { aiErrorMessage } from '@/lib/aiErrors';
@@ -263,6 +264,8 @@ export default function Profile() {
           }}
           theme={theme}
         />
+
+        <UpdateCheck theme={theme} />
 
         {/* Install as an app — only where the browser has an install to offer:
             already installed, or a browser that never fires the event (iOS
