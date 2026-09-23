@@ -270,6 +270,18 @@ export const api = {
     clear: () => request('/api/notifications', { method: 'DELETE' }),
   },
 
+  /**
+   * Telegram as a delivery channel. `connect` hands back a t.me link the user
+   * opens; the link is what carries the one-time code, and the bot's webhook is
+   * what actually makes the connection — so the app learns it worked by asking
+   * again, not from this call.
+   */
+  telegram: {
+    link: () => request('/api/telegram/link'),
+    connect: () => request('/api/telegram/link', { method: 'POST' }),
+    disconnect: () => request('/api/telegram/link', { method: 'DELETE' }),
+  },
+
   push: {
     key: () => request('/api/push/key'),
     subscribe: (subscription) =>

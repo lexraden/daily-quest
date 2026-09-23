@@ -46,6 +46,7 @@ model User {
   chatMessages  ChatMessage[]
   pushSubs      PushSubscription[]
   notifications Notification[]
+  telegram      TelegramLink?
 
   @@map("users")
 }
@@ -245,4 +246,46 @@ model Notification {
   @@unique([userId, dedupeKey])
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+/**
+ * A user's Telegram chat, and the pending code that links it.
+ *
+ * One row per user, created when they ask to connect and filled in by the
+ * webhook when the bot hears from them. The two states are worth being clear
+ * about: a row with a `codeHash` and no `chatId` is an invitation nobody has
+ * accepted yet, and a row with a `chatId` is a live channel.
+ *
+ * The code is hashed rather than stored, for the same reason refresh tokens are.
+ * It is short-lived and single-use, but while it is live it is enough to point
+ * someone else's reminders at your own chat, and a code that only exists as a
+ * hash cannot be read out of a backup.
+ */
+model TelegramLink {
+  id     String @id @default(cuid())
+  userId String @unique @map("user_id")
+
+  /**
+   * Telegram's id for the private chat with this user, as a string.
+   *
+   * Numeric in the API and within int64, but kept as text: Prisma maps BigInt to
+   * JavaScript BigInt, which does not survive JSON.stringify, and nothing here
+   * does arithmetic on it.
+   */
+  chatId String? @unique @map("chat_id")
+
+  /** Whatever the bot knows them as, for showing which account is connected. */
+  username String?
+
+  // SHA-256 of the one-time /start payload. Null once it has been used.
+  codeHash  String?   @unique @map("code_hash")
+  codeExpiresAt DateTime? @map("code_expires_at")
+
+  linkedAt  DateTime? @map("linked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_links")
 }

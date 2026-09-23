@@ -272,7 +272,9 @@ and no cookie `SameSite` problems.
 
 **`dailyq-reminders`** — same repo, also at the repo root, but override the
 start command to `npm run reminders` and set a cron schedule; every 30 minutes
-is a good default, and the job no longer depends on the period being exact.
+is a good default, and the job no longer depends on the period being exact. It
+needs the Telegram bot token and username as well as the VAPID pair, since it is
+the process that actually sends.
 
 Delivery is at-most-once per local day. The job claims the day with a
 conditional `UPDATE ... WHERE last_reminder_day IS DISTINCT FROM $day` and only
@@ -303,15 +305,47 @@ Events logged: the daily reminder and the streak warning (from the job), a new
 overall level, a streak milestone (3, 7, 14, 30, 50, 100, 150, 200, 365 days), a
 spent streak freeze, and a lost streak.
 
+Then **one** of the three delivery channels, not all of them — whichever is
+reachable first wins and the rest are skipped, because two notifications for one
+reminder is nagging and nagging is how the permission gets revoked.
+
+**Telegram** is tried first. Connecting it is a deliberate act — the user opened
+their profile and linked an account — where a push permission is a prompt
+somebody tapped through once. Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`
+and `TELEGRAM_WEBHOOK_SECRET` (see `.env.example` for the one-off `setWebhook`
+call); leave them empty and the profile hides the button.
+
+The link is made by a one-time code, because the alternative is asking users to
+find their own numeric chat id. `POST /api/telegram/link` mints one, hands back
+`t.me/<bot>?start=<code>`, and the bot's webhook turns that code into the chat it
+arrived from. The code lives fifteen minutes, is stored only as a SHA-256 hash,
+and is consumed by the same `UPDATE` that claims it — so two messages arriving
+together cannot both spend it, and minting a new one kills the old. A chat that
+is already linked to another account is moved rather than rejected; the unique
+index would otherwise reject the claim and the user would see the link silently
+not working. `/stop` in the chat unlinks from Telegram's side, which the platform
+expects to work.
+
+The webhook is the one unauthenticated route in the app. Telegram has no bearer
+token to present, so the secret it echoes in `X-Telegram-Bot-Api-Secret-Token`
+is the entire door — compared in constant time, and with the secret unset the
+route refuses everyone rather than trusting its caller. Every answer is 200:
+Telegram retries a non-2xx with backoff and eventually drops the webhook, and
+none of the failures here are ones a retry fixes.
+
 **Web push** goes next, to every browser the user has subscribed — `POST
 /api/push/subscribe` per device, keyed on the endpoint, with a 404 or 410 from
 the push service meaning the subscription is gone and the row is deleted. The
 service worker also messages any open page when a push lands, so the bell's
 badge updates without waiting for the app to be resumed.
 
-**Email** only if nothing was pushed. An email about a habit tracker is read
-hours later if at all, but a user with no device subscribed would otherwise hear
-nothing, so it stays as the fallback rather than being replaced.
+**Email** last. An email about a habit tracker is read hours later if at all, but
+a user with neither of the other two would otherwise hear nothing, so it stays as
+the fallback rather than being replaced.
+
+A chat Telegram reports as gone — 403 for a blocked bot, 400 for a chat that no
+longer exists — is unlinked on the spot, the same way a dead push subscription is
+deleted. A 429 or a 5xx is Telegram having a bad day and the chat is kept.
 
 The window is one-sided — the reminder time has to have passed — and wider than
 the cron period so a late run still delivers. It used to be plus-or-minus 30

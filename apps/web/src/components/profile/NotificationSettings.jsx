@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { t, getLang } from '@/lib/i18n';
 import { toast } from 'sonner';
 import { enablePush, disablePush, isSubscribed, permission } from '@/lib/push';
+import TelegramChannel from '@/components/profile/TelegramChannel';
 
 const TIME_OPTIONS = [];
 for (let h = 6; h <= 23; h++) {
@@ -36,6 +37,10 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
    * Push lives in the browser, not in the saved settings, so it is read from
    * the device on mount rather than from the row.
    */
+  // Lifted out of TelegramChannel so the "email only" hint below can tell the
+  // truth: with a Telegram chat connected, email is not the only thing left.
+  const [telegram, setTelegram] = useState(null);
+
   const [pushState, setPushState] = useState('default');
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
@@ -195,7 +200,14 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
             />
           </div>
 
-          {pushState !== 'unsupported' && pushState !== 'denied' && !pushOn && (
+          {/*
+            A third channel, and the one the job tries first: connecting it is a
+            deliberate act, where a push permission is a prompt someone tapped
+            through once. Renders nothing when no bot is configured.
+          */}
+          <TelegramChannel theme={theme} onState={setTelegram} />
+
+          {pushState !== 'unsupported' && pushState !== 'denied' && !pushOn && !telegram?.connected && (
             <div className={`flex items-center gap-2 p-3 rounded-xl text-xs ${
               theme === 'light' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
             }`}>

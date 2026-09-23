@@ -491,6 +491,17 @@ const translations = {
       save: 'Сохранить настройки',
       saved: 'Настройки сохранены! ✓',
     },
+    /* Telegram as a delivery channel, in the notifications card. */
+    telegram: {
+      title: 'Telegram',
+      hint: 'Напоминания будут приходить в Telegram',
+      connect: 'Подключить',
+      disconnect: 'Отключить',
+      connected: 'Telegram подключён',
+      connectedNoName: 'Подключено',
+      waiting: 'Ждём бота…',
+      failed: 'Не получилось — попробуй ещё раз',
+    },
     // AI prompts language
     aiLang: 'ru',
   },
@@ -956,6 +967,16 @@ const translations = {
       pushNotReady: 'Push notifications coming soon. Email reminders active for now.',
       save: 'Save settings',
       saved: 'Settings saved! ✓',
+    },
+    telegram: {
+      title: 'Telegram',
+      hint: 'Reminders arrive in Telegram',
+      connect: 'Connect',
+      disconnect: 'Disconnect',
+      connected: 'Telegram connected',
+      connectedNoName: 'Connected',
+      waiting: 'Waiting for the bot…',
+      failed: 'That did not work — try again',
     },
     aiLang: 'en',
   }

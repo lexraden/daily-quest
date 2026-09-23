@@ -14,6 +14,7 @@ import { prisma } from '../db.js';
 import { jobEnv } from '../env.job.js';
 import { isDue } from './window.js';
 import { configurePush, notifyUser } from '../lib/push.js';
+import { configureTelegram, notifyUser as notifyTelegram } from '../lib/telegram.js';
 import { reminderCopy, situationFor, firstName } from './copy.js';
 import { sanitizeQuestData } from '../lib/questData.js';
 import { record as recordNotification } from '../lib/notifications.js';
@@ -119,7 +120,17 @@ async function main() {
       : null,
   );
 
-  const results = { checked: 0, sent: 0, pushed: 0, skipped: 0, failed: 0 };
+  configureTelegram(
+    jobEnv.TELEGRAM_BOT_TOKEN && jobEnv.TELEGRAM_BOT_USERNAME
+      ? {
+          token: jobEnv.TELEGRAM_BOT_TOKEN,
+          username: jobEnv.TELEGRAM_BOT_USERNAME,
+          apiBase: jobEnv.TELEGRAM_API_BASE || undefined,
+        }
+      : null,
+  );
+
+  const results = { checked: 0, sent: 0, telegrammed: 0, pushed: 0, skipped: 0, failed: 0 };
 
   for (const row of rows) {
     results.checked++;
@@ -213,14 +224,33 @@ async function main() {
     });
 
     /**
-     * Push next, email only if nothing was pushed.
+     * Then one channel, not all of them: whichever is reachable first wins, and
+     * the rest are skipped. Two notifications for one reminder is nagging, and
+     * nagging is how the permission gets revoked.
      *
-     * A notification on the phone is what a streak reminder is for; an email
-     * about a habit tracker is read hours later, if at all. But a user with no
-     * device subscribed — a desktop browser, a permission never granted, an app
-     * reinstalled since — would otherwise hear nothing at all, so email stays
-     * as the fallback rather than being replaced.
+     * Telegram leads because connecting it is a deliberate act — a user went to
+     * their profile and linked an account — where a push permission is a prompt
+     * someone tapped through once. Push comes next because a notification on the
+     * phone is what a streak reminder is for. Email is last: an email about a
+     * habit tracker is read hours later if at all, but a user with neither of
+     * the other two would otherwise hear nothing.
      */
+    const telegrammed = await notifyTelegram(row.userId, {
+      title: copy.title,
+      body: copy.body,
+      url: jobEnv.APP_ORIGIN,
+    }).catch((err) => {
+      // A Telegram outage must not cost the other two channels.
+      console.error(`telegram failed for ${row.userId}:`, err);
+      return false;
+    });
+
+    if (telegrammed) {
+      results.telegrammed++;
+      results.sent++;
+      continue;
+    }
+
     const pushed = await notifyUser(row.userId, {
       title: copy.title,
       body: copy.body,

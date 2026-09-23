@@ -16,6 +16,14 @@ const schema = z.object({
   VAPID_PUBLIC_KEY: z.string().default(''),
   VAPID_PRIVATE_KEY: z.string().default(''),
   VAPID_SUBJECT: z.string().default('mailto:noreply@dailyq.app'),
+
+  // The same bot the API links accounts to. Without it the job skips the
+  // channel; the username is needed because lib/telegram treats a config with
+  // either half missing as no config at all.
+  TELEGRAM_BOT_TOKEN: z.string().default(''),
+  TELEGRAM_BOT_USERNAME: z.string().default(''),
+  // Overridable only so a test run can point at a stub. Leave it unset.
+  TELEGRAM_API_BASE: z.string().default(''),
 });
 
 export const jobEnv = parseEnv(schema, 'reminders');

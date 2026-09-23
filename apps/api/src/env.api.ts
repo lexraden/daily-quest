@@ -38,6 +38,22 @@ const schema = z.object({
   VAPID_PRIVATE_KEY: z.string().default(''),
   VAPID_SUBJECT: z.string().default('mailto:noreply@dailyq.app'),
 
+  /**
+   * Telegram bot, as a third notification channel. Optional: all three empty and
+   * the endpoints report it is not configured.
+   *
+   * The token is the bot's entire identity, so it never leaves the server — the
+   * SPA is told only the username, which is public anyway. The webhook secret is
+   * what Telegram presents back to us in a header; without it the webhook
+   * refuses every caller, because a webhook anyone can post to would let a
+   * stranger link their own chat to someone else's account.
+   */
+  TELEGRAM_BOT_TOKEN: z.string().default(''),
+  TELEGRAM_BOT_USERNAME: z.string().default(''),
+  TELEGRAM_WEBHOOK_SECRET: z.string().default(''),
+  // Overridable only so the tests can point at a stub. Leave it unset.
+  TELEGRAM_API_BASE: z.string().default(''),
+
   UPLOAD_DIR: z.string().default('/data/uploads'),
   MAX_UPLOAD_BYTES: z.coerce.number().default(8 * 1024 * 1024),
 

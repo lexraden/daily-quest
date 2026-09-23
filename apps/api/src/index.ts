@@ -11,6 +11,8 @@ import authRoutes from './routes/auth.js';
 import questDataRoutes from './routes/questData.js';
 import pushRoutes from './routes/push.js';
 import notificationRoutes from './routes/notifications.js';
+import telegramRoutes from './routes/telegram.js';
+import { configureTelegram } from './lib/telegram.js';
 import { configurePush } from './lib/push.js';
 import aiRoutes from './routes/ai.js';
 import fileRoutes from './routes/files.js';
@@ -90,12 +92,25 @@ configurePush(
     : null,
 );
 
+// Telegram is optional the same way push is: no token, no channel, and the
+// profile reports it rather than the app failing to start.
+configureTelegram(
+  apiEnv.TELEGRAM_BOT_TOKEN && apiEnv.TELEGRAM_BOT_USERNAME
+    ? {
+        token: apiEnv.TELEGRAM_BOT_TOKEN,
+        username: apiEnv.TELEGRAM_BOT_USERNAME,
+        apiBase: apiEnv.TELEGRAM_API_BASE || undefined,
+      }
+    : null,
+);
+
 await app.register(authRoutes, { prefix: '/api/auth' });
 await app.register(questDataRoutes, { prefix: '/api/quest-data' });
 await app.register(aiRoutes, { prefix: '/api/ai' });
 await app.register(fileRoutes, { prefix: '/api/files' });
 await app.register(pushRoutes, { prefix: '/api/push' });
 await app.register(notificationRoutes, { prefix: '/api/notifications' });
+await app.register(telegramRoutes, { prefix: '/api/telegram' });
 
 // Serve the built SPA. Absent in local API-only dev, where Vite serves it.
 const here = dirname(fileURLToPath(import.meta.url));

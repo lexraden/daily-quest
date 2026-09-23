@@ -17,6 +17,11 @@ import { validProposal } from '../src/lib/coachProposal.js';
 import { configurePush, notifyUser, setSender } from '../src/lib/push.js';
 import { reminderCopy, situationFor, firstName } from '../src/jobs/copy.js';
 import { record as recordNotification, MAX_PER_USER } from '../src/lib/notifications.js';
+import {
+  configureTelegram,
+  notifyUser as notifyTelegram,
+  setSender as setTelegramSender,
+} from '../src/lib/telegram.js';
 import { isStreakMilestone, copyFor } from '../src/lib/notificationCopy.js';
 import webpush from 'web-push';
 
@@ -1948,6 +1953,366 @@ describe('the in-app notification log', () => {
     await recordNotification(bob.id, { kind: 'streak_lost', title: 'gone', body: 'b' });
     await recordNotification(bob.id, { kind: 'streak_lost', title: 'gone again', body: 'b' });
     assert.equal(await prisma.notification.count({ where: { userId: bob.id } }), 2);
+  });
+});
+
+/**
+ * The stub Bot API the running server is pointed at, via TELEGRAM_API_BASE.
+ *
+ * Asserting on what the bot replied is most of the value here — a webhook that
+ * links the account but answers nothing looks broken to the user — and that
+ * reply is made by the API process, not this one, so injecting a sender into
+ * this process would see none of it.
+ */
+const TELEGRAM_STUB_PORT = 3112;
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? 'test-webhook-secret-value';
+
+interface StubCall {
+  method: string;
+  chat_id: string;
+  text: string;
+}
+
+const telegramCalls: StubCall[] = [];
+let telegramStub: import('node:http').Server | null = null;
+
+async function startTelegramStub() {
+  const { createServer } = await import('node:http');
+  telegramStub = createServer((req, res) => {
+    let raw = '';
+    req.on('data', (chunk) => {
+      raw += chunk;
+    });
+    req.on('end', () => {
+      const method = (req.url ?? '').split('/').pop() ?? '';
+      try {
+        const body = JSON.parse(raw || '{}');
+        telegramCalls.push({ method, chat_id: String(body.chat_id ?? ''), text: String(body.text ?? '') });
+      } catch {
+        telegramCalls.push({ method, chat_id: '', text: raw });
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, result: {} }));
+    });
+  });
+  await new Promise<void>((resolve) => telegramStub!.listen(TELEGRAM_STUB_PORT, '127.0.0.1', resolve));
+}
+
+/** What the bot said to this chat, oldest first. */
+const saidTo = (chatId: string) => telegramCalls.filter((c) => c.chat_id === chatId).map((c) => c.text);
+
+describe('connecting Telegram', () => {
+  before(async () => {
+    await startTelegramStub();
+  });
+
+  after(async () => {
+    await new Promise<void>((resolve) => telegramStub?.close(() => resolve()));
+  });
+
+  const webhook = (body: unknown, secret: string | null = WEBHOOK_SECRET) =>
+    fetch(`${BASE}/api/telegram/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(secret === null ? {} : { 'X-Telegram-Bot-Api-Secret-Token': secret }),
+      },
+      body: JSON.stringify(body),
+    });
+
+  const start = (chatId: number, payload?: string, username?: string) =>
+    webhook({
+      message: {
+        chat: { id: chatId, ...(username ? { username } : {}) },
+        ...(username ? { from: { username } } : {}),
+        text: payload ? `/start ${payload}` : '/start',
+      },
+    });
+
+  /** The code out of the t.me link the app hands the user. */
+  async function mintCode(actor: Actor): Promise<string> {
+    const res = await call('/api/telegram/link', { token: actor.token, method: 'POST' });
+    assert.equal(res.status, 200);
+    const { url } = await res.json();
+    assert.match(url, /^https:\/\/t\.me\/dailyq_test_bot\?start=/);
+    return new URL(url).searchParams.get('start')!;
+  }
+
+  test('the bot username is public, the token is not', async () => {
+    const res = await fetch(`${BASE}/api/telegram/config`);
+    assert.equal(res.status, 200, 'the SPA needs this before it can draw the button');
+    const body = await res.json();
+    assert.equal(body.enabled, true);
+    assert.equal(body.bot_username, 'dailyq_test_bot');
+    assert.equal(
+      JSON.stringify(body).includes('test-bot-token'),
+      false,
+      'the token never leaves the server',
+    );
+  });
+
+  test('linking needs a session; the webhook needs the secret', async () => {
+    assert.equal((await call('/api/telegram/link')).status, 401);
+    assert.equal((await call('/api/telegram/link', { method: 'POST' })).status, 401);
+    assert.equal((await call('/api/telegram/link', { method: 'DELETE' })).status, 401);
+
+    // No header at all, and a wrong one. Both are the front door.
+    assert.equal((await webhook({ message: { chat: { id: 1 }, text: '/start' } }, null)).status, 403);
+    assert.equal(
+      (await webhook({ message: { chat: { id: 1 }, text: '/start' } }, 'not-the-secret')).status,
+      403,
+    );
+    // Same length as the real one, so this is the compare rather than the length check.
+    assert.equal(
+      (await webhook({ message: { chat: { id: 1 }, text: '/start' } }, 'x'.repeat(WEBHOOK_SECRET.length)))
+        .status,
+      403,
+    );
+  });
+
+  test('a code links the chat, and cannot be spent twice', async () => {
+    await prisma.telegramLink.deleteMany({ where: { userId: bob.id } });
+    const chatId = '900001';
+    await prisma.telegramLink.deleteMany({ where: { chatId } });
+
+    const before = await (await call('/api/telegram/link', { token: bob.token })).json();
+    assert.equal(before.connected, false);
+
+    const code = await mintCode(bob);
+    assert.equal((await start(900001, code, 'bobtg')).status, 200);
+
+    const after = await (await call('/api/telegram/link', { token: bob.token })).json();
+    assert.equal(after.connected, true);
+    assert.equal(after.username, 'bobtg');
+    assert.ok(after.linked_at);
+
+    // The code is gone from the row, not merely expired.
+    const row = await prisma.telegramLink.findUnique({ where: { userId: bob.id } });
+    assert.equal(row?.codeHash, null);
+    assert.equal(row?.codeExpiresAt, null);
+
+    assert.ok(
+      saidTo(chatId).some((text) => /Подключено/.test(text)),
+      'the bot confirms, rather than going silent',
+    );
+
+    // A replay of the same link — a forwarded message, a second tap.
+    telegramCalls.length = 0;
+    await start(900002, code);
+    assert.equal(
+      (await prisma.telegramLink.count({ where: { chatId: '900002' } })),
+      0,
+      'a spent code links nothing',
+    );
+    assert.ok(
+      saidTo('900002').some((text) => /больше не действует|expired/i.test(text)),
+      'and the second chat is told why',
+    );
+  });
+
+  test('an expired code links nothing', async () => {
+    await prisma.telegramLink.deleteMany({ where: { userId: bob.id } });
+    const code = await mintCode(bob);
+
+    // Wind the expiry back rather than waiting fifteen minutes.
+    await prisma.telegramLink.updateMany({
+      where: { userId: bob.id },
+      data: { codeExpiresAt: new Date(Date.now() - 1000) },
+    });
+
+    await start(900003, code);
+    const row = await prisma.telegramLink.findUnique({ where: { userId: bob.id } });
+    assert.equal(row?.chatId, null);
+    assert.ok(row?.codeHash, 'and the code is left alone rather than consumed');
+  });
+
+  test('minting a code again replaces the old one', async () => {
+    await prisma.telegramLink.deleteMany({ where: { userId: bob.id } });
+    const first = await mintCode(bob);
+    const second = await mintCode(bob);
+    assert.notEqual(first, second);
+
+    await start(900004, first);
+    assert.equal(
+      await prisma.telegramLink.count({ where: { chatId: '900004' } }),
+      0,
+      'the invitation the user abandoned is dead',
+    );
+
+    await start(900004, second);
+    assert.equal(await prisma.telegramLink.count({ where: { chatId: '900004' } }), 1);
+  });
+
+  /**
+   * One chat cannot feed two accounts: the reminders would interleave in the
+   * same conversation with no way to tell whose they were. The unique index
+   * would also simply reject the second claim, which the user would see as the
+   * link silently not working.
+   */
+  test('a chat already linked elsewhere moves rather than failing', async () => {
+    const chatId = '900005';
+    await prisma.telegramLink.deleteMany({ where: { OR: [{ chatId }, { userId: bob.id }, { userId: alice.id }] } });
+
+    await start(900005, await mintCode(alice));
+    assert.equal((await (await call('/api/telegram/link', { token: alice.token })).json()).connected, true);
+
+    await start(900005, await mintCode(bob));
+    assert.equal(
+      (await (await call('/api/telegram/link', { token: alice.token })).json()).connected,
+      false,
+      'the previous owner is disconnected',
+    );
+    assert.equal((await (await call('/api/telegram/link', { token: bob.token })).json()).connected, true);
+    assert.equal(await prisma.telegramLink.count({ where: { chatId } }), 1);
+  });
+
+  test('/stop unlinks from the Telegram side', async () => {
+    await prisma.telegramLink.deleteMany({ where: { userId: bob.id } });
+    await prisma.telegramLink.deleteMany({ where: { chatId: '900006' } });
+    await start(900006, await mintCode(bob));
+
+    telegramCalls.length = 0;
+    const res = await webhook({ message: { chat: { id: 900006 }, text: '/stop' } });
+    assert.equal(res.status, 200);
+
+    assert.equal((await (await call('/api/telegram/link', { token: bob.token })).json()).connected, false);
+    assert.ok(saidTo('900006').some((text) => /Отключено|Disconnected/.test(text)));
+
+    // Again, with nothing left to stop.
+    telegramCalls.length = 0;
+    await webhook({ message: { chat: { id: 900006 }, text: '/stop' } });
+    assert.ok(saidTo('900006').some((text) => /ничего не подключено|Nothing connected/i.test(text)));
+  });
+
+  test('disconnecting from the app removes the row', async () => {
+    await prisma.telegramLink.deleteMany({ where: { chatId: '900007' } });
+    await prisma.telegramLink.deleteMany({ where: { userId: bob.id } });
+    await start(900007, await mintCode(bob));
+
+    const res = await call('/api/telegram/link', { token: bob.token, method: 'DELETE' });
+    assert.equal((await res.json()).disconnected, true);
+    assert.equal(await prisma.telegramLink.count({ where: { userId: bob.id } }), 0);
+  });
+
+  test('a bare /start explains itself instead of erroring', async () => {
+    telegramCalls.length = 0;
+    const res = await start(900008);
+    assert.equal(res.status, 200);
+    assert.ok(saidTo('900008').some((text) => /Подключить Telegram|Connect Telegram/.test(text)));
+  });
+
+  /**
+   * Telegram retries any non-2xx with backoff and eventually drops the webhook
+   * altogether, so an update shape this bot does not handle has to be a 200.
+   */
+  test('an update this bot does not handle is accepted and ignored', async () => {
+    for (const body of [
+      { edited_message: { chat: { id: 1 }, text: 'hi' } },
+      { message: { chat: { id: 1 }, photo: [] } },
+      { channel_post: { chat: { id: 1 }, text: 'hi' } },
+      {},
+    ]) {
+      const res = await webhook(body);
+      assert.equal(res.status, 200, JSON.stringify(body));
+    }
+  });
+});
+
+describe('sending to Telegram', () => {
+  /** The transport, in this process, where it can be swapped. */
+  const calls: { chatId: string; text: string }[] = [];
+
+  before(() => {
+    configureTelegram({ token: 'unit-token', username: 'unit_bot' });
+  });
+
+  after(() => {
+    setTelegramSender(null);
+    configureTelegram(null);
+  });
+
+  function respondWith(status: number, ok = status === 200) {
+    calls.length = 0;
+    setTelegramSender(async (_token, _method, payload) => {
+      const body = payload as { chat_id: string; text: string };
+      calls.push({ chatId: String(body.chat_id), text: body.text });
+      return { ok, status };
+    });
+  }
+
+  async function link(actor: Actor, chatId: string) {
+    await prisma.telegramLink.deleteMany({ where: { OR: [{ userId: actor.id }, { chatId }] } });
+    await prisma.telegramLink.create({
+      data: { userId: actor.id, chatId, linkedAt: new Date() },
+    });
+  }
+
+  test('a reminder reaches the linked chat', async () => {
+    respondWith(200);
+    await link(bob, '910001');
+
+    assert.equal(await notifyTelegram(bob.id, { title: 'Серия', body: '6 дн.' }), true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]?.chatId, '910001');
+    assert.match(calls[0]?.text ?? '', /<b>Серия<\/b>/);
+  });
+
+  test('a user with no chat is simply not a Telegram user', async () => {
+    respondWith(200);
+    await prisma.telegramLink.deleteMany({ where: { userId: bob.id } });
+    assert.equal(await notifyTelegram(bob.id, { title: 't', body: 'b' }), false);
+    assert.equal(calls.length, 0, 'and nothing is sent anywhere');
+  });
+
+  /**
+   * Markup that does not parse makes Telegram reject the whole message, so a
+   * quest someone named "<b>gym" would cost them the reminder rather than
+   * looking odd.
+   */
+  test('a quest name that looks like markup does not cost the reminder', async () => {
+    respondWith(200);
+    await link(bob, '910002');
+
+    await notifyTelegram(bob.id, { title: 'Ждёт «<b>gym»', body: 'a & b <script>' });
+    const text = calls[0]?.text ?? '';
+    assert.match(text, /&lt;b&gt;gym/);
+    assert.match(text, /a &amp; b &lt;script&gt;/);
+    assert.equal(text.includes('<script>'), false);
+    // Our own bold tags are still tags.
+    assert.match(text, /^<b>/);
+  });
+
+  test('a blocked bot unlinks the chat rather than being retried nightly', async () => {
+    respondWith(403, false);
+    await link(bob, '910003');
+
+    assert.equal(await notifyTelegram(bob.id, { title: 't', body: 'b' }), false);
+    const row = await prisma.telegramLink.findUnique({ where: { userId: bob.id } });
+    assert.equal(row?.chatId, null, 'the chat is gone');
+    assert.ok(row, 'but the row stays, so reconnecting changes nothing else');
+  });
+
+  test('Telegram merely having a bad day keeps the chat', async () => {
+    respondWith(503, false);
+    await link(bob, '910004');
+
+    assert.equal(await notifyTelegram(bob.id, { title: 't', body: 'b' }), false);
+    assert.equal(
+      (await prisma.telegramLink.findUnique({ where: { userId: bob.id } }))?.chatId,
+      '910004',
+      'tomorrow will try again',
+    );
+  });
+
+  test('with no bot configured nothing is attempted', async () => {
+    respondWith(200);
+    await link(bob, '910005');
+    configureTelegram(null);
+
+    assert.equal(await notifyTelegram(bob.id, { title: 't', body: 'b' }), false);
+    assert.equal(calls.length, 0);
+
+    configureTelegram({ token: 'unit-token', username: 'unit_bot' });
   });
 });
 
