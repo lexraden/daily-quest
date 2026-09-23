@@ -302,6 +302,32 @@ so a provider outage costs a retry rather than everyone's reminder; the residual
 risk is a send that succeeded but reported failure, and one duplicate beats
 silently dropping a day.
 
+### Granting Pro
+
+`isPremium` on the user row is the paid flag; without it access comes from the
+three-day trial that starts at the first AI call. To hand Pro to the earliest
+accounts — a launch gift, a thank-you — run the script from `dailyq-api`, where
+`DATABASE_URL` already points at the right database:
+
+```bash
+npm run grant-pro --workspace apps/api -- --dry-run   # who would get it
+npm run grant-pro --workspace apps/api                # the first 5
+npm run grant-pro --workspace apps/api -- --count=10
+npm run grant-pro --workspace apps/api -- --revoke    # undo
+```
+
+It orders by `created_at` (and by id, so a tie cannot swap places between a dry
+run and the real one), skips guest accounts from `GUEST_LOGIN_ENABLED`, and only
+writes rows that need changing — so re-running it is a no-op and the count it
+prints is the number of people whose access actually changed.
+
+A grant reaches people who are already signed in. The access token carries only
+a subject and an email, and the gate reads `is_premium` from the database on
+every call; the badge in the app follows on its next load of quest data. Putting
+the flag in the token would be faster and would silently mean a grant did nothing
+until the user signed out, which is the moment nobody would connect to the
+change — there is a test pinning this.
+
 ### Notifications
 
 Three channels for the same events, in the order they are tried.

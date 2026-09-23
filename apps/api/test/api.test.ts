@@ -642,6 +642,42 @@ describe('entitlement', () => {
     assert.notEqual(allowed.status, 403, 'premium must pass the gate');
   });
 
+  /**
+   * Granting Pro must reach people who are already signed in.
+   *
+   * It does because the access token carries only a subject and an email, and
+   * the gate reads is_premium from the database on every call. Putting the flag
+   * in the token would be faster and would silently mean a grant did nothing
+   * until the user signed out — which is the moment nobody would connect to the
+   * change. Hence one token, issued once, used on both sides of the grant.
+   */
+  test('granting Pro reaches a session that is already open', async () => {
+    const early = await makeUser('early-adopter');
+    await prisma.user.update({
+      where: { id: early.id },
+      data: { trialStartedAt: new Date(Date.now() - 10 * 864e5), isPremium: false },
+    });
+
+    const token = early.token; // issued now, and never reissued below
+
+    const before = await call('/api/ai/meal/text', {
+      token, method: 'POST', body: { text: 'a burger' },
+    });
+    assert.equal((await before.json()).code, 'premium_required');
+
+    // What the grant script does, as the script does it.
+    const { count } = await prisma.user.updateMany({
+      where: { id: { in: [early.id] }, isPremium: false },
+      data: { isPremium: true },
+    });
+    assert.equal(count, 1);
+
+    const after = await call('/api/ai/meal/text', {
+      token, method: 'POST', body: { text: 'a burger' },
+    });
+    assert.notEqual(after.status, 403, 'the open session has access without signing in again');
+  });
+
   // Regression: never onboarding used to mean an unexpiring trial.
   test('a user who never onboards still starts a trial on first AI use', async () => {
     const drifter = await makeUser('drifter');
