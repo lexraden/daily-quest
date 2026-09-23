@@ -47,10 +47,17 @@ async function makeUser(name: string): Promise<Actor> {
   const user = await prisma.user.upsert({
     where: { googleSub: `sub-${name}` },
     create: { googleSub: `sub-${name}`, email: `${name}@test.local`, fullName: name },
-    update: { trialStartedAt: null, isPremium: false },
+    // Every field entitlement is read from, back to nothing. The suite runs
+    // against a database that survives it, so anything left here is state the
+    // next run inherits — a paid month left behind made the gate tests pass for
+    // the wrong reason and then fail on the run after.
+    update: { trialStartedAt: null, isPremium: false, premiumUntil: null },
   });
   await prisma.questData.deleteMany({ where: { userId: user.id } });
   await prisma.aiUsage.deleteMany({ where: { userId: user.id } });
+  // Charge ids in the payment tests are fixed strings, so the rows from the
+  // last run would make every one of them look like a redelivery.
+  await prisma.payment.deleteMany({ where: { userId: user.id } });
   return { id: user.id, email: user.email, token: issueAccessToken(user).token };
 }
 

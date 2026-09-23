@@ -176,7 +176,18 @@ export default async function telegramRoutes(app: FastifyInstance) {
   app.post(
     '/webhook',
     {
-      config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+      /**
+       * The cap is per IP, and every update arrives from Telegram, so this is
+       * a ceiling on the bot as a whole rather than on one caller. Sixty a
+       * minute was one: a burst of traffic would have Telegram collecting 429s,
+       * backing off, and eventually dropping the webhook — which now costs
+       * payments, not just reminders, because a successful_payment Telegram
+       * gives up on is a month someone paid for and did not get.
+       *
+       * Five a second still stops an unauthenticated flood dead, and the secret
+       * check below is cheap enough that the ones it rejects cost nothing.
+       */
+      config: { rateLimit: { max: 300, timeWindow: '1 minute' } },
     },
     async (request, reply) => {
       const expected = apiEnv.TELEGRAM_WEBHOOK_SECRET;

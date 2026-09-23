@@ -61,8 +61,13 @@ const schema = z.object({
    * revisited, and a redeploy is a bad way to revisit one. Changing it affects
    * only invoices minted afterwards: what someone already paid is in the
    * payments ledger.
+   *
+   * The default is one star — a real payment that costs nothing to make, which
+   * is the only way to exercise the whole path (invoice, pre-checkout, charge,
+   * grant, the bot's reply) against Telegram rather than a stub. Set a real
+   * price in the environment before this is worth money.
    */
-  PRO_PRICE_STARS: z.coerce.number().int().positive().default(150),
+  PRO_PRICE_STARS: z.coerce.number().int().positive().default(1),
   PRO_PERIOD_DAYS: z.coerce.number().int().positive().default(30),
 
   UPLOAD_DIR: z.string().default('/data/uploads'),
