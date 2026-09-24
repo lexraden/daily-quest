@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { isDue, minutesSince } from '../src/jobs/window.js';
 import { validProposal } from '../src/lib/coachProposal.js';
-import { configurePush, notifyUser, setSender } from '../src/lib/push.js';
+import { configurePush, notifyUser, setSender, pushEnabled, publicKey } from '../src/lib/push.js';
 import { reminderCopy, situationFor, firstName } from '../src/jobs/copy.js';
 import { record as recordNotification, MAX_PER_USER } from '../src/lib/notifications.js';
 import {
@@ -2335,6 +2335,46 @@ describe('connecting Telegram', () => {
  * something only a real push service can prove. That case is exactly what the
  * button is for a person to check on their own phone.
  */
+/**
+ * The two VAPID keys are two independent environment variables, which makes
+ * regenerating one and pasting only that an easy mistake — and a completely
+ * silent one before this: the key endpoint hands out a public key, the browser
+ * subscribes against it happily, and only the send fails, invisibly, hours
+ * later.
+ */
+describe('VAPID keys that are not a pair', () => {
+  after(() => configurePush(null));
+
+  test('a matching pair configures push', () => {
+    configurePush({
+      publicKey: VAPID.publicKey,
+      privateKey: VAPID.privateKey,
+      subject: 'mailto:t@t.local',
+    });
+    assert.equal(pushEnabled(), true);
+  });
+
+  test('a mismatched pair is refused rather than accepted and left to fail', () => {
+    const other = webpush.generateVAPIDKeys();
+    configurePush({
+      publicKey: VAPID.publicKey,
+      privateKey: other.privateKey,
+      subject: 'mailto:t@t.local',
+    });
+    assert.equal(pushEnabled(), false, 'configured-but-broken reports itself as working');
+    assert.equal(publicKey(), null, 'and must not hand out a key nothing can sign for');
+  });
+
+  test('a private key that is not a key at all is refused too', () => {
+    configurePush({
+      publicKey: VAPID.publicKey,
+      privateKey: 'not-a-key',
+      subject: 'mailto:t@t.local',
+    });
+    assert.equal(pushEnabled(), false);
+  });
+});
+
 describe('sending a test notification', () => {
   /** Whether the server this suite is pointed at can send at all. */
   const pushConfigured = async () =>

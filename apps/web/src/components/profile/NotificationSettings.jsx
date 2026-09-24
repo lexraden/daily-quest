@@ -98,13 +98,29 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
     if (testing) return;
     setTesting(true);
     try {
-      const { devices, delivered } = await api.push.test();
+      const { devices, delivered, expired = 0, statuses = [] } = await api.push.test();
+
       if (delivered > 0) {
         toast.success(ns.pushTestSent || 'Sent — it should appear in a moment');
       } else if (devices === 0) {
         toast.error(ns.pushTestNoDevices || 'This device is not subscribed yet');
+      } else if (expired > 0) {
+        // The rows are already gone, so turning the switch off and on makes a
+        // fresh one rather than reviving a corpse.
+        toast.error(ns.pushTestExpired || 'That subscription had expired — turn the switch off and on again');
+      } else if (statuses.some((s) => s === 401 || s === 403)) {
+        /**
+         * Not the user's problem and not fixable from here: the push service
+         * rejected our VAPID credentials, which means the keys on the server
+         * are wrong or mismatched. Saying "resubscribe" would send someone
+         * round a loop that cannot end.
+         */
+        toast.error(ns.pushTestVapid || 'The server’s push keys are being rejected — this needs fixing on the server');
       } else {
-        toast.error(ns.pushTestFailed || 'The push service refused it — turn the switch off and on again');
+        toast.error(
+          (ns.pushTestFailed || 'The push service refused it') +
+            (statuses.length ? ` (${statuses.join(', ')})` : ''),
+        );
       }
     } catch (error) {
       toast.error(error?.message || ns.pushTestFailed || 'Could not send it');

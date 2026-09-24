@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
 import { badRequest } from '../lib/errors.js';
-import { publicKey, pushEnabled, notifyUser } from '../lib/push.js';
+import { publicKey, pushEnabled, sendToUser } from '../lib/push.js';
 
 /**
  * What a browser hands back from pushManager.subscribe(). The endpoint is a URL
@@ -89,10 +89,7 @@ export default async function pushRoutes(app: FastifyInstance) {
         throw badRequest('Push is not configured on the server', 'push_disabled');
       }
 
-      const userId = currentUserId(request);
-      const devices = await prisma.pushSubscription.count({ where: { userId } });
-
-      const delivered = await notifyUser(userId, {
+      const outcome = await sendToUser(currentUserId(request), {
         title: 'DailyQ',
         body: 'Test notification — push is working on this device.',
         url: '/',
@@ -101,7 +98,21 @@ export default async function pushRoutes(app: FastifyInstance) {
         tag: 'dailyq-test',
       });
 
-      return { devices, delivered };
+      /**
+       * The status codes go back to the caller, not just the log.
+       *
+       * They are the difference between two answers that need opposite things
+       * done: 401 or 403 is the server's VAPID details being wrong, which no
+       * amount of resubscribing will fix, while anything else against a live
+       * subscription usually is stale registration. Nothing here is secret —
+       * it is the push service's opinion of our own request.
+       */
+      return {
+        devices: outcome.devices,
+        delivered: outcome.delivered,
+        expired: outcome.expired,
+        statuses: outcome.failures.map((f) => f.status),
+      };
     },
   );
 
