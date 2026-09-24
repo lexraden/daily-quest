@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import TopControls from '@/components/TopControls';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getCachedUser, getCachedUserData, updateCachedUserData, invalidateCache } from '@/components/UserDataCache';
 import { api } from '@/api/client';
@@ -430,8 +431,9 @@ export default function History() {
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
         <div className="px-5 py-3">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between gap-3 mb-3">
             <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{hp.title}</h1>
+            <TopControls theme={theme} />
           </div>
           <Tabs value={viewMode} onValueChange={setViewMode}>
             <TabsList className={`w-full h-9 ${theme === 'light' ? 'bg-blue-50' : 'bg-blue-500/10'}`}>
