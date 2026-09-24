@@ -11,15 +11,18 @@ const NotificationCenter = React.lazy(() => import('@/components/daily/Notificat
  * The three controls that belong to the app rather than to a page: what
  * happened, how it looks, and what language it is in.
  *
- * They live in one component because they now sit in the header of every tab.
- * The bell used to be the tracker's alone, which meant a reminder that arrived
- * while someone was reading their history was invisible until they navigated
- * back — and the theme toggle had the same problem in reverse, reachable only
- * from the one screen.
+ * The bell and the theme toggle are on every tab: a reminder that arrives while
+ * someone is reading their history should be visible there, and the theme
+ * should be changeable from wherever they notice it is wrong.
+ *
+ * Language is not, and that is the point of the flag. It is a setting, not a
+ * control — nobody switches language twice in a session — so a third button on
+ * every screen was three buttons' worth of noise for something done once. It
+ * lives on the profile, with the other settings.
  *
  * Order is left to right: what happened, how it looks, what it says.
  */
-export default function TopControls({ theme, className = '' }) {
+export default function TopControls({ theme, className = '', language = false }) {
   const i = t();
   const light = theme === 'light';
   const { unread, setUnread } = useUnread();
@@ -73,6 +76,7 @@ export default function TopControls({ theme, className = '' }) {
         {light ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
       </Button>
 
+      {language && (
       <Button
         onClick={switchLanguage}
         variant="ghost"
@@ -87,6 +91,7 @@ export default function TopControls({ theme, className = '' }) {
           {lang.toUpperCase()}
         </span>
       </Button>
+      )}
 
       {showInbox && (
         <Suspense fallback={null}>

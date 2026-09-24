@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, BellOff, Clock, Flame, Shield, Smartphone } from 'lucide-react';
+import { Bell, BellOff, Clock, Flame, Shield, Smartphone, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { t, getLang } from '@/lib/i18n';
 import { toast } from 'sonner';
 import { enablePush, disablePush, isSubscribed, permission } from '@/lib/push';
+import { api } from '@/api/client';
 import TelegramChannel from '@/components/profile/TelegramChannel';
 
 const TIME_OPTIONS = [];
@@ -44,6 +45,7 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
   const [pushState, setPushState] = useState('default');
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +81,35 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
       toast.error(ns.pushFailed || 'Could not turn that on');
     } finally {
       setPushBusy(false);
+    }
+  };
+
+  /**
+   * Proves it, rather than asking the user to wait until evening and hope.
+   *
+   * The two numbers the server returns are the two failures that look
+   * identical from here: no devices means the permission never produced a
+   * subscription on this browser, and devices with nothing delivered means the
+   * push service refused the ones we have — usually a subscription that died
+   * when the browser data was cleared, and turning the switch off and on again
+   * replaces it.
+   */
+  const sendTest = async () => {
+    if (testing) return;
+    setTesting(true);
+    try {
+      const { devices, delivered } = await api.push.test();
+      if (delivered > 0) {
+        toast.success(ns.pushTestSent || 'Sent — it should appear in a moment');
+      } else if (devices === 0) {
+        toast.error(ns.pushTestNoDevices || 'This device is not subscribed yet');
+      } else {
+        toast.error(ns.pushTestFailed || 'The push service refused it — turn the switch off and on again');
+      }
+    } catch (error) {
+      toast.error(error?.message || ns.pushTestFailed || 'Could not send it');
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -199,6 +230,19 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
               aria-label={ns.pushOnDevice || 'Notify this device'}
             />
           </div>
+
+          {/* Only where there is something to test. */}
+          {pushOn && (
+            <Button
+              onClick={sendTest}
+              disabled={testing}
+              variant="outline"
+              className={`w-full min-h-[44px] ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {testing ? ns.pushTesting || 'Sending…' : ns.pushTest || 'Send a test notification'}
+            </Button>
+          )}
 
           {/*
             A third channel, and the one the job tries first: connecting it is a

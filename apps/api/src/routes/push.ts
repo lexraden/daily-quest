@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
 import { badRequest } from '../lib/errors.js';
-import { publicKey, pushEnabled } from '../lib/push.js';
+import { publicKey, pushEnabled, notifyUser } from '../lib/push.js';
 
 /**
  * What a browser hands back from pushManager.subscribe(). The endpoint is a URL
@@ -21,6 +21,10 @@ const subscribeBody = z
   .strict();
 
 export default async function pushRoutes(app: FastifyInstance) {
+  // Only the test send is limited; `global: false` keeps the limiter off the
+  // rest of this plugin.
+  await app.register(import('@fastify/rate-limit'), { global: false });
+
   /**
    * The public half of the VAPID pair, which the browser needs before it can
    * subscribe. Public by design — it ships in every subscription request — but
@@ -56,6 +60,50 @@ export default async function pushRoutes(app: FastifyInstance) {
     reply.code(201);
     return { ok: true };
   });
+
+  /**
+   * Sends one notification to whoever asks, right now.
+   *
+   * "It did not arrive" has too many possible causes to guess between from the
+   * outside: the permission was never granted, the subscription was recorded
+   * against another browser, VAPID never reached the service doing the sending,
+   * the phone suppressed it, or the reminder simply was not due. This collapses
+   * all of that into one tap with an answer, and the answer distinguishes the
+   * two cases that look identical from the app: nothing subscribed, versus
+   * subscribed and the push service refused it.
+   *
+   * Rate limited because it is a send button, and generously: the point is to
+   * stop someone using us to hammer a push service, not to ration checking.
+   * Five a minute was the first attempt and it was too mean — the test suite
+   * tripped it on a second run inside a minute, which is exactly what a person
+   * fiddling with notification settings does too.
+   */
+  app.post(
+    '/test',
+    {
+      preHandler: requireAuth,
+      config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+    },
+    async (request) => {
+      if (!pushEnabled()) {
+        throw badRequest('Push is not configured on the server', 'push_disabled');
+      }
+
+      const userId = currentUserId(request);
+      const devices = await prisma.pushSubscription.count({ where: { userId } });
+
+      const delivered = await notifyUser(userId, {
+        title: 'DailyQ',
+        body: 'Test notification — push is working on this device.',
+        url: '/',
+        // Its own tag, so testing never replaces a real reminder sitting in the
+        // shade, and a second test replaces the first.
+        tag: 'dailyq-test',
+      });
+
+      return { devices, delivered };
+    },
+  );
 
   /**
    * Forgets one browser. Deleting by endpoint AND user so a caller cannot
