@@ -5,7 +5,7 @@ import { prisma } from '../db.js';
 import { apiEnv } from '../env.api.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
 import { badRequest, forbidden } from '../lib/errors.js';
-import { botUsername, telegramEnabled, sendToChat } from '../lib/telegram.js';
+import { botUsername, telegramEnabled, sendToChat, sendToUser } from '../lib/telegram.js';
 import { answerPreCheckout, applyPayment, verifyPayload } from '../lib/billing.js';
 import { langFor } from '../lib/notifications.js';
 
@@ -43,6 +43,10 @@ const BOT_COPY = {
       title: '⭐️ Pro активен',
       body: 'Спасибо! Голосовой ввод и распознавание еды по фото снова доступны. Срок виден в профиле.',
     },
+    test: {
+      title: 'DailyQ',
+      body: 'Тестовое сообщение — Telegram работает, напоминания придут сюда.',
+    },
   },
   en: {
     connected: {
@@ -56,6 +60,10 @@ const BOT_COPY = {
     paid: {
       title: '⭐️ Pro is active',
       body: 'Thank you! Voice capture and photo calorie tracking are available again. Your profile shows the end date.',
+    },
+    test: {
+      title: 'DailyQ',
+      body: 'Test message — Telegram is working, and reminders will arrive here.',
     },
   },
 } as const;
@@ -93,8 +101,8 @@ const CODE_TTL_MS = 15 * 60 * 1000;
 const hash = (code: string) => createHash('sha256').update(code).digest('hex');
 
 export default async function telegramRoutes(app: FastifyInstance) {
-  // Only the webhook is rate limited; the rest is behind auth. `global: false`
-  // keeps the limiter off every other route in this plugin.
+  // Only the webhook and the test send are rate limited; the rest is behind
+  // auth. `global: false` keeps the limiter off every other route here.
   await app.register(import('@fastify/rate-limit'), { global: false });
 
   /**
@@ -148,6 +156,43 @@ export default async function telegramRoutes(app: FastifyInstance) {
       expires_at: expiresAt.toISOString(),
     };
   });
+
+  /**
+   * Sends one message to this account's linked chat, right now.
+   *
+   * The same reason push has a test button: "it did not arrive" has several
+   * causes that look identical from the app, and each needs something
+   * different done. The answer says which — no chat linked (connect it), the
+   * chat gone (the bot was blocked or the chat deleted, and it has just been
+   * unlinked, so connect it again), or Telegram failing (try later; nothing is
+   * wrong on either end). A bot that is not configured at all is a 400, like
+   * push's, because that one is not the user's to fix.
+   *
+   * Limited like push's test, and for the same reason: it is a send button,
+   * and the bot's own sending allowance is shared by every user.
+   */
+  app.post(
+    '/test',
+    {
+      preHandler: requireAuth,
+      config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+    },
+    async (request) => {
+      if (!telegramEnabled()) {
+        throw badRequest('Telegram is not configured on the server', 'telegram_disabled');
+      }
+
+      const userId = currentUserId(request);
+      const outcome = await sendToUser(userId, BOT_COPY[await langFor(userId)].test);
+
+      return {
+        sent: outcome === 'sent',
+        // 'disabled' cannot reach here: it was answered above.
+        reason:
+          outcome === 'sent' ? null : outcome === 'gone' ? 'chat_gone' : outcome,
+      };
+    },
+  );
 
   /**
    * Disconnects. The row is deleted outright rather than blanked: there is

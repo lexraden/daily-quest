@@ -14,12 +14,27 @@ import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { isDue, minutesSince } from '../src/jobs/window.js';
 import { validProposal } from '../src/lib/coachProposal.js';
-import { configurePush, notifyUser, setSender, pushEnabled, publicKey } from '../src/lib/push.js';
+import {
+  configurePush,
+  notifyUser,
+  setSender,
+  pushEnabled,
+  publicKey,
+  pushProblem,
+} from '../src/lib/push.js';
+import {
+  configureEmail,
+  emailEnabled,
+  sendEmail,
+  setSender as setEmailSender,
+  classify as classifyEmailError,
+} from '../src/lib/email.js';
 import { reminderCopy, situationFor, firstName } from '../src/jobs/copy.js';
 import { record as recordNotification, MAX_PER_USER } from '../src/lib/notifications.js';
 import {
   configureTelegram,
   notifyUser as notifyTelegram,
+  sendToUser as sendTelegramTo,
   setSender as setTelegramSender,
 } from '../src/lib/telegram.js';
 import { isStreakMilestone, copyFor } from '../src/lib/notificationCopy.js';
@@ -61,6 +76,9 @@ async function makeUser(name: string): Promise<Actor> {
   // Endpoints are unique across users, so one left behind by a previous run
   // rejects the next run's create rather than being replaced by it.
   await prisma.pushSubscription.deleteMany({ where: { userId: user.id } });
+  // A chat linked by the last run would make "not connected yet" the wrong
+  // answer for a fresh actor, and the channel-status tests read exactly that.
+  await prisma.telegramLink.deleteMany({ where: { userId: user.id } });
   return { id: user.id, email: user.email, token: issueAccessToken(user).token };
 }
 
@@ -2056,6 +2074,24 @@ const STUB_INVOICE_LINK = 'https://t.me/$stub-invoice-link';
 const telegramCalls: StubCall[] = [];
 let telegramStub: import('node:http').Server | null = null;
 
+/** Chats the stub answers the way Telegram does once the user blocks the bot. */
+const blockedChats = new Set<string>();
+
+/**
+ * The same stub also answers as Resend, for a server started with
+ * RESEND_BASE_URL pointed here — the SDK reads that itself, so this is the
+ * only way to see what a running API actually emailed.
+ */
+interface EmailCall {
+  to: string;
+  subject: string;
+  authorization: string;
+}
+const emailCalls: EmailCall[] = [];
+/** Recipients the stub refuses the way Resend refuses an unverified domain. */
+const UNVERIFIED_MESSAGE =
+  'The dailyq.app domain is not verified. Please, add and verify your domain on https://resend.com/domains';
+
 async function startTelegramStub() {
   const { createServer } = await import('node:http');
   telegramStub = createServer((req, res) => {
@@ -2064,6 +2100,26 @@ async function startTelegramStub() {
       raw += chunk;
     });
     req.on('end', () => {
+      if (req.url === '/emails') {
+        const body = JSON.parse(raw || '{}') as { to?: string; subject?: string };
+        const to = String(body.to ?? '');
+        emailCalls.push({
+          to,
+          subject: String(body.subject ?? ''),
+          authorization: String(req.headers.authorization ?? ''),
+        });
+        const refused = to.includes('unverified');
+        res.writeHead(refused ? 403 : 200, { 'content-type': 'application/json' });
+        res.end(
+          JSON.stringify(
+            refused
+              ? { statusCode: 403, name: 'validation_error', message: UNVERIFIED_MESSAGE }
+              : { id: 'stub-email-id' },
+          ),
+        );
+        return;
+      }
+
       const method = (req.url ?? '').split('/').pop() ?? '';
       let body: Record<string, unknown> = {};
       try {
@@ -2076,6 +2132,17 @@ async function startTelegramStub() {
         });
       } catch {
         telegramCalls.push({ method, chat_id: '', text: raw, body: {} });
+      }
+      if (blockedChats.has(String(body.chat_id ?? ''))) {
+        res.writeHead(403, { 'content-type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            ok: false,
+            error_code: 403,
+            description: 'Forbidden: bot was blocked by the user',
+          }),
+        );
+        return;
       }
       res.writeHead(200, { 'content-type': 'application/json' });
       // Most methods return true; createInvoiceLink returns the link itself,
@@ -2426,6 +2493,236 @@ describe('sending a test notification', () => {
 
 });
 
+/**
+ * Which channels can reach a user, and proving each one from the profile.
+ *
+ * Before this the app could not tell anyone whether Telegram or email worked
+ * at all — the first sign of a broken channel was a reminder that never came,
+ * and nothing said which of the three should have carried it.
+ */
+describe('which channels reach a user', () => {
+  before(async () => {
+    await startTelegramStub();
+  });
+
+  after(async () => {
+    blockedChats.clear();
+    await new Promise<void>((resolve) => telegramStub?.close(() => resolve()));
+  });
+
+  const channels = async (actor: Actor) => {
+    const res = await call('/api/notifications/channels', { token: actor.token });
+    assert.equal(res.status, 200);
+    return res.json();
+  };
+
+  /** A guest the way /auth/guest mints one: a `guest:` subject and an address that cannot resolve. */
+  async function guest(): Promise<Actor> {
+    const user = await prisma.user.upsert({
+      where: { googleSub: 'guest:channels-test' },
+      create: {
+        googleSub: 'guest:channels-test',
+        email: 'guest-channels-test@guest.invalid',
+        fullName: 'Guest',
+      },
+      update: {},
+    });
+    return { id: user.id, email: user.email, token: issueAccessToken(user).token };
+  }
+
+  test('all three need a session', async () => {
+    assert.equal((await call('/api/notifications/channels')).status, 401);
+    assert.equal((await call('/api/telegram/test', { method: 'POST' })).status, 401);
+    assert.equal((await call('/api/notifications/email/test', { method: 'POST' })).status, 401);
+  });
+
+  test('a fresh account is told what is missing, channel by channel', async () => {
+    const actor = await makeUser('channels-fresh');
+    const body = await channels(actor);
+
+    // Push follows what the server was given, and says which way it is off.
+    const pushOn = (await (await call('/api/push/key', { token: actor.token })).json()).enabled;
+    assert.equal(body.push.configured, pushOn);
+    assert.equal(body.push.devices, 0);
+    assert.equal(body.push.works, false);
+    if (pushOn) assert.equal(body.push.reason, 'no_devices');
+    else assert.ok(['not_configured', 'keys_mismatch'].includes(body.push.reason));
+
+    // The suite's server always has a bot.
+    assert.deepEqual(body.telegram, {
+      configured: true,
+      works: false,
+      reason: 'not_linked',
+      connected: false,
+      username: null,
+    });
+
+    assert.equal(body.email.works, body.email.configured, 'a real address works whenever there is a key');
+    assert.equal(body.email.reason, body.email.configured ? null : 'not_configured');
+    assert.equal(body.email.address, actor.email, 'the account address, which is where it would go');
+
+    assert.equal(body.reminders_via, body.email.configured ? 'email' : null);
+  });
+
+  test('a linked chat and a subscribed device show up, and Telegram wins', async () => {
+    const actor = await makeUser('channels-linked');
+    await prisma.telegramLink.deleteMany({ where: { chatId: '940001' } });
+    await prisma.telegramLink.create({
+      data: { userId: actor.id, chatId: '940001', username: 'linked_person', linkedAt: new Date() },
+    });
+    await prisma.pushSubscription.create({
+      data: {
+        userId: actor.id,
+        // Keyed on the user: the column is unique across accounts.
+        endpoint: `http://127.0.0.1:9/channels-${actor.id}`,
+        p256dh: 'k',
+        auth: 'a',
+      },
+    });
+
+    const body = await channels(actor);
+    assert.equal(body.telegram.connected, true);
+    assert.equal(body.telegram.works, true);
+    assert.equal(body.telegram.reason, null);
+    assert.equal(body.telegram.username, 'linked_person');
+    assert.equal(body.push.devices, 1);
+    assert.equal(body.push.works, body.push.configured);
+    // The job's order: Telegram first, whatever else works.
+    assert.equal(body.reminders_via, 'telegram');
+  });
+
+  test('another account is not counted', async () => {
+    const body = await channels(await makeUser('channels-other'));
+    assert.equal(body.telegram.connected, false);
+    assert.equal(body.push.devices, 0);
+  });
+
+  /**
+   * `.invalid` is reserved never to resolve, so a send there is a bounce — and
+   * bounces are what cost a sender domain its reputation.
+   */
+  test('a guest has no address to email', async () => {
+    const body = await channels(await guest());
+    assert.equal(body.email.address, null);
+    assert.equal(body.email.works, false);
+    assert.equal(body.email.reason, body.email.configured ? 'no_address' : 'not_configured');
+  });
+
+  describe('a test Telegram message', () => {
+    const sendTest = (actor: Actor) =>
+      call('/api/telegram/test', { token: actor.token, method: 'POST' });
+
+    async function linkChat(actor: Actor, chatId: string) {
+      await prisma.telegramLink.deleteMany({ where: { OR: [{ userId: actor.id }, { chatId }] } });
+      await prisma.telegramLink.create({ data: { userId: actor.id, chatId, linkedAt: new Date() } });
+    }
+
+    test('with no chat linked it says so, and sends nothing', async () => {
+      const actor = await makeUser('tg-tester');
+      telegramCalls.length = 0;
+
+      const res = await sendTest(actor);
+      assert.equal(res.status, 200);
+      assert.deepEqual(await res.json(), { sent: false, reason: 'not_linked' });
+      assert.equal(telegramCalls.length, 0);
+    });
+
+    test('a linked chat receives it', async () => {
+      const actor = await makeUser('tg-tester');
+      await linkChat(actor, '940002');
+      telegramCalls.length = 0;
+
+      const res = await sendTest(actor);
+      assert.equal(res.status, 200);
+      assert.deepEqual(await res.json(), { sent: true, reason: null });
+      const said = saidTo('940002');
+      assert.equal(said.length, 1);
+      assert.match(said[0] ?? '', /Тестовое сообщение|Test message/);
+    });
+
+    /**
+     * The bot blocked or the chat deleted. The answer has to differ from "not
+     * linked" — the user did connect it — and the chat is unlinked now, so the
+     * profile goes back to offering the connect button.
+     */
+    test('a chat Telegram calls gone is reported as gone, and unlinked', async () => {
+      const actor = await makeUser('tg-tester');
+      await linkChat(actor, '940003');
+      blockedChats.add('940003');
+
+      assert.deepEqual(await (await sendTest(actor)).json(), { sent: false, reason: 'chat_gone' });
+      const row = await prisma.telegramLink.findUnique({ where: { userId: actor.id } });
+      assert.equal(row?.chatId, null);
+      assert.equal((await channels(actor)).telegram.reason, 'not_linked');
+    });
+  });
+
+  describe('a test email', () => {
+    /** Whether this server was given a Resend key (and, for this suite, the stub as its base URL). */
+    const emailConfigured = async (actor: Actor) =>
+      (await channels(actor)).email.configured === true;
+    const send = (actor: Actor) =>
+      call('/api/notifications/email/test', { token: actor.token, method: 'POST' });
+
+    test('a server with no Resend key says so rather than reporting a silent success', async () => {
+      const actor = await makeUser('mail-tester');
+      if (await emailConfigured(actor)) return;
+
+      const res = await send(actor);
+      assert.equal(res.status, 400);
+      const body = await res.json();
+      assert.equal(body.code, 'email_disabled');
+      assert.match(body.error, /not configured on this service/);
+    });
+
+    /*
+     * The rest need a server started with RESEND_API_KEY set and
+     * RESEND_BASE_URL pointed at the stub (see test/README.md). Without that
+     * they return early, the way the push tests do without a VAPID pair; the
+     * sending logic itself is covered in-process further down either way.
+     */
+    test('it goes to the account address, and the stub is what receives it', async () => {
+      const actor = await makeUser('mail-tester');
+      if (!(await emailConfigured(actor))) return;
+      emailCalls.length = 0;
+
+      const res = await send(actor);
+      assert.equal(res.status, 200);
+      assert.deepEqual(await res.json(), { sent: true, reason: null, to: actor.email });
+      assert.equal(emailCalls.length, 1);
+      assert.equal(emailCalls[0]?.to, actor.email);
+      assert.match(emailCalls[0]?.subject ?? '', /DailyQ/);
+      assert.match(emailCalls[0]?.authorization ?? '', /^Bearer .+/);
+    });
+
+    /**
+     * Resend answers a refusal with a result, not an exception. Reading only
+     * for exceptions is what once let the job report a clean run while
+     * delivering nothing, so this has to come back as not sent, and say why.
+     */
+    test('a refusal from Resend is reported as one, with its reason', async () => {
+      const actor = await makeUser('mail-unverified');
+      if (!(await emailConfigured(actor))) return;
+      emailCalls.length = 0;
+
+      const body = await (await send(actor)).json();
+      assert.equal(emailCalls.length, 1, 'it was attempted');
+      assert.equal(body.sent, false);
+      assert.equal(body.reason, 'sender_unverified');
+      assert.equal(body.detail, UNVERIFIED_MESSAGE);
+    });
+
+    test('a guest is not emailed at all', async () => {
+      const actor = await guest();
+      if (!(await emailConfigured(actor))) return;
+      emailCalls.length = 0;
+
+      assert.deepEqual(await (await send(actor)).json(), { sent: false, reason: 'no_address', to: null });
+      assert.equal(emailCalls.length, 0);
+    });
+  });
+});
+
 describe('paying for Pro', () => {
   before(async () => {
     await startTelegramStub();
@@ -2721,6 +3018,137 @@ describe('sending to Telegram', () => {
     assert.equal(calls.length, 0);
 
     configureTelegram({ token: 'unit-token', username: 'unit_bot' });
+  });
+});
+
+/**
+ * The same seams in-process, where the transport can be swapped: what is worth
+ * pinning is that each failure is told apart from the others, not that the SDKs
+ * can speak HTTP.
+ */
+describe('why a channel did not deliver', () => {
+  const FROM = 'DailyQ <noreply@dailyq.app>';
+
+  after(() => {
+    setTelegramSender(null);
+    configureTelegram(null);
+    setEmailSender(null);
+    configureEmail(null);
+    configurePush(null);
+  });
+
+  test('push says whether its keys are missing or mismatched', () => {
+    configurePush(null);
+    assert.equal(pushProblem(), 'no_keys');
+
+    configurePush({
+      publicKey: VAPID.publicKey,
+      privateKey: webpush.generateVAPIDKeys().privateKey,
+      subject: 'mailto:t@t.local',
+    });
+    assert.equal(pushProblem(), 'keys_mismatch');
+
+    configurePush({ publicKey: VAPID.publicKey, privateKey: VAPID.privateKey, subject: 'mailto:t@t.local' });
+    assert.equal(pushProblem(), null);
+  });
+
+  test('Telegram tells no bot, no chat, a bad day and a gone chat apart', async () => {
+    const chatId = '950001';
+    const answer = (status: number) =>
+      setTelegramSender(async () => ({ ok: status === 200, status }));
+    const msg = { title: 't', body: 'b' };
+
+    configureTelegram(null);
+    assert.equal(await sendTelegramTo(bob.id, msg), 'disabled');
+
+    configureTelegram({ token: 'unit-token', username: 'unit_bot' });
+    await prisma.telegramLink.deleteMany({ where: { OR: [{ userId: bob.id }, { chatId }] } });
+    answer(200);
+    assert.equal(await sendTelegramTo(bob.id, msg), 'not_linked');
+
+    await prisma.telegramLink.create({ data: { userId: bob.id, chatId, linkedAt: new Date() } });
+    assert.equal(await sendTelegramTo(bob.id, msg), 'sent');
+
+    answer(503);
+    assert.equal(await sendTelegramTo(bob.id, msg), 'failed');
+
+    answer(403);
+    assert.equal(await sendTelegramTo(bob.id, msg), 'gone');
+    assert.equal((await prisma.telegramLink.findUnique({ where: { userId: bob.id } }))?.chatId, null);
+  });
+
+  test('email with no key attempts nothing', async () => {
+    let attempts = 0;
+    setEmailSender(async () => {
+      attempts += 1;
+      return { ok: true, id: 'x' };
+    });
+    configureEmail({ apiKey: '', from: FROM });
+
+    assert.equal(emailEnabled(), false, 'an empty key is no key');
+    assert.deepEqual(await sendEmail({ to: 'a@test.local', subject: 's', html: 'h' }), {
+      sent: false,
+      reason: 'disabled',
+    });
+    assert.equal(attempts, 0);
+  });
+
+  test('email goes from the configured sender to the address given', async () => {
+    const seen: { from: string; to: string }[] = [];
+    configureEmail({ apiKey: 're_unit', from: FROM });
+    setEmailSender(async (config, email) => {
+      seen.push({ from: config.from, to: email.to });
+      return { ok: true, id: 'unit-id' };
+    });
+
+    assert.deepEqual(await sendEmail({ to: 'someone@test.local', subject: 's', html: 'h' }), {
+      sent: true,
+      id: 'unit-id',
+    });
+    assert.deepEqual(seen, [{ from: FROM, to: 'someone@test.local' }]);
+  });
+
+  test('a refusal Resend returns rather than throws is not a success', async () => {
+    configureEmail({ apiKey: 're_unit', from: FROM });
+    setEmailSender(async () => ({
+      ok: false,
+      error: { name: 'validation_error', message: UNVERIFIED_MESSAGE },
+    }));
+
+    assert.deepEqual(await sendEmail({ to: 'a@test.local', subject: 's', html: 'h' }), {
+      sent: false,
+      reason: 'sender_unverified',
+      detail: UNVERIFIED_MESSAGE,
+    });
+  });
+
+  test('a transport that throws is reported, not propagated', async () => {
+    configureEmail({ apiKey: 're_unit', from: FROM });
+    setEmailSender(async () => {
+      throw new Error('socket hang up');
+    });
+
+    const outcome = await sendEmail({ to: 'a@test.local', subject: 's', html: 'h' });
+    assert.equal(outcome.sent, false);
+    assert.equal('reason' in outcome ? outcome.reason : null, 'unreachable');
+  });
+
+  test('Resend errors are named for what fixes them', () => {
+    const c = (name: string, message: string) => classifyEmailError({ name, message });
+    assert.equal(c('validation_error', 'API key is invalid'), 'bad_key');
+    assert.equal(c('missing_api_key', 'Missing API key in the authorization header.'), 'bad_key');
+    assert.equal(c('invalid_from_address', 'Invalid `from` field.'), 'sender_unverified');
+    assert.equal(c('validation_error', UNVERIFIED_MESSAGE), 'sender_unverified');
+    assert.equal(
+      c('validation_error', 'You can only send testing emails to your own email address (me@x.com).'),
+      'sender_unverified',
+    );
+    assert.equal(c('rate_limit_exceeded', 'Too many requests.'), 'rate_limited');
+    assert.equal(
+      c('application_error', 'Unable to fetch data. The request could not be resolved.'),
+      'unreachable',
+    );
+    assert.equal(c('validation_error', 'Invalid `to` field.'), 'rejected');
   });
 });
 
