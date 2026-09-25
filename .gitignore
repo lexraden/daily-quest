@@ -36,3 +36,13 @@ apps/api/dist
 
 # prisma
 apps/api/prisma/*.db
+
+# Promo video: the sources are kept, the renders and their inputs are not.
+promo/node_modules/
+promo/out/
+promo/audio/*.wav
+promo/render/frames/
+promo/render/*.png
+
+# Git worktrees that sub-agents work in; each is a full checkout of its own.
+.claude/worktrees/
