@@ -144,7 +144,10 @@ self.addEventListener('push', (event) => {
   const show = self.registration.showNotification(title, {
     body: data.body || '',
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    // Android draws the badge in the status bar from its alpha channel alone,
+    // so the full-colour app icon came out as a solid white square. This one
+    // is a white check on transparency, which is what that mask needs.
+    badge: '/badge-96.png',
     // Same tag replaces rather than stacks: a second evening reminder should
     // not sit under the first one in the shade.
     tag: data.tag || 'dailyq-reminder',
