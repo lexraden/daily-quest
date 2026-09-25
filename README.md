@@ -482,6 +482,67 @@ Note that a Railway volume attaches to exactly one service and pins it to a
 single replica. If `dailyq-api` ever needs to scale out, move file storage to
 S3/R2 behind the existing `/api/files` contract.
 
+### Setting up notifications
+
+Every channel is optional and each one is set up on its own. The catch is that
+there are two services: `dailyq-api` links accounts, hands browsers the push
+key and runs the profile's test buttons, while `dailyq-reminders` does the
+actual sending. Each validates its own environment, so a variable set on only
+one of them fails silently on the other.
+
+| Variable | `dailyq-api` | `dailyq-reminders` |
+| --- | --- | --- |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | yes | yes, the same values |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` | yes | yes |
+| `TELEGRAM_WEBHOOK_SECRET` | yes | no |
+| `RESEND_API_KEY`, `REMINDER_FROM` | optional (test send and status only) | yes, to send email |
+| `APP_ORIGIN` | no | yes |
+
+Set each value once, on `dailyq-api`. On `dailyq-reminders`, set it as a
+Railway reference such as `${{dailyq-api.VAPID_PUBLIC_KEY}}` instead of
+pasting it a second time, so the two copies cannot drift apart.
+
+**Push.** Generate the pair once, with `npx web-push generate-vapid-keys`, and
+take both keys from that one output. The public key is derived from the
+private one: a key regenerated alone does not match its partner, and the API
+refuses a mismatched pair at boot. Push is then off, and the profile says the
+keys are not a pair. Do not rotate the pair once people have subscribed, because
+every existing subscription stops working and every device has to turn the
+switch off and on again. `VAPID_SUBJECT` must be a `mailto:` or `https:` URL.
+
+**Telegram.** Create the bot with @BotFather, set the token and the username
+(without the `@`), and generate a secret with `openssl rand -hex 32`. Then
+register the webhook once:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+     -H "Content-Type: application/json" \
+     -d '{"url":"https://<your-domain>/api/telegram/webhook",
+          "secret_token":"<TELEGRAM_WEBHOOK_SECRET>",
+          "allowed_updates":["message","pre_checkout_query"]}'
+```
+
+`allowed_updates` must include `pre_checkout_query`, or every Stars checkout
+times out (see **Paying for Pro**). `getWebhookInfo` on the same URL shows
+what Telegram has stored and the last delivery error. `setWebhook` is needed
+again only if the domain or the secret changes.
+
+**Email.** In Resend, add the sending domain and publish the DNS records it
+gives you, then wait for the domain to show as verified. `REMINDER_FROM` must
+be an address at that domain, for example `DailyQ <noreply@yourdomain.com>`.
+Until the domain is verified, Resend refuses everything except test sends to
+the Resend account's own address. The profile's email test then reports
+"sender domain is not verified" and shows Resend's own message.
+
+**Checking it.** Go to Profile → Notifications → Channels. Each row says either
+that the channel works or what is missing, and has a **Test** button once it
+works. The same answers come from `GET /api/notifications/channels`, and
+`reminders_via` names the channel tonight's reminder would take. These results
+describe `dailyq-api` only. If a test arrives but reminders do not, the variable
+is probably missing on `dailyq-reminders`. Every run of that service ends by
+logging `reminders run complete` with per-channel counts (`telegrammed`,
+`pushed`, `sent`, `logOnly`, `failed`).
+
 ## API
 
 | Endpoint | Purpose |
@@ -507,6 +568,10 @@ S3/R2 behind the existing `/api/files` contract.
 | `POST /api/ai/meal/photo` | Photos → macros |
 | `POST /api/files` | Upload an image; returns id and signed URL |
 | `GET/DELETE /api/files/:id` | Serve or remove an owned file |
+| `GET /api/notifications/channels` | Which of push, Telegram and email reach the caller, and why not |
+| `POST /api/push/test` | Send a test push to the caller's devices |
+| `POST /api/telegram/test` | Send a test message to the caller's linked chat |
+| `POST /api/notifications/email/test` | Send a test email to the account address |
 | `GET /api/health` | Liveness plus a database round-trip |
 
 `quest_data.mood_log` is written through the same `PATCH /api/quest-data`
