@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>render stub</title>
+<!--
+  Test page for the render pipeline. Implements exactly the motion.html
+  interface (window.DURATION, window.FPS, window.ready, window.seek(t)).
+
+  What it makes visible:
+  - A thin bar sweeping the full width every beat (2880 px/s = 48 px per
+    output frame = 12 px per subframe): with 4-subframe blur it shows as 4
+    evenly spaced ghosts, without blur as one sharp bar.
+  - A disc orbiting once every 7 s (smooth, slower motion).
+  - A large counter: output frame index and t quantized to the output frame
+    (same value for all 4 subframes, so it stays readable after blending),
+    plus the raw sub-frame time in small type.
+  - A beat flash (inverted panel, decays over 120 ms) and beat/bar number on
+    every 0.5 s, downbeats in violet.
+  Every quantity is a function of u = t mod DURATION, so seek(0) == seek(14).
+-->
+<style>
+  html, body { margin: 0; width: 1440px; height: 1440px; overflow: hidden; background: #ECEAE6; }
+  body { position: relative; font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; color: #0B0B0C; }
+  .abs { position: absolute; left: 0; top: 0; will-change: transform; }
+  #flash { width: 1440px; height: 1440px; background: #0B0B0C; opacity: 0; }
+  #lane { left: 0; top: 150px; width: 1440px; height: 140px; background: #FFFFFF; }
+  #bar { top: 150px; width: 10px; height: 140px; background: #0B0B0C; }
+  #ticks { top: 290px; width: 1440px; height: 20px;
+           background: repeating-linear-gradient(90deg, #8A8782 0 2px, transparent 2px 48px); }
+  #orbitRing { left: 420px; top: 520px; width: 600px; height: 600px; border: 2px dashed #8A8782;
+               border-radius: 50%; box-sizing: border-box; }
+  #disc { width: 90px; height: 90px; border-radius: 50%; background: #7C5CFA; }
+  #counter { left: 0; top: 700px; width: 1440px; text-align: center; font-size: 150px; font-weight: bold;
+             font-variant-numeric: tabular-nums; line-height: 1; }
+  #sub { left: 0; top: 880px; width: 1440px; text-align: center; font-size: 44px; color: #8A8782; }
+  #beat { left: 60px; top: 1220px; font-size: 120px; font-weight: bold; line-height: 1; }
+  #label { left: 60px; top: 40px; font-size: 40px; color: #8A8782; }
+  #beatDots { left: 60px; top: 1360px; width: 1320px; height: 30px; }
+  #beatDots i { position: absolute; top: 0; width: 30px; height: 30px; border-radius: 50%;
+                background: #D6D3CE; }
+</style>
+</head>
+<body>
+<div id="flash" class="abs"></div>
+<div id="label" class="abs">render stub · 1440×1440 · 60 fps · 14 s</div>
+<div id="lane" class="abs"></div>
+<div id="bar" class="abs"></div>
+<div id="ticks" class="abs"></div>
+<div id="orbitRing" class="abs"></div>
+<div id="disc" class="abs"></div>
+<div id="counter" class="abs"></div>
+<div id="sub" class="abs"></div>
+<div id="beat" class="abs"></div>
+<div id="beatDots" class="abs"></div>
+<script>
+  window.DURATION = 14;
+  window.FPS = 60;
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    flash: $('flash'), bar: $('bar'), disc: $('disc'), counter: $('counter'),
+    sub: $('sub'), beat: $('beat'), beatDots: $('beatDots'),
+  };
+  const BEATS = 28, BEAT = 0.5;
+  const dots = [];
+  for (let k = 0; k < BEATS; k++) {
+    const d = document.createElement('i');
+    d.style.left = (k * 1320 / BEATS) + 'px';
+    els.beatDots.appendChild(d);
+    dots.push(d);
+  }
+
+  function pad(n, w) { return String(n).padStart(w, '0'); }
+
+  window.seek = function seek(t) {
+    // Wrap into [0, DURATION): seek(14) renders exactly like seek(0).
+    let u = t % window.DURATION;
+    if (u < 0) u += window.DURATION;
+
+    const k = Math.floor(u / BEAT + 1e-9);          // beat index 0..27
+    const phase = u - k * BEAT;                     // seconds since beat
+    const downbeat = k % 4 === 0;
+
+    // Beat flash: full at the beat, gone after 120 ms (linear).
+    const flash = Math.max(0, 1 - phase / 0.12);
+    els.flash.style.opacity = (0.18 * flash).toFixed(4);
+    els.flash.style.background = downbeat ? '#7C5CFA' : '#0B0B0C';
+
+    // Fast bar: crosses 1440 px each beat, linear.
+    const x = (phase / BEAT) * 1440 - 5;
+    els.bar.style.transform = `translate(${x}px, 0)`;
+
+    // Orbit: one revolution per 7 s, starting at 12 o'clock.
+    const a = (u / 7) * 2 * Math.PI;
+    const cx = 720 + 300 * Math.sin(a) - 45, cy = 820 - 300 * Math.cos(a) - 45;
+    els.disc.style.transform = `translate(${cx}px, ${cy}px)`;
+
+    // Counter quantized to the output frame so all 4 subframes agree.
+    const f = Math.floor(u * window.FPS + 1e-6);
+    const tf = f / window.FPS;
+    els.counter.textContent = `${pad(f, 3)}  ${tf.toFixed(3)}s`;
+    els.sub.textContent = `frame ${f} of ${window.DURATION * window.FPS} · raw t = ${u.toFixed(5)}`;
+
+    els.beat.textContent = `beat ${pad(k, 2)} · bar ${Math.floor(k / 4) + 1}.${(k % 4) + 1}`;
+    els.beat.style.color = downbeat ? '#7C5CFA' : '#0B0B0C';
+    for (let i = 0; i < BEATS; i++) {
+      dots[i].style.background = i === k ? (downbeat ? '#7C5CFA' : '#0B0B0C') : (i < k ? '#8A8782' : '#D6D3CE');
+    }
+  };
+
+  window.ready = document.fonts.ready.then(() => { window.seek(0); });
+</script>
+</body>
+</html>
