@@ -148,3 +148,19 @@ nav,
     @apply bg-background text-foreground;
   }
 }
+
+/* Sonner toasts must not intercept taps on content beneath them (quest
+   cards sit under the top-center toast after AI generation). The toast
+   itself stays visible, but only interactive controls remain clickable. */
+[data-sonner-toaster] [data-sonner-toast] {
+  pointer-events: none !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] button,
+[data-sonner-toaster] [data-sonner-toast] [data-close-button],
+[data-sonner-toaster] [data-sonner-toast] a,
+[data-sonner-toaster] [data-sonner-toast] input,
+[data-sonner-toaster] [data-sonner-toast] select,
+[data-sonner-toaster] [data-sonner-toast] textarea {
+  pointer-events: auto !important;
+}
