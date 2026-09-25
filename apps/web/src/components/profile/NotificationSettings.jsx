@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, Flame, Shield, Smartphone, Send } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Bell, Flame, Shield, Smartphone, Send, Mail, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { t, getLang } from '@/lib/i18n';
@@ -7,6 +7,171 @@ import { toast } from 'sonner';
 import { enablePush, disablePush, isSubscribed, permission } from '@/lib/push';
 import { api } from '@/api/client';
 import TelegramChannel from '@/components/profile/TelegramChannel';
+
+/**
+ * Which channels actually reach this account, one line each, with a way to
+ * prove the ones that claim to.
+ *
+ * The server answers for itself: whether it was given the keys at all (a
+ * "not configured" here is the server's problem, not the user's), and whether
+ * this account can be reached (a device, a linked chat, a real address). The
+ * reason is shown instead of a bare "off", because the fix is different on
+ * every row and guessing which one applies is the whole difficulty.
+ */
+function ChannelsBlock({ channels, theme, pushTestShown, onPushTest, pushTesting, onChanged }) {
+  const c = t().channels || {};
+  const light = theme === 'light';
+  const [busy, setBusy] = useState(null); // 'telegram' | 'email' | null
+
+  const testTelegram = async () => {
+    setBusy('telegram');
+    try {
+      const { sent, reason } = await api.telegram.test();
+      if (sent) {
+        toast.success(c.telegramSent || 'Sent — check Telegram');
+      } else if (reason === 'chat_gone') {
+        // The server has just unlinked it, so the rows above need redrawing.
+        toast.error(c.telegramGone || 'The bot was blocked or the chat deleted — connect it again');
+        onChanged?.();
+      } else if (reason === 'not_linked') {
+        toast.error(c.telegramTestNotLinked || 'Telegram is not connected');
+      } else {
+        toast.error(c.telegramFailed || 'Telegram did not take it — try again later');
+      }
+    } catch (error) {
+      toast.error(error?.message || c.failed || 'Could not send it');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const testEmail = async () => {
+    setBusy('email');
+    try {
+      const { sent, reason, to, detail } = await api.notifications.testEmail();
+      if (sent) {
+        toast.success((c.emailSent || 'Sent to {to}').replace('{to}', to));
+        return;
+      }
+      const message = {
+        no_address: c.emailNoAddress,
+        sender_unverified: c.emailUnverified,
+        bad_key: c.emailBadKey,
+        rate_limited: c.emailRateLimited,
+        unreachable: c.emailUnreachable,
+      }[reason] || c.emailRejected || 'Resend refused it';
+      // Resend's own words go alongside: they name the domain or the field,
+      // which is what whoever fixes it needs.
+      toast.error(message, detail ? { description: detail } : undefined);
+    } catch (error) {
+      toast.error(error?.message || c.failed || 'Could not send it');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const reasonText = {
+    not_configured: c.notConfigured || 'Not configured on the server',
+    keys_mismatch: c.pushKeysMismatch || 'The server’s push keys are not a pair',
+    no_devices: c.pushNoDevices || 'No device subscribed',
+    not_linked: c.telegramNotLinked || 'Not connected',
+    no_address: c.emailNoAddress || 'Guest accounts have no email address',
+  };
+
+  const rows = [
+    {
+      id: 'push',
+      icon: Smartphone,
+      iconClass: 'text-purple-500',
+      label: c.push || 'Push',
+      state: channels.push,
+      detail: (c.devices || 'Devices: {n}').replace('{n}', channels.push.devices),
+      // The full-width button below already tests push while this device is
+      // subscribed; the row only offers it for the account's other devices.
+      onTest: pushTestShown ? null : onPushTest,
+      testing: pushTesting,
+    },
+    {
+      id: 'telegram',
+      icon: Send,
+      iconClass: 'text-sky-500',
+      label: c.telegram || 'Telegram',
+      state: channels.telegram,
+      detail: channels.telegram.username ? `@${channels.telegram.username}` : c.works || 'Works',
+      onTest: testTelegram,
+      testing: busy === 'telegram',
+    },
+    {
+      id: 'email',
+      icon: Mail,
+      iconClass: 'text-emerald-500',
+      label: c.email || 'Email',
+      state: channels.email,
+      detail: channels.email.address,
+      onTest: testEmail,
+      testing: busy === 'email',
+    },
+  ];
+
+  const via = channels.reminders_via;
+  const labelClass = light ? 'text-gray-900' : 'text-white';
+  const subClass = light ? 'text-gray-500' : 'text-gray-400';
+
+  return (
+    <div
+      className={`rounded-xl p-3 space-y-1 ${
+        light ? 'bg-gray-50 border border-gray-100' : 'bg-white/5 border border-white/10'
+      }`}
+    >
+      <p className={`text-[11px] font-semibold uppercase tracking-wide ${subClass}`}>
+        {c.title || 'Channels'}
+      </p>
+
+      {rows.map(({ id, icon: Icon, iconClass, label, state, detail, onTest, testing }) => (
+        <div key={id} className="flex items-center justify-between gap-3 min-h-[40px]">
+          <div className="flex min-w-0 items-center gap-2">
+            <Icon className={`h-4 w-4 shrink-0 ${iconClass}`} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className={`text-sm ${labelClass}`}>{label}</span>
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${state.works ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                  aria-hidden="true"
+                />
+              </div>
+              <p
+                className={`truncate text-xs ${
+                  state.works ? subClass : light ? 'text-amber-700' : 'text-amber-400'
+                }`}
+              >
+                {state.works ? detail : reasonText[state.reason] || state.reason}
+              </p>
+            </div>
+          </div>
+
+          {state.works && onTest && (
+            <Button
+              onClick={onTest}
+              disabled={testing}
+              variant="outline"
+              className={`h-8 shrink-0 rounded-xl px-3 text-xs font-semibold ${
+                light ? 'border-gray-300' : 'border-white/20'
+              }`}
+            >
+              {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : c.test || 'Test'}
+            </Button>
+          )}
+        </div>
+      ))}
+
+      <p className={`pt-1 text-xs ${subClass}`}>
+        {via
+          ? (c.via || 'Tonight’s reminder goes to: {channel}').replace('{channel}', c[via] || via)
+          : c.viaNone || 'Reminders only show up in the app right now'}
+      </p>
+    </div>
+  );
+}
 
 export default function NotificationSettings({ settings, onSave, theme = 'light' }) {
   const i = t();
@@ -37,6 +202,27 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [testing, setTesting] = useState(false);
+
+  // What the server says each channel can do for this account. Null until it
+  // answers, and on failure too: no block beats a block that guesses.
+  const [channels, setChannels] = useState(null);
+  // Bumped to remount TelegramChannel when the server unlinks a chat under it.
+  const [telegramKey, setTelegramKey] = useState(0);
+
+  const loadChannels = useCallback(async () => {
+    try {
+      setChannels(await api.notifications.channels());
+    } catch {
+      setChannels(null);
+    }
+  }, []);
+
+  // Again whenever Telegram's own state changes (connected, disconnected),
+  // since that row and the "reminders go to" line both follow it.
+  const telegramConnected = telegram?.connected;
+  useEffect(() => {
+    loadChannels();
+  }, [loadChannels, telegramConnected]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +258,8 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
       toast.error(ns.pushFailed || 'Could not turn that on');
     } finally {
       setPushBusy(false);
+      // The device count just changed, one way or the other.
+      loadChannels();
     }
   };
 
@@ -117,6 +305,8 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
       toast.error(error?.message || ns.pushTestFailed || 'Could not send it');
     } finally {
       setTesting(false);
+      // An expired subscription was deleted by that send.
+      loadChannels();
     }
   };
 
@@ -208,7 +398,7 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
         deliberate act, where a push permission is a prompt someone tapped
         through once. Renders nothing when no bot is configured.
       */}
-      <TelegramChannel theme={theme} onState={setTelegram} />
+      <TelegramChannel key={telegramKey} theme={theme} onState={setTelegram} />
 
       {/* Proves push works, rather than asking the user to wait until evening. */}
       {pushOn && (
@@ -223,12 +413,35 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
         </Button>
       )}
 
+      {channels && (
+        <ChannelsBlock
+          channels={channels}
+          theme={theme}
+          pushTestShown={pushOn}
+          onPushTest={sendTest}
+          pushTesting={testing}
+          onChanged={() => {
+            setTelegramKey((k) => k + 1);
+            loadChannels();
+          }}
+        />
+      )}
+
       {pushState !== 'unsupported' && pushState !== 'denied' && !pushOn && !telegram?.connected && (
         <div className={`flex items-center gap-2 p-3 rounded-xl text-xs ${
           theme === 'light' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
         }`}>
           <Shield className="w-4 h-4 flex-shrink-0" />
-          <span>{ns.pushOffHint || 'Without this, reminders are sent by email only.'}</span>
+          {/*
+            "By email only" was true only when the server has a Resend key. When
+            it does not, the in-app log is all that is left, and saying email
+            would send someone to an inbox that will never get anything.
+          */}
+          <span>
+            {channels && !channels.email.works
+              ? ns.pushOffHintNoEmail || 'Without this, reminders only show up in the app.'
+              : ns.pushOffHint || 'Without this, reminders are sent by email only.'}
+          </span>
         </div>
       )}
 
