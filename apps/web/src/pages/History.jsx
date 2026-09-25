@@ -12,7 +12,7 @@ import EntryCard from '@/components/history/EntryCard';
 import VirtualizedEntryList from '@/components/history/VirtualizedEntryList';
 import MealEditModal from '@/components/daily/MealEditModal';
 import PullToRefresh from '@/components/navigation/PullToRefresh';
-import StatsSection from '@/components/profile/StatsSection';
+import HistoryDashboard from '@/components/history/HistoryDashboard';
 import { dayKey } from '@/lib/dates';
 import { useTheme } from '@/lib/useTheme';
 
@@ -28,10 +28,6 @@ export default function History() {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [editingMeal, setEditingMeal] = useState(null);
   const [userDataId, setUserDataId] = useState(null);
-  const [categoryTotalCompleted, setCategoryTotalCompleted] = useState({});
-  const [categoryLevels, setCategoryLevels] = useState({});
-  const [totalCompleted, setTotalCompleted] = useState(0);
-  const [streak, setStreak] = useState(0);
   const location = useLocation();
 
   // Listen for meal updates from other pages and apply them immediately
@@ -61,16 +57,11 @@ export default function History() {
       setCompletionHistory(data.completion_history || {});
       setJournalEntries(data.journal_entries || []);
       setMealHistory(data.meal_history || []);
-      setCategoryTotalCompleted(data.category_total_completed || {});
-      setCategoryLevels(data.category_levels || {});
-      setTotalCompleted(data.total_completed || 0);
-      setStreak(data.streak || 0);
       setUserDataId(id);
     })();
     return () => { cancelled = true; };
   }, [location.pathname]);
 
-  const statsViewMode = viewMode === 'day' ? 'daily' : viewMode === 'week' ? 'weekly' : 'monthly';
 
   const formatDateKey = (date) => dayKey(date);
 
@@ -175,7 +166,12 @@ export default function History() {
 
   const handleSelectEntry = useCallback((entry) => setSelectedEntry(entry), []);
 
-  const renderSummary = (questCount, noteCount, totalCount) => (
+  /**
+   * Quests, meals, and everything. Meals used to be notes here, and a journal
+   * note is the one kind of entry almost nobody makes — a day of three meals
+   * read "0 notes" and said nothing about what was actually logged.
+   */
+  const renderSummary = (questCount, mealCount, totalCount) => (
     <div className={`flex items-center gap-3 p-3 rounded-xl ${
       theme === 'light' ? 'bg-white border border-gray-200' : 'bg-white/5 border border-white/5'
     }`}>
@@ -185,8 +181,8 @@ export default function History() {
       </div>
       <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
       <div className="text-center flex-1">
-        <div className={`text-2xl font-bold ${theme === 'light' ? 'text-cyan-600' : 'text-cyan-400'}`}>{noteCount}</div>
-        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>📝 {i.common.notes}</div>
+        <div className={`text-2xl font-bold ${theme === 'light' ? 'text-orange-600' : 'text-orange-400'}`}>{mealCount}</div>
+        <div className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-500'}`}>🍽️ {i.common.meals}</div>
       </div>
       <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
       <div className="text-center flex-1">
@@ -212,32 +208,36 @@ export default function History() {
   // ========== DAY VIEW ==========
   const dayEntries = useMemo(() => getEntriesForDate(formatDateKey(currentDate)), [currentDate, getEntriesForDate]);
 
-  const renderStats = () => (
-    <StatsSection
-      completionHistory={completionHistory}
-      categoryTotalCompleted={categoryTotalCompleted}
-      totalCompleted={totalCompleted}
-      streak={streak}
-      categoryLevels={categoryLevels}
+  const renderDashboard = (days, trendDays = days, formatLabel = (d) => dayNamesShort[d.getDay()]) => (
+    <HistoryDashboard
       theme={theme}
-      journalEntries={journalEntries}
-      viewMode={statsViewMode}
-      hideTabs
-      referenceDate={currentDate}
+      days={days}
+      trendDays={trendDays}
+      getEntriesForDate={getEntriesForDate}
+      dayKey={formatDateKey}
+      formatLabel={formatLabel}
     />
   );
+
+  /** One day is not a trend, so the day view charts the week ending on it. */
+  const weekEndingOn = (date) =>
+    Array.from({ length: 7 }, (_, k) => {
+      const d = new Date(date);
+      d.setDate(d.getDate() - (6 - k));
+      return d;
+    });
 
   const renderDayView = () => {
     if (dayEntries.length === 0) return renderEmpty();
     const questCount = dayEntries.filter(e => e.type === 'quest_completed').length;
-    const noteCount = dayEntries.filter(e => e.type === 'journal').length;
+    const mealCount = dayEntries.filter(e => e.type === 'meal').length;
     return (
       <div className="space-y-3">
-        {renderSummary(questCount, noteCount, dayEntries.length)}
-        {renderStats()}
+        {renderSummary(questCount, mealCount, dayEntries.length)}
         {dayEntries.map(entry => (
           <EntryCard key={entry.id} entry={entry} onSelect={handleSelectEntry} theme={theme} />
         ))}
+        {renderDashboard([currentDate], weekEndingOn(currentDate))}
       </div>
     );
   };
@@ -263,10 +263,9 @@ export default function History() {
       <div className="space-y-2">
         {renderSummary(
           allEntries.filter(e => e.type === 'quest_completed').length,
-          allEntries.filter(e => e.type === 'journal').length,
+          allEntries.filter(e => e.type === 'meal').length,
           allEntries.length
         )}
-        {renderStats()}
         {days.map((date) => {
           const dateKey = formatDateKey(date);
           const entries = getEntriesForDate(dateKey);
@@ -293,10 +292,10 @@ export default function History() {
                         theme === 'light' ? 'bg-purple-100 text-purple-600' : 'bg-purple-500/20 text-purple-400'
                       }`}>🎯 {entries.filter(e => e.type === 'quest_completed').length}</span>
                     )}
-                    {entries.filter(e => e.type === 'journal').length > 0 && (
+                    {entries.filter(e => e.type === 'meal').length > 0 && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                        theme === 'light' ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-400'
-                      }`}>📝 {entries.filter(e => e.type === 'journal').length}</span>
+                        theme === 'light' ? 'bg-orange-100 text-orange-600' : 'bg-orange-500/20 text-orange-400'
+                      }`}>🍽️ {entries.filter(e => e.type === 'meal').length}</span>
                     )}
                   </div>
                 )}
@@ -311,6 +310,7 @@ export default function History() {
             </div>
           );
         })}
+        {renderDashboard(days)}
       </div>
     );
   };
@@ -344,12 +344,11 @@ export default function History() {
   const renderMonthView = () => {
     const { cells, allEntries, datesWithEntries } = monthData;
     const monthQuestCount = allEntries.filter(e => e.type === 'quest_completed').length;
-    const monthNoteCount = allEntries.filter(e => e.type === 'journal').length;
+    const monthMealCount = allEntries.filter(e => e.type === 'meal').length;
 
     return (
       <div className="space-y-3">
-        {allEntries.length > 0 && renderSummary(monthQuestCount, monthNoteCount, allEntries.length)}
-        {renderStats()}
+        {allEntries.length > 0 && renderSummary(monthQuestCount, monthMealCount, allEntries.length)}
 
         {/* Day names header */}
         <div className="grid grid-cols-7 gap-1">
@@ -402,6 +401,8 @@ export default function History() {
             theme={theme}
           />
         ) : renderEmpty()}
+
+        {renderDashboard(cells.filter(Boolean), cells.filter(Boolean), (d) => String(d.getDate()))}
       </div>
     );
   };
