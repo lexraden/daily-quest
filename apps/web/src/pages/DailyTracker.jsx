@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity, MessageCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 // CalendarView replaced by History page
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
@@ -1084,8 +1085,13 @@ export default function DailyTracker() {
   const categoryEntries = useMemo(() => Object.entries(CATEGORIES), []);
 
   const completedCount = Object.keys(completedToday).length;
-    const currentHour = new Date().getHours();
-    const showProtectCard = streak > 0 && completedCount === 0 && currentHour >= 18;
+  /**
+   * The evening nudge for a streak about to lapse. From six in the local
+   * evening, because earlier than that nothing is at risk yet and the card is
+   * just nagging; and only while nothing is done today, since one completion
+   * is all it takes to keep the streak.
+   */
+  const showProtectCard = streak > 0 && completedCount === 0 && new Date().getHours() >= 18;
   const totalQuests = Object.keys(CATEGORIES).length;
   const progress = (completedCount / totalQuests) * 100;
   const currentLevel = getCurrentLevel();
@@ -1243,23 +1249,35 @@ export default function DailyTracker() {
 
         </div>
 
-        {/* Motivational Banner */}
         {/* Protect the streak card */}
+        {/* Same frame as the motivational banner beside it: inside the page's
+            gutter, and themed, since bg-orange-50/10 alone was invisible on
+            the light background and ran to the screen edges on both. */}
         {showProtectCard && (
-          <div className="bg-orange-50/10 border border-orange-500/20 rounded-lg p-4 mb-4">
-            <div className="flex items-center gap-3">
-              <Flame className="w-6 h-6 text-orange-500" />
-              <div>
-                <h3 className="text-lg font-semibold">{t().protectStreak.title}</h3>
-                <p className="text-sm">{t().protectStreak.description.replace('{{n}}', streak)}</p>
+          <div className="px-5 mb-4">
+            <div className={`rounded-2xl p-4 border ${
+              theme === 'light'
+                ? 'bg-orange-50 border-orange-200'
+                : 'bg-orange-500/10 border-orange-500/20'
+            }`}>
+              <div className="flex items-center gap-3">
+                <Flame className="w-6 h-6 text-orange-500 shrink-0" fill="currentColor" />
+                <div className="min-w-0">
+                  <h3 className={`text-base font-semibold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                    {t().protectStreak.title}
+                  </h3>
+                  <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-300'}`}>
+                    {t().protectStreak.description.replace('{{n}}', streak)}
+                  </p>
+                </div>
               </div>
+              <Button
+                onClick={() => document.getElementById('quests-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="w-full mt-3 min-h-[44px] bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+              >
+                {t().protectStreak.cta}
+              </Button>
             </div>
-            <Button
-              onClick={() => document.getElementById('quests-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="w-full mt-2"
-            >
-              {t().protectStreak.cta}
-            </Button>
           </div>
         )}
         <MotivationalBanner 

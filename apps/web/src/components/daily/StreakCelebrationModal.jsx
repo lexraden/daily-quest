@@ -11,16 +11,32 @@ export function getStreakMilestone(streak) {
 
 export default function StreakCelebrationModal({ streak, onClose, theme = 'dark' }) {
   const i = t();
-  let milestone = i.streakCeleb[streak];
-  const isMagic = streak === 7 && i.magicNumber && i.magicNumber[7];
-  if (isMagic) {
-    milestone = i.magicNumber[7];
-  }
+  const isMagic = Boolean(streak === 7 && i.magicNumber?.[7]);
+
+  /**
+   * Day seven keeps the ordinary milestone and has its words replaced, not the
+   * whole entry: the magic copy carries a title and a message and no emoji, so
+   * swapping the object outright left the largest element on the card empty.
+   */
+  const milestone = isMagic
+    ? { ...i.streakCeleb[streak], ...i.magicNumber[7] }
+    : i.streakCeleb[streak];
   if (!milestone) return null;
+
+  /**
+   * Written out rather than built as `text-${size}`. Tailwind generates only
+   * the class names it can find literally in the source, so an interpolated
+   * one exists only if some other file happens to spell it — text-9xl and
+   * text-4xl appear nowhere else, and the magic card rendered at the default
+   * size while looking correct in the code.
+   */
+  const size = isMagic
+    ? { card: 'max-w-2xl', emoji: 'text-9xl', title: 'text-4xl', count: 'text-5xl', body: 'text-lg' }
+    : { card: 'max-w-sm', emoji: 'text-7xl', title: 'text-2xl', count: 'text-3xl', body: 'text-sm' };
 
   return (
     <AnimatePresence>
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-5 ${isMagic ? 'magic-number-modal' : ''}`} onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-5" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -33,7 +49,7 @@ export default function StreakCelebrationModal({ streak, onClose, theme = 'dark'
           exit={{ scale: 0.8, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className={`relative w-full max-w-${isMagic ? '2xl' : 'sm'} rounded-3xl p-8 text-center border $
+          className={`relative w-full ${size.card} rounded-3xl p-8 text-center border ${
             theme === 'light'
               ? 'bg-white border-orange-200 shadow-2xl'
               : 'bg-[#1e2836] border-orange-500/30'
@@ -47,7 +63,7 @@ export default function StreakCelebrationModal({ streak, onClose, theme = 'dark'
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring', damping: 10, stiffness: 200 }}
-            className={`text-${isMagic ? '9xl' : '7xl'} mb-4`}
+            className={`${size.emoji} mb-4`}
           >
             {milestone.emoji}
           </motion.div>
@@ -57,17 +73,17 @@ export default function StreakCelebrationModal({ streak, onClose, theme = 'dark'
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <h2 className={`text-${isMagic ? '4xl' : '2xl'} font-bold mb-2 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+            <h2 className={`${size.title} font-bold mb-2 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
               {milestone.title}
             </h2>
             <div className="flex items-center justify-center gap-2 mb-4">
               <Flame className="w-6 h-6 text-orange-500" />
-              <span className={`text-${isMagic ? '5xl' : '3xl'} font-black ${theme === 'light' ? 'text-orange-600' : 'text-orange-400'}`}>
+              <span className={`${size.count} font-black ${theme === 'light' ? 'text-orange-600' : 'text-orange-400'}`}>
                 {streak}
               </span>
               <Flame className="w-6 h-6 text-orange-500" />
             </div>
-            <p className={`text-${isMagic ? 'lg' : 'sm'} mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+            <p className={`${size.body} mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
               {milestone.message}
             </p>
           </motion.div>

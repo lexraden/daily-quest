@@ -45,6 +45,14 @@ export default [
        * a browser did.
        */
       "no-undef": "error",
+      /**
+       * The same hole, one level up. no-undef does not look inside JSX, so
+       * <Button /> with no import sailed through even with the rule above on
+       * — found when a branch started using Button in a page whose import had
+       * been removed. react/recommended sets this one too, and the `rules`
+       * object here replaced it the same way.
+       */
+      "react/jsx-no-undef": "error",
       "no-unused-vars": "off",
       "react/jsx-uses-vars": "error",
       "react/jsx-uses-react": "error",
