@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, Pencil, Check, X, Check as CheckIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -54,10 +54,75 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
   const qe = i.questEdit;
   const Icon = categoryInfo.icon;
 
-  // Swipe on the card is intentionally inert: navigating quests by swipe
-  // desynced from the completed-first re-sort and made the card redraw an
-  // already-completed level (XP-loss on the next tap). Quest switching stays
-  // on the dots indicator only.
+  /**
+   * A quest that has just been completed makes way for the next one.
+   *
+   * Tracking the card by level (above) stopped it jumping to a different quest
+   * when the list re-sorted — but it also pinned it: complete the quest on
+   * screen and the card went on showing that quest, ticked, with the next one
+   * hidden behind a dot. Before the level tracking, the re-sort itself did the
+   * advancing, and people relied on it.
+   *
+   * Only a completion advances it, never arriving at a completed quest.
+   * Swiping or tapping a dot onto a finished quest is a deliberate look at it,
+   * and moving away from under the user would make those quests impossible to
+   * see — so the check is that this is the same level as last time and that it
+   * has gone from open to done.
+   *
+   * The pause is so the tick and the celebration are seen before the card
+   * slides on; switching instantly cut them off mid-animation.
+   */
+  const lastSeen = useRef({ level: activeLevel, completed: isCompleted });
+  useEffect(() => {
+    const last = lastSeen.current;
+    lastSeen.current = { level: activeLevel, completed: isCompleted };
+
+    if (last.level !== activeLevel || last.completed || !isCompleted) return undefined;
+
+    const next = sortedQuests.find(
+      (q) => q.level !== activeLevel && !completedToday[`${categoryKey}_${q.level}`],
+    );
+    if (!next) return undefined; // everything here is done; stay on it
+
+    const timer = setTimeout(() => {
+      setDirection(1);
+      setCurrentLevel(next.level);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [activeLevel, isCompleted, sortedQuests, completedToday, categoryKey]);
+
+  /**
+   * Swiping between quests, back again.
+   *
+   * It was removed because swiping onto a completed quest and tapping it
+   * un-completed it and took the XP away. That tap is inert now, so the reason
+   * went with it, and without swiping the only way to another quest was a dot
+   * a few pixels wide. It moves through the same order the dots show.
+   */
+  const position = sortedQuests.findIndex((q) => q.level === activeLevel);
+  const paginate = (step) => {
+    const target = sortedQuests[position + step];
+    if (!target) return;
+    setDirection(step);
+    setCurrentLevel(target.level);
+  };
+  const SWIPE_THRESHOLD = 10000;
+  const swipePower = (offset, velocity) => Math.abs(offset) * velocity;
+
+  /**
+   * A swipe is not a tap, and the browser does not know that.
+   *
+   * The card is both draggable and clickable, and a drag ends in a pointerup
+   * on the same element it began on — which the browser reports as a click. So
+   * a swipe away from a quest also completed it: verified by swiping from one
+   * quest to the next and watching the server record the first. Now that a
+   * completed quest cannot be un-ticked from the card, that was a completion
+   * with no way back.
+   *
+   * framer-motion reports a drag only once the pointer has moved past its
+   * threshold, so a tap with a little jitter in it is still a tap.
+   */
+  const dragged = useRef(false);
 
   const handleStartEdit = () => {
     setIsEditing(true);
@@ -133,8 +198,19 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
             }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
+            dragElastic={1}
+            onPointerDown={() => { dragged.current = false; }}
+            onDragStart={() => { dragged.current = true; }}
+            onDragEnd={(e, { offset, velocity }) => {
+              const swipe = swipePower(offset.x, velocity.x);
+              if (swipe < -SWIPE_THRESHOLD) paginate(1);
+              else if (swipe > SWIPE_THRESHOLD) paginate(-1);
+            }}
             onClick={(e) => {
+              if (dragged.current) {
+                dragged.current = false;
+                return;
+              }
               if (!isEditing && !e.target.closest('button')) {
                 onToggleQuest(categoryKey, currentQuest.level);
               }
@@ -295,7 +371,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                 <button
                 key={quest.level}
                 onClick={() => {
-                  setDirection(quest.level > activeLevel ? 1 : -1);
+                  setDirection(idx > position ? 1 : -1);
                   setCurrentLevel(quest.level);
                 }}
                 aria-label={`Квест ${idx + 1}`}
