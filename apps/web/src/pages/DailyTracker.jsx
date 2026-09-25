@@ -595,7 +595,10 @@ export default function DailyTracker() {
     api.questData
       .streakFreeze('use')
       .then(applyServerProgress)
-      .then(() => toast.success(t().streakFreeze.freezeUsed))
+      .then(() => {
+        playSfx('freeze');
+        toast.success(t().streakFreeze.freezeUsed);
+      })
       .catch(() => toast.error(t().errors?.saveFailed || 'Could not save that — try again'));
   }, [applyServerProgress]);
 
@@ -924,7 +927,7 @@ export default function DailyTracker() {
     // a little feedback, no data change. There is no deliberate uncheck path
     // from the quest card; intentional edits go through quest editing.
     if (wasCompleted) {
-      playSfx('uncomplete');
+      playSfx('alreadyDone');
       return;
     }
 
@@ -1394,6 +1397,7 @@ export default function DailyTracker() {
             // one appending to the list, so the row it returns wins.
             setMealHistory(prev => [pendingMeal, ...prev]);
             setPendingMeal(null);
+            playSfx('meal');
             toast.success(i.calories.mealSaved);
 
             api.questData.meals

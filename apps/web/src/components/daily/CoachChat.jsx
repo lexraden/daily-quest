@@ -109,6 +109,9 @@ export default function CoachChat({
         ...prev,
         { id: `reply-${Date.now()}`, role: 'assistant', content: reply, proposal: proposal || null },
       ]);
+      // A reply can take a few seconds; a sound says it has arrived without the
+      // user having to watch for it.
+      playSfx('message');
     } catch (error) {
       toast.error(aiErrorMessage(error, i));
       // Put the text back rather than losing what they typed.
