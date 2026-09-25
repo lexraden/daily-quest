@@ -171,21 +171,33 @@ export async function sendToChat(chatId: string, message: Message): Promise<Send
 }
 
 /**
- * Sends to a user's linked chat, if they have one, and returns whether it
- * arrived.
+ * What happened to one user's message, in enough detail to act on.
+ *
+ * `disabled` and `not_linked` never reached Telegram at all; `gone` did, and
+ * the chat has been unlinked because of it; `failed` is Telegram having a bad
+ * day, and the chat is kept.
+ */
+export type UserOutcome = 'sent' | 'disabled' | 'not_linked' | SendOutcome;
+
+/**
+ * Sends to a user's linked chat, if they have one, and says what happened.
  *
  * A chat Telegram calls gone is unlinked here rather than retried nightly, the
  * same way a dead push subscription is deleted. The row is kept — only the chat
  * is cleared — so the user can reconnect without anything else changing.
+ *
+ * `notifyUser` is the yes/no wrapper the reminders job uses; the test endpoint
+ * needs this one, because "nothing arrived" is only actionable once you know
+ * whether there was a chat to send to.
  */
-export async function notifyUser(userId: string, message: Message): Promise<boolean> {
-  if (!configured) return false;
+export async function sendToUser(userId: string, message: Message): Promise<UserOutcome> {
+  if (!configured) return 'disabled';
 
   const link = await prisma.telegramLink.findUnique({
     where: { userId },
     select: { chatId: true },
   });
-  if (!link?.chatId) return false;
+  if (!link?.chatId) return 'not_linked';
 
   const outcome = await sendToChat(link.chatId, message);
 
@@ -200,5 +212,10 @@ export async function notifyUser(userId: string, message: Message): Promise<bool
       });
   }
 
-  return outcome === 'sent';
+  return outcome;
+}
+
+/** Whether it arrived. The reminders job cares about nothing else. */
+export async function notifyUser(userId: string, message: Message): Promise<boolean> {
+  return (await sendToUser(userId, message)) === 'sent';
 }

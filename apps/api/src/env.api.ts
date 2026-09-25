@@ -55,6 +55,23 @@ const schema = z.object({
   TELEGRAM_API_BASE: z.string().default(''),
 
   /**
+   * Resend, the same account the reminders job sends from — here only for the
+   * profile's "send a test email" and for saying whether email is set up at
+   * all. Optional, for the same reason it is on the job: without a key the
+   * channel is reported as not configured on this service, and nothing else
+   * changes.
+   *
+   * The job has its own copy of both, and the API cannot see it: the profile
+   * reports what this service was given, so set them on both.
+   *
+   * RESEND_BASE_URL is deliberately not here. The resend SDK reads it from the
+   * process environment itself, once, when it is first imported, and the tests
+   * use it to point a running API at a stub. Leave it unset.
+   */
+  RESEND_API_KEY: z.string().default(''),
+  REMINDER_FROM: z.string().default('DailyQ <noreply@dailyq.app>'),
+
+  /**
    * What Pro costs, in Telegram Stars, and how long one purchase lasts.
    *
    * Configurable rather than baked in because a price is a decision that gets

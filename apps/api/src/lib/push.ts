@@ -21,6 +21,16 @@ export interface PushConfig {
 let configured: PushConfig | null = null;
 
 /**
+ * Why push is off, when it is. Both states look identical from `pushEnabled()`,
+ * but they need different things done: no keys means set them, a mismatched
+ * pair means regenerate both together — and pasting the missing half of a pair
+ * that is already wrong is exactly how the second one happens.
+ */
+export type PushProblem = 'no_keys' | 'keys_mismatch';
+
+let problem: PushProblem | null = 'no_keys';
+
+/**
  * How a notification actually leaves the process.
  *
  * Injectable so the fan-out and the pruning below can be tested without a real
@@ -79,10 +89,12 @@ export function configurePush(config: PushConfig | null): void {
         'Generate both together with `npx web-push generate-vapid-keys` and set both.',
     );
     configured = null;
+    problem = 'keys_mismatch';
     return;
   }
 
   configured = config;
+  problem = config ? null : 'no_keys';
   if (config) {
     webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
   }
@@ -90,6 +102,9 @@ export function configurePush(config: PushConfig | null): void {
 
 /** Push is optional: without keys the app runs, it just cannot notify. */
 export const pushEnabled = (): boolean => configured !== null;
+
+/** Null when push is configured; otherwise which of the two ways it is not. */
+export const pushProblem = (): PushProblem | null => problem;
 
 export const publicKey = (): string | null => configured?.publicKey ?? null;
 

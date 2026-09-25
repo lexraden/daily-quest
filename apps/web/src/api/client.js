@@ -268,6 +268,14 @@ export const api = {
     /** No id marks every unread one read. */
     read: (id) => request('/api/notifications/read', { method: 'POST', body: id ? { id } : {} }),
     clear: () => request('/api/notifications', { method: 'DELETE' }),
+    /**
+     * Which delivery channels reach this account: { push, telegram, email },
+     * each { configured, works, reason, ... }, plus `reminders_via` — the one
+     * tonight's reminder would take.
+     */
+    channels: () => request('/api/notifications/channels'),
+    // { sent, reason, to, detail? }; a 400 `email_disabled` without a key.
+    testEmail: () => request('/api/notifications/email/test', { method: 'POST' }),
   },
 
   /**
@@ -280,6 +288,8 @@ export const api = {
     link: () => request('/api/telegram/link'),
     connect: () => request('/api/telegram/link', { method: 'POST' }),
     disconnect: () => request('/api/telegram/link', { method: 'DELETE' }),
+    // { sent, reason } — reason is 'not_linked', 'chat_gone' or 'failed'.
+    test: () => request('/api/telegram/test', { method: 'POST' }),
   },
 
   billing: {
