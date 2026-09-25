@@ -39,6 +39,7 @@ import {
 } from '../src/lib/telegram.js';
 import { isStreakMilestone, copyFor } from '../src/lib/notificationCopy.js';
 import webpush from 'web-push';
+import { emailRecipient, isGuestSubject } from '../src/lib/guest.js';
 
 /** One pair for the whole suite; the pair only has to be internally consistent. */
 const VAPID = webpush.generateVAPIDKeys();
@@ -2439,6 +2440,32 @@ describe('VAPID keys that are not a pair', () => {
       subject: 'mailto:t@t.local',
     });
     assert.equal(pushEnabled(), false);
+  });
+});
+
+/**
+ * Every account that opens the tracker is switched on for reminders, guests
+ * included, and a guest's address is a `@guest.invalid` placeholder. The job
+ * used to hand it to Resend: a certain bounce, or a refusal the failure path
+ * would retry on every cron run. This is the rule the job and the channel
+ * status both use.
+ */
+describe('who may be emailed', () => {
+  test('a real account is emailed at its address', () => {
+    assert.equal(emailRecipient({ email: 'a@b.co', googleSub: '1234567890' }), 'a@b.co');
+  });
+
+  test('a guest is never emailed, whatever its address says', () => {
+    assert.equal(isGuestSubject('guest:abc'), true);
+    assert.equal(emailRecipient({ email: 'guest-abc@guest.invalid', googleSub: 'guest:abc' }), null);
+    // The subject decides, not the address: a guest is a guest even if a
+    // future change gave it a plausible-looking email.
+    assert.equal(emailRecipient({ email: 'looks@real.com', googleSub: 'guest:xyz' }), null);
+  });
+
+  test('no address means no email', () => {
+    assert.equal(emailRecipient({ email: '', googleSub: '1234567890' }), null);
+    assert.equal(emailRecipient({ email: null, googleSub: '1234567890' }), null);
   });
 });
 

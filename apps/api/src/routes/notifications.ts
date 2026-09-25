@@ -7,7 +7,7 @@ import { MAX_PER_USER, toWire, langFor } from '../lib/notifications.js';
 import { pushProblem } from '../lib/push.js';
 import { telegramEnabled } from '../lib/telegram.js';
 import { emailEnabled, sendEmail } from '../lib/email.js';
-import { GUEST_PREFIX } from './auth.js';
+import { emailRecipient } from '../lib/guest.js';
 
 const readBody = z.object({ id: z.string().min(1).max(64).optional() }).strict();
 
@@ -36,7 +36,7 @@ async function emailAddressFor(userId: string): Promise<string | null> {
     select: { email: true, googleSub: true },
   });
   if (!user) throw unauthorized();
-  return user.googleSub.startsWith(GUEST_PREFIX) ? null : user.email;
+  return emailRecipient(user);
 }
 
 export default async function notificationRoutes(app: FastifyInstance) {

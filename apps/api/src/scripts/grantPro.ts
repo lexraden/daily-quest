@@ -21,9 +21,8 @@
  */
 
 import { prisma } from '../db.js';
-
-/** Guests are throwaway accounts from GUEST_LOGIN_ENABLED, not early users. */
-const GUEST_PREFIX = 'guest:';
+// Guests are throwaway accounts from GUEST_LOGIN_ENABLED, not early users.
+import { GUEST_PREFIX } from '../lib/guest.js';
 
 function arg(name: string): string | undefined {
   const hit = process.argv.slice(2).find((a) => a === `--${name}` || a.startsWith(`--${name}=`));

@@ -18,6 +18,7 @@ import { configureTelegram, notifyUser as notifyTelegram } from '../lib/telegram
 import { reminderCopy, situationFor, firstName } from './copy.js';
 import { sanitizeQuestData } from '../lib/questData.js';
 import { record as recordNotification } from '../lib/notifications.js';
+import { emailRecipient } from '../lib/guest.js';
 
 /**
  * A quest worth naming in the reminder.
@@ -106,7 +107,7 @@ async function main() {
       // The name is what makes a reminder read as addressed to someone rather
       // than broadcast, and the quests let it name what is actually waiting.
       questData: true,
-      user: { select: { email: true, fullName: true } },
+      user: { select: { email: true, fullName: true, googleSub: true } },
     },
   });
 
@@ -286,7 +287,17 @@ async function main() {
      * still sees it next time they open the app — counted separately from a
      * failure, because there is nothing broken to fix here.
      */
-    if (!resend) {
+    /**
+     * No email for an account with nowhere real to send it. Every account that
+     * opens the tracker is switched on for reminders now, guests included, and
+     * a guest's address is a `@guest.invalid` placeholder: sending there is a
+     * certain bounce, which costs the sender domain its standing, and if Resend
+     * refused it instead, the failure path below would hand the day back and
+     * retry it on every cron run. Telegram and push above still reach a guest
+     * who connected them, and the in-app log has the line either way.
+     */
+    const to = emailRecipient(row.user);
+    if (!resend || !to) {
       results.logOnly++;
       continue;
     }
@@ -298,7 +309,7 @@ async function main() {
       // sent, and the run logged a clean summary while delivering nothing.
       const { error } = await resend.emails.send({
         from: jobEnv.REMINDER_FROM,
-        to: row.user.email,
+        to,
         subject,
         html: body(type, row.streak, row.totalCompleted, settings.reminder_time),
       });

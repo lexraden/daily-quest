@@ -53,7 +53,8 @@ const updateMeBody = z.object({
  * there is one definition of "guest" rather than three places pattern-matching
  * an email address.
  */
-export const GUEST_PREFIX = 'guest:';
+import { GUEST_PREFIX } from '../lib/guest.js';
+export { GUEST_PREFIX };
 
 const publicUser = (u: {
   id: string;
