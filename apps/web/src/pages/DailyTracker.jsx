@@ -906,6 +906,16 @@ export default function DailyTracker() {
     const wasCompleted = completedToday[questKey];
     const today = getTodayKey();
 
+    // A tap on an already-completed quest is accidental — a stray finger on a
+    // phone does it several times a day. Un-completing used to strip the XP and
+    // DELETE the completion with no way back, so a completed quest is inert:
+    // a little feedback, no data change. There is no deliberate uncheck path
+    // from the quest card; intentional edits go through quest editing.
+    if (wasCompleted) {
+      playSfx('uncomplete');
+      return;
+    }
+
     // Everything the optimistic updates below are about to change, so a failed
     // write can be undone. A toast on its own left the tick and the XP on
     // screen: the quest looked done and the level looked earned while the

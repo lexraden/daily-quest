@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { User, LogOut, Camera, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, LogOut, Camera, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/api/client';
 import { useAuth } from '@/lib/AuthContext';
@@ -16,6 +17,7 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const fileInputRef = useRef(null);
 
   // Keep editedName in sync when user data arrives
@@ -48,6 +50,17 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
   const handleAvatarClick = () => {
     if (isUploadingAvatar) return;
     setShowAvatarPicker(true);
+  };
+
+  // A guest has no credential to come back with: signing out ends the account
+  // and its progress for good, so it asks. A real account can always log back
+  // in, so its logout stays one tap.
+  const handleLogoutClick = () => {
+    if (user?.is_guest) {
+      setShowLogoutConfirm(true);
+    } else {
+      logout();
+    }
   };
 
   const handleAvatarChange = async (e) => {
@@ -170,7 +183,7 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
         {/* Logout — hidden while editing name to avoid button stacking */}
         {!isEditingName && (
           <Button
-            onClick={logout}
+            onClick={handleLogoutClick}
             variant="ghost"
             size="icon"
             aria-label={i.profilePage.logout}
@@ -211,6 +224,71 @@ export default function ProfileHeader({ user, stats, levelProgress, theme, onUse
           isUploadingPhoto={isUploadingAvatar}
           onClose={() => setShowAvatarPicker(false)}
         />
+      )}
+
+      {showLogoutConfirm && (
+        <AnimatePresence>
+          {/* Same centred panel pattern as the daily modals: a guest session is
+              about to be destroyed, so it deserves the same ceremony. */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-5">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowLogoutConfirm(false)}
+            />
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              role="alertdialog"
+              aria-modal="true"
+              aria-label={i.profilePage.logoutConfirmTitle}
+              className={`relative w-full max-w-sm rounded-3xl p-8 text-center border ${
+                theme === 'light'
+                  ? 'bg-white border-amber-200 shadow-2xl'
+                  : 'bg-[#1e2836] border-amber-500/30'
+              }`}
+            >
+              <div className="p-3 rounded-2xl mx-auto w-fit mb-4 bg-amber-500/10">
+                <AlertTriangle className={`w-8 h-8 ${theme === 'light' ? 'text-amber-600' : 'text-amber-400'}`} />
+              </div>
+
+              <h2 className={`text-xl font-bold mb-2 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+                {i.profilePage.logoutConfirmTitle}
+              </h2>
+
+              <p className={`text-sm mb-6 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
+                {i.profilePage.logoutConfirmBody}
+              </p>
+
+              <div className="space-y-3" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0px)' }}>
+                <Button
+                  onClick={logout}
+                  aria-label={i.profilePage.logoutConfirmLeave}
+                  className="w-full min-h-[44px] h-12 text-base bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-white"
+                >
+                  <LogOut className="w-5 h-5 mr-2" />
+                  {i.profilePage.logoutConfirmLeave}
+                </Button>
+                <Button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  variant="outline"
+                  aria-label={i.profilePage.logoutConfirmStay}
+                  className={`w-full min-h-[44px] h-12 text-base ${
+                    theme === 'light'
+                      ? 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                      : 'border-white/10 text-gray-400 hover:bg-white/5'
+                  }`}
+                >
+                  {i.profilePage.logoutConfirmStay}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </AnimatePresence>
       )}
     </div>
   );
