@@ -288,16 +288,14 @@ Note that it does **not** run `prisma migrate deploy` — only `dailyq-api` does
 Two services migrating the same database on every deploy is a race for no gain.
 
 It needs `DATABASE_URL`, `APP_ORIGIN`, the VAPID pair and the Telegram bot token
-and username, since it is the process that actually sends. `RESEND_API_KEY` and
-`REMINDER_FROM` are optional: without them email is simply not one of the
-channels. None of the API's signing secrets or its OpenAI key belong here.
+and username, since it is the process that actually sends. None of the API's signing secrets or its OpenAI key belong here.
 
 Delivery is at-most-once per local day. The job claims the day with a
 conditional `UPDATE ... WHERE last_reminder_day IS DISTINCT FROM $day` and only
 sends if that claimed a row, so a retry after a crash, a manual trigger running
 beside the schedule, or a second replica all send nothing. Recording after
 sending would be the wrong way round — a crash in between leaves no record and
-the retry emails everyone again. If the send itself fails the day is given back,
+the retry reminds everyone again. If the send itself fails the day is given back,
 so a provider outage costs a retry rather than everyone's reminder; the residual
 risk is a send that succeeded but reported failure, and one duplicate beats
 silently dropping a day.
@@ -454,9 +452,10 @@ the push service meaning the subscription is gone and the row is deleted. The
 service worker also messages any open page when a push lands, so the bell's
 badge updates without waiting for the app to be resumed.
 
-**Email** last. An email about a habit tracker is read hours later if at all, but
-a user with neither of the other two would otherwise hear nothing, so it stays as
-the fallback rather than being replaced.
+There is no email channel. It was dropped: an email about a habit tracker is
+read hours later if at all, and it needed a sender domain and a provider
+account for the least useful of the three. A user with neither Telegram nor
+push still has the reminder in the in-app log.
 
 A chat Telegram reports as gone — 403 for a blocked bot, 400 for a chat that no
 longer exists — is unlinked on the spot, the same way a dead push subscription is
@@ -466,13 +465,11 @@ The window is one-sided — the reminder time has to have passed — and wider t
 the cron period so a late run still delivers. It used to be plus-or-minus 30
 minutes, which is 61 minutes wide: against a 30-minute cron a 09:00 reminder
 matched the 08:30, 09:00 and 09:30 runs, so everyone who had not completed a
-quest got three identical emails a day, the first of them half an hour before
+quest got three identical reminders a day, the first of them half an hour before
 the time it announced.
 
-Note that Resend reports API failures in its result rather than by throwing, so
-the result is inspected: without that a rejected API key counted every address
-as sent and the run logged a clean summary while delivering nothing. It needs `DATABASE_URL`, `RESEND_API_KEY`
-and `REMINDER_FROM`, plus `APP_ORIGIN` for the link in the email. It does not
+It needs `DATABASE_URL` and `APP_ORIGIN` for the link in the Telegram
+message, plus the channel keys above. It does not
 need the volume, and deliberately does not load the API's signing secrets or
 the OpenAI key — its environment is validated separately in `src/env.job.ts`. The job checks each user's
 local reminder time against their timezone, skips anyone who has already
@@ -495,7 +492,6 @@ one of them fails silently on the other.
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | yes | yes, the same values |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` | yes | yes |
 | `TELEGRAM_WEBHOOK_SECRET` | yes | no |
-| `RESEND_API_KEY`, `REMINDER_FROM` | optional (test send and status only) | yes, to send email |
 | `APP_ORIGIN` | no | yes |
 
 Set each value once, on `dailyq-api`. On `dailyq-reminders`, set it as a
@@ -526,13 +522,6 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
 times out (see **Paying for Pro**). `getWebhookInfo` on the same URL shows
 what Telegram has stored and the last delivery error. `setWebhook` is needed
 again only if the domain or the secret changes.
-
-**Email.** In Resend, add the sending domain and publish the DNS records it
-gives you, then wait for the domain to show as verified. `REMINDER_FROM` must
-be an address at that domain, for example `DailyQ <noreply@yourdomain.com>`.
-Until the domain is verified, Resend refuses everything except test sends to
-the Resend account's own address. The profile's email test then reports
-"sender domain is not verified" and shows Resend's own message.
 
 **Checking it.** Go to Profile → Notifications → Channels. Each row says either
 that the channel works or what is missing, and has a **Test** button once it
@@ -568,10 +557,9 @@ logging `reminders run complete` with per-channel counts (`telegrammed`,
 | `POST /api/ai/meal/photo` | Photos → macros |
 | `POST /api/files` | Upload an image; returns id and signed URL |
 | `GET/DELETE /api/files/:id` | Serve or remove an owned file |
-| `GET /api/notifications/channels` | Which of push, Telegram and email reach the caller, and why not |
+| `GET /api/notifications/channels` | Whether push and Telegram reach the caller, and why not |
 | `POST /api/push/test` | Send a test push to the caller's devices |
 | `POST /api/telegram/test` | Send a test message to the caller's linked chat |
-| `POST /api/notifications/email/test` | Send a test email to the account address |
 | `GET /api/health` | Liveness plus a database round-trip |
 
 `quest_data.mood_log` is written through the same `PATCH /api/quest-data`
@@ -606,8 +594,8 @@ allowlist as every other field; there is no separate mood endpoint.
   that it explains what to do instead of drawing an empty axis.
 - **Push needs a VAPID pair to do anything**, and it must be a *pair*. Without
   `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` on both services the endpoints
-  answer "not enabled", the Profile switch says so, and reminders fall back to
-  email. Two keys from different pairs are refused the same way, on purpose:
+  answer "not enabled", the Profile switch says so, and reminders go by
+  Telegram or only to the in-app log. Two keys from different pairs are refused the same way, on purpose:
   the public key of a P-256 pair is derived from the private one, so the
   mismatch is detectable at boot, and configured-but-broken is the worse state
   — it hands out a key, the browser subscribes happily, and only the send

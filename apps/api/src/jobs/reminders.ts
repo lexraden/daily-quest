@@ -1,7 +1,7 @@
 /**
  * Daily quest reminders. Ported from the Base44 sendReminders function, keeping
- * its timezone window and streak-warning logic; the delivery swapped from
- * Base44's SendEmail to Resend, and the full-table scan became a filtered query.
+ * its timezone window and streak-warning logic. Base44 sent an email; this
+ * sends by Telegram or push, and the full-table scan became a filtered query.
  *
  * Runs as its own Railway service on a cron schedule and exits when done.
  *
@@ -9,7 +9,6 @@
  *   { enabled, reminder_time: "HH:MM", streak_warning, timezone, push_token }
  */
 
-import { Resend } from 'resend';
 import { prisma } from '../db.js';
 import { jobEnv } from '../env.job.js';
 import { isDue } from './window.js';
@@ -18,7 +17,6 @@ import { configureTelegram, notifyUser as notifyTelegram } from '../lib/telegram
 import { reminderCopy, situationFor, firstName } from './copy.js';
 import { sanitizeQuestData } from '../lib/questData.js';
 import { record as recordNotification } from '../lib/notifications.js';
-import { emailRecipient } from '../lib/guest.js';
 
 /**
  * A quest worth naming in the reminder.
@@ -77,23 +75,7 @@ function localTime(tz: string): { hour: number; minute: number; dayKey: string }
   }
 }
 
-
-function body(type: 'reminder' | 'streak_warning', streak: number, total: number, time: string) {
-  const cta = `<p><a href="${jobEnv.APP_ORIGIN}">Open DailyQ</a></p>`;
-  return type === 'streak_warning'
-    ? `<h2>🔥 Don't lose your ${streak}-day streak!</h2>
-       <p>You haven't completed any quests today. Complete at least one to keep your streak going!</p>
-       <p>Total XP: <strong>${total}</strong></p>${cta}`
-    : `<h2>⚡ Your daily quests are waiting!</h2>
-       <p>It's ${time} — time to level up!</p>
-       <p>Current streak: <strong>${streak} days</strong></p>${cta}`;
-}
-
 async function main() {
-  // Null when no key is configured: email is then simply not one of the
-  // channels, the same way no VAPID pair means push is not.
-  const resend = jobEnv.RESEND_API_KEY ? new Resend(jobEnv.RESEND_API_KEY) : null;
-
   // Only rows that opted in. The Base44 version listed every record and
   // filtered in memory, which stopped scaling the moment the table grew.
   const rows = await prisma.questData.findMany({
@@ -107,12 +89,12 @@ async function main() {
       // The name is what makes a reminder read as addressed to someone rather
       // than broadcast, and the quests let it name what is actually waiting.
       questData: true,
-      user: { select: { email: true, fullName: true, googleSub: true } },
+      user: { select: { fullName: true } },
     },
   });
 
-  // Without a VAPID pair notifyUser is a no-op and every reminder goes by
-  // email, which is exactly how this ran before push existed.
+  // Without a VAPID pair notifyUser is a no-op and push is simply not one of
+  // the channels.
   configurePush(
     jobEnv.VAPID_PUBLIC_KEY && jobEnv.VAPID_PRIVATE_KEY
       ? {
@@ -141,14 +123,13 @@ async function main() {
     // Written to the log with no channel able to deliver it tonight.
     logOnly: 0,
     skipped: 0,
-    failed: 0,
   };
 
   for (const row of rows) {
     results.checked++;
     const settings = (row.notificationSettings ?? {}) as NotificationSettings;
 
-    if (!settings.reminder_time || !row.user.email) {
+    if (!settings.reminder_time) {
       results.skipped++;
       continue;
     }
@@ -190,11 +171,6 @@ async function main() {
       dayKey,
     );
 
-    // The email keeps its old shape; only the subject follows the new copy, so
-    // the two channels at least say the same thing.
-    const type = situation === 'streak_warning' ? 'streak_warning' : 'reminder';
-    const subject = copy.title;
-
     // Claim the day before sending, not after. The predicate is the whole
     // mechanism: `IS DISTINCT FROM` matches a row whose last reminder is null or
     // some other day, so whichever run gets there first is the only one that
@@ -202,7 +178,7 @@ async function main() {
     // schedule, or a second replica all update nothing and move on.
     //
     // Recording after sending instead would be the wrong way round: a crash
-    // between the two leaves no record and the retry emails everyone again.
+    // between the two leaves no record and the retry reminds everyone again.
     // Raw SQL for `IS DISTINCT FROM`: Prisma's `NOT: { lastReminderDay: day }`
     // compiles to `NOT (last_reminder_day = $day)`, which is NULL — and so no
     // match — for a row that has never been claimed. That is every row on the
@@ -222,7 +198,7 @@ async function main() {
      * The log first, and unconditionally.
      *
      * This is the channel that cannot be missed: a phone that was off, a
-     * permission never granted, an email in a promotions tab — the reminder
+     * permission never granted, a muted chat — the reminder
      * still exists in the app the next time it is opened, which is the only
      * place the user is certain to look. Keyed on the day, so the claim above
      * and this agree: one line per user per day whatever happens below.
@@ -242,17 +218,18 @@ async function main() {
      *
      * Telegram leads because connecting it is a deliberate act — a user went to
      * their profile and linked an account — where a push permission is a prompt
-     * someone tapped through once. Push comes next because a notification on the
-     * phone is what a streak reminder is for. Email is last: an email about a
-     * habit tracker is read hours later if at all, but a user with neither of
-     * the other two would otherwise hear nothing.
+     * someone tapped through once. Push comes next.
+     *
+     * There is no email fallback. It was dropped: an email about a habit
+     * tracker is read hours later if at all, and it needed a sender domain and
+     * a provider account for the least useful channel of the three.
      */
     const telegrammed = await notifyTelegram(row.userId, {
       title: copy.title,
       body: copy.body,
       url: jobEnv.APP_ORIGIN,
     }).catch((err) => {
-      // A Telegram outage must not cost the other two channels.
+      // A Telegram outage must not cost push as well.
       console.error(`telegram failed for ${row.userId}:`, err);
       return false;
     });
@@ -271,7 +248,7 @@ async function main() {
       // right, two stacked in the shade is nagging.
       tag: 'dailyq-reminder',
     }).catch((err) => {
-      // A push service outage must not cost the email as well.
+      // A push service outage must not stop the run.
       console.error(`push failed for ${row.userId}:`, err);
       return 0;
     });
@@ -283,66 +260,16 @@ async function main() {
     }
 
     /**
-     * Nothing left to try. The line is already in the in-app log, so the user
+     * Nothing reached them. The line is already in the in-app log, so the user
      * still sees it next time they open the app — counted separately from a
-     * failure, because there is nothing broken to fix here.
+     * send, because there is nothing broken to fix here.
      */
-    /**
-     * No email for an account with nowhere real to send it. Every account that
-     * opens the tracker is switched on for reminders now, guests included, and
-     * a guest's address is a `@guest.invalid` placeholder: sending there is a
-     * certain bounce, which costs the sender domain its standing, and if Resend
-     * refused it instead, the failure path below would hand the day back and
-     * retry it on every cron run. Telegram and push above still reach a guest
-     * who connected them, and the in-app log has the line either way.
-     */
-    const to = emailRecipient(row.user);
-    if (!resend || !to) {
-      results.logOnly++;
-      continue;
-    }
-
-    let failure: unknown = null;
-    try {
-      // Resend reports API failures in the result rather than by throwing, so
-      // the catch below never saw them: a rejected key counted every address as
-      // sent, and the run logged a clean summary while delivering nothing.
-      const { error } = await resend.emails.send({
-        from: jobEnv.REMINDER_FROM,
-        to,
-        subject,
-        html: body(type, row.streak, row.totalCompleted, settings.reminder_time),
-      });
-      if (error) failure = error;
-    } catch (err) {
-      // A thrown error still means the transport itself failed.
-      failure = err;
-    }
-
-    if (!failure) {
-      results.sent++;
-    } else {
-      // One bad address must not stop the rest of the run.
-      console.error(`failed to send to ${row.user.email}:`, failure);
-      results.failed++;
-
-      // Nothing was delivered, so give the day back and let a later run try
-      // again — a provider outage should not cost everyone their reminder. The
-      // residual risk is a send that succeeded but reported failure, which
-      // would send twice; that is rarer than an outage, and one duplicate is a
-      // better trade than silently dropping every reminder for a day.
-      await prisma.questData
-        .updateMany({
-          where: { userId: row.userId, lastReminderDay: dayKey },
-          data: { lastReminderDay: null },
-        })
-        .catch(() => {});
-    }
+    results.logOnly++;
   }
 
   console.log('reminders run complete', results);
   await prisma.$disconnect();
-  process.exit(results.failed > 0 && results.sent === 0 ? 1 : 0);
+  process.exit(0);
 }
 
 main().catch(async (err) => {

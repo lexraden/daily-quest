@@ -17,19 +17,9 @@ npm run dev --workspace apps/api
 TEST_API_URL=http://localhost:3000 npm test --workspace apps/api
 ```
 
-Telegram and email are sent to a stub the suite runs on port 3112. Start the
+Telegram messages are sent to a stub the suite runs on port 3112. Start the
 API with `TELEGRAM_API_BASE=http://127.0.0.1:3112` so the bot's replies can be
-asserted on. The email test send has two modes. With no `RESEND_API_KEY` the
-suite checks that the API reports "not configured". To exercise the real send
-path, start the API with a placeholder key and the resend SDK's own base-URL
-override pointed at the same stub:
-
-```bash
-RESEND_API_KEY=re_placeholder RESEND_BASE_URL=http://127.0.0.1:3112 npm run dev --workspace apps/api
-```
-
-The email-sending logic is also covered in-process through `setSender` in
-either mode.
+asserted on.
 
 The AI endpoints are covered up to the point where they call OpenAI: with a
 placeholder `OPENAI_API_KEY` the request fails at the provider, which is exactly

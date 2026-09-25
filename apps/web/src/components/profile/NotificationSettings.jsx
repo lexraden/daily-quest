@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Flame, Shield, Smartphone, Send, Mail, Loader2 } from 'lucide-react';
+import { Bell, Flame, Shield, Smartphone, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { t, getLang } from '@/lib/i18n';
@@ -14,17 +14,17 @@ import TelegramChannel from '@/components/profile/TelegramChannel';
  *
  * The server answers for itself: whether it was given the keys at all (a
  * "not configured" here is the server's problem, not the user's), and whether
- * this account can be reached (a device, a linked chat, a real address). The
+ * this account can be reached (a device, a linked chat). The
  * reason is shown instead of a bare "off", because the fix is different on
  * every row and guessing which one applies is the whole difficulty.
  */
 function ChannelsBlock({ channels, theme, pushTestShown, onPushTest, pushTesting, onChanged }) {
   const c = t().channels || {};
   const light = theme === 'light';
-  const [busy, setBusy] = useState(null); // 'telegram' | 'email' | null
+  const [busy, setBusy] = useState(false);
 
   const testTelegram = async () => {
-    setBusy('telegram');
+    setBusy(true);
     try {
       const { sent, reason } = await api.telegram.test();
       if (sent) {
@@ -41,32 +41,7 @@ function ChannelsBlock({ channels, theme, pushTestShown, onPushTest, pushTesting
     } catch (error) {
       toast.error(error?.message || c.failed || 'Could not send it');
     } finally {
-      setBusy(null);
-    }
-  };
-
-  const testEmail = async () => {
-    setBusy('email');
-    try {
-      const { sent, reason, to, detail } = await api.notifications.testEmail();
-      if (sent) {
-        toast.success((c.emailSent || 'Sent to {to}').replace('{to}', to));
-        return;
-      }
-      const message = {
-        no_address: c.emailNoAddress,
-        sender_unverified: c.emailUnverified,
-        bad_key: c.emailBadKey,
-        rate_limited: c.emailRateLimited,
-        unreachable: c.emailUnreachable,
-      }[reason] || c.emailRejected || 'Resend refused it';
-      // Resend's own words go alongside: they name the domain or the field,
-      // which is what whoever fixes it needs.
-      toast.error(message, detail ? { description: detail } : undefined);
-    } catch (error) {
-      toast.error(error?.message || c.failed || 'Could not send it');
-    } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
 
@@ -75,7 +50,6 @@ function ChannelsBlock({ channels, theme, pushTestShown, onPushTest, pushTesting
     keys_mismatch: c.pushKeysMismatch || 'The server’s push keys are not a pair',
     no_devices: c.pushNoDevices || 'No device subscribed',
     not_linked: c.telegramNotLinked || 'Not connected',
-    no_address: c.emailNoAddress || 'Guest accounts have no email address',
   };
 
   const rows = [
@@ -99,17 +73,7 @@ function ChannelsBlock({ channels, theme, pushTestShown, onPushTest, pushTesting
       state: channels.telegram,
       detail: channels.telegram.username ? `@${channels.telegram.username}` : c.works || 'Works',
       onTest: testTelegram,
-      testing: busy === 'telegram',
-    },
-    {
-      id: 'email',
-      icon: Mail,
-      iconClass: 'text-emerald-500',
-      label: c.email || 'Email',
-      state: channels.email,
-      detail: channels.email.address,
-      onTest: testEmail,
-      testing: busy === 'email',
+      testing: busy,
     },
   ];
 
@@ -139,9 +103,16 @@ function ChannelsBlock({ channels, theme, pushTestShown, onPushTest, pushTesting
                   aria-hidden="true"
                 />
               </div>
+              {/*
+                A reason is a sentence that says what to do, so it wraps rather
+                than being cut to "…" on a phone. A detail is a name or a count
+                and stays on one line.
+              */}
               <p
-                className={`truncate text-xs ${
-                  state.works ? subClass : light ? 'text-amber-700' : 'text-amber-400'
+                className={`text-xs ${
+                  state.works
+                    ? `truncate ${subClass}`
+                    : `break-words ${light ? 'text-amber-700' : 'text-amber-400'}`
                 }`}
               >
                 {state.works ? detail : reasonText[state.reason] || state.reason}
@@ -194,8 +165,8 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
    * Push lives in the browser, not in the saved settings, so it is read from
    * the device on mount rather than from the row.
    */
-  // Lifted out of TelegramChannel so the "email only" hint below can tell the
-  // truth: with a Telegram chat connected, email is not the only thing left.
+  // Lifted out of TelegramChannel so the hint below is only shown when neither
+  // channel can reach this account.
   const [telegram, setTelegram] = useState(null);
 
   const [pushState, setPushState] = useState('default');
@@ -432,16 +403,7 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
           theme === 'light' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
         }`}>
           <Shield className="w-4 h-4 flex-shrink-0" />
-          {/*
-            "By email only" was true only when the server has a Resend key. When
-            it does not, the in-app log is all that is left, and saying email
-            would send someone to an inbox that will never get anything.
-          */}
-          <span>
-            {channels && !channels.email.works
-              ? ns.pushOffHintNoEmail || 'Without this, reminders only show up in the app.'
-              : ns.pushOffHint || 'Without this, reminders are sent by email only.'}
-          </span>
+          <span>{ns.pushOffHint || 'Without this, reminders only show up in the app.'}</span>
         </div>
       )}
 

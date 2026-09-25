@@ -15,7 +15,6 @@ import telegramRoutes from './routes/telegram.js';
 import billingRoutes from './routes/billing.js';
 import { configureTelegram } from './lib/telegram.js';
 import { configurePush } from './lib/push.js';
-import { configureEmail } from './lib/email.js';
 import aiRoutes from './routes/ai.js';
 import fileRoutes from './routes/files.js';
 
@@ -104,12 +103,6 @@ configureTelegram(
         apiBase: apiEnv.TELEGRAM_API_BASE || undefined,
       }
     : null,
-);
-
-// Email too. The job sends the reminders; the API only needs the key to send a
-// test and to say whether the channel exists.
-configureEmail(
-  apiEnv.RESEND_API_KEY ? { apiKey: apiEnv.RESEND_API_KEY, from: apiEnv.REMINDER_FROM } : null,
 );
 
 await app.register(authRoutes, { prefix: '/api/auth' });

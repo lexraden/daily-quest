@@ -22,13 +22,6 @@ import {
   publicKey,
   pushProblem,
 } from '../src/lib/push.js';
-import {
-  configureEmail,
-  emailEnabled,
-  sendEmail,
-  setSender as setEmailSender,
-  classify as classifyEmailError,
-} from '../src/lib/email.js';
 import { reminderCopy, situationFor, firstName } from '../src/jobs/copy.js';
 import { record as recordNotification, MAX_PER_USER } from '../src/lib/notifications.js';
 import {
@@ -39,7 +32,7 @@ import {
 } from '../src/lib/telegram.js';
 import { isStreakMilestone, copyFor } from '../src/lib/notificationCopy.js';
 import webpush from 'web-push';
-import { emailRecipient, isGuestSubject } from '../src/lib/guest.js';
+import { isGuestSubject } from '../src/lib/guest.js';
 
 /** One pair for the whole suite; the pair only has to be internally consistent. */
 const VAPID = webpush.generateVAPIDKeys();
@@ -2078,21 +2071,6 @@ let telegramStub: import('node:http').Server | null = null;
 /** Chats the stub answers the way Telegram does once the user blocks the bot. */
 const blockedChats = new Set<string>();
 
-/**
- * The same stub also answers as Resend, for a server started with
- * RESEND_BASE_URL pointed here — the SDK reads that itself, so this is the
- * only way to see what a running API actually emailed.
- */
-interface EmailCall {
-  to: string;
-  subject: string;
-  authorization: string;
-}
-const emailCalls: EmailCall[] = [];
-/** Recipients the stub refuses the way Resend refuses an unverified domain. */
-const UNVERIFIED_MESSAGE =
-  'The dailyq.app domain is not verified. Please, add and verify your domain on https://resend.com/domains';
-
 async function startTelegramStub() {
   const { createServer } = await import('node:http');
   telegramStub = createServer((req, res) => {
@@ -2101,26 +2079,6 @@ async function startTelegramStub() {
       raw += chunk;
     });
     req.on('end', () => {
-      if (req.url === '/emails') {
-        const body = JSON.parse(raw || '{}') as { to?: string; subject?: string };
-        const to = String(body.to ?? '');
-        emailCalls.push({
-          to,
-          subject: String(body.subject ?? ''),
-          authorization: String(req.headers.authorization ?? ''),
-        });
-        const refused = to.includes('unverified');
-        res.writeHead(refused ? 403 : 200, { 'content-type': 'application/json' });
-        res.end(
-          JSON.stringify(
-            refused
-              ? { statusCode: 403, name: 'validation_error', message: UNVERIFIED_MESSAGE }
-              : { id: 'stub-email-id' },
-          ),
-        );
-        return;
-      }
-
       const method = (req.url ?? '').split('/').pop() ?? '';
       let body: Record<string, unknown> = {};
       try {
@@ -2443,29 +2401,11 @@ describe('VAPID keys that are not a pair', () => {
   });
 });
 
-/**
- * Every account that opens the tracker is switched on for reminders, guests
- * included, and a guest's address is a `@guest.invalid` placeholder. The job
- * used to hand it to Resend: a certain bounce, or a refusal the failure path
- * would retry on every cron run. This is the rule the job and the channel
- * status both use.
- */
-describe('who may be emailed', () => {
-  test('a real account is emailed at its address', () => {
-    assert.equal(emailRecipient({ email: 'a@b.co', googleSub: '1234567890' }), 'a@b.co');
-  });
-
-  test('a guest is never emailed, whatever its address says', () => {
+/** A guest is decided by its subject, never by what its address looks like. */
+describe('what a guest is', () => {
+  test('the `guest:` subject is the definition', () => {
     assert.equal(isGuestSubject('guest:abc'), true);
-    assert.equal(emailRecipient({ email: 'guest-abc@guest.invalid', googleSub: 'guest:abc' }), null);
-    // The subject decides, not the address: a guest is a guest even if a
-    // future change gave it a plausible-looking email.
-    assert.equal(emailRecipient({ email: 'looks@real.com', googleSub: 'guest:xyz' }), null);
-  });
-
-  test('no address means no email', () => {
-    assert.equal(emailRecipient({ email: '', googleSub: '1234567890' }), null);
-    assert.equal(emailRecipient({ email: null, googleSub: '1234567890' }), null);
+    assert.equal(isGuestSubject('1234567890'), false);
   });
 });
 
@@ -2523,9 +2463,9 @@ describe('sending a test notification', () => {
 /**
  * Which channels can reach a user, and proving each one from the profile.
  *
- * Before this the app could not tell anyone whether Telegram or email worked
+ * Before this the app could not tell anyone whether Telegram or push worked
  * at all — the first sign of a broken channel was a reminder that never came,
- * and nothing said which of the three should have carried it.
+ * and nothing said which one should have carried it.
  */
 describe('which channels reach a user', () => {
   before(async () => {
@@ -2543,24 +2483,9 @@ describe('which channels reach a user', () => {
     return res.json();
   };
 
-  /** A guest the way /auth/guest mints one: a `guest:` subject and an address that cannot resolve. */
-  async function guest(): Promise<Actor> {
-    const user = await prisma.user.upsert({
-      where: { googleSub: 'guest:channels-test' },
-      create: {
-        googleSub: 'guest:channels-test',
-        email: 'guest-channels-test@guest.invalid',
-        fullName: 'Guest',
-      },
-      update: {},
-    });
-    return { id: user.id, email: user.email, token: issueAccessToken(user).token };
-  }
-
-  test('all three need a session', async () => {
+  test('both need a session', async () => {
     assert.equal((await call('/api/notifications/channels')).status, 401);
     assert.equal((await call('/api/telegram/test', { method: 'POST' })).status, 401);
-    assert.equal((await call('/api/notifications/email/test', { method: 'POST' })).status, 401);
   });
 
   test('a fresh account is told what is missing, channel by channel', async () => {
@@ -2584,11 +2509,9 @@ describe('which channels reach a user', () => {
       username: null,
     });
 
-    assert.equal(body.email.works, body.email.configured, 'a real address works whenever there is a key');
-    assert.equal(body.email.reason, body.email.configured ? null : 'not_configured');
-    assert.equal(body.email.address, actor.email, 'the account address, which is where it would go');
-
-    assert.equal(body.reminders_via, body.email.configured ? 'email' : null);
+    // Email was dropped as a channel; nothing reaches this account yet.
+    assert.equal('email' in body, false);
+    assert.equal(body.reminders_via, null);
   });
 
   test('a linked chat and a subscribed device show up, and Telegram wins', async () => {
@@ -2622,17 +2545,6 @@ describe('which channels reach a user', () => {
     const body = await channels(await makeUser('channels-other'));
     assert.equal(body.telegram.connected, false);
     assert.equal(body.push.devices, 0);
-  });
-
-  /**
-   * `.invalid` is reserved never to resolve, so a send there is a bounce — and
-   * bounces are what cost a sender domain its reputation.
-   */
-  test('a guest has no address to email', async () => {
-    const body = await channels(await guest());
-    assert.equal(body.email.address, null);
-    assert.equal(body.email.works, false);
-    assert.equal(body.email.reason, body.email.configured ? 'no_address' : 'not_configured');
   });
 
   describe('a test Telegram message', () => {
@@ -2681,71 +2593,6 @@ describe('which channels reach a user', () => {
       const row = await prisma.telegramLink.findUnique({ where: { userId: actor.id } });
       assert.equal(row?.chatId, null);
       assert.equal((await channels(actor)).telegram.reason, 'not_linked');
-    });
-  });
-
-  describe('a test email', () => {
-    /** Whether this server was given a Resend key (and, for this suite, the stub as its base URL). */
-    const emailConfigured = async (actor: Actor) =>
-      (await channels(actor)).email.configured === true;
-    const send = (actor: Actor) =>
-      call('/api/notifications/email/test', { token: actor.token, method: 'POST' });
-
-    test('a server with no Resend key says so rather than reporting a silent success', async () => {
-      const actor = await makeUser('mail-tester');
-      if (await emailConfigured(actor)) return;
-
-      const res = await send(actor);
-      assert.equal(res.status, 400);
-      const body = await res.json();
-      assert.equal(body.code, 'email_disabled');
-      assert.match(body.error, /not configured on this service/);
-    });
-
-    /*
-     * The rest need a server started with RESEND_API_KEY set and
-     * RESEND_BASE_URL pointed at the stub (see test/README.md). Without that
-     * they return early, the way the push tests do without a VAPID pair; the
-     * sending logic itself is covered in-process further down either way.
-     */
-    test('it goes to the account address, and the stub is what receives it', async () => {
-      const actor = await makeUser('mail-tester');
-      if (!(await emailConfigured(actor))) return;
-      emailCalls.length = 0;
-
-      const res = await send(actor);
-      assert.equal(res.status, 200);
-      assert.deepEqual(await res.json(), { sent: true, reason: null, to: actor.email });
-      assert.equal(emailCalls.length, 1);
-      assert.equal(emailCalls[0]?.to, actor.email);
-      assert.match(emailCalls[0]?.subject ?? '', /DailyQ/);
-      assert.match(emailCalls[0]?.authorization ?? '', /^Bearer .+/);
-    });
-
-    /**
-     * Resend answers a refusal with a result, not an exception. Reading only
-     * for exceptions is what once let the job report a clean run while
-     * delivering nothing, so this has to come back as not sent, and say why.
-     */
-    test('a refusal from Resend is reported as one, with its reason', async () => {
-      const actor = await makeUser('mail-unverified');
-      if (!(await emailConfigured(actor))) return;
-      emailCalls.length = 0;
-
-      const body = await (await send(actor)).json();
-      assert.equal(emailCalls.length, 1, 'it was attempted');
-      assert.equal(body.sent, false);
-      assert.equal(body.reason, 'sender_unverified');
-      assert.equal(body.detail, UNVERIFIED_MESSAGE);
-    });
-
-    test('a guest is not emailed at all', async () => {
-      const actor = await guest();
-      if (!(await emailConfigured(actor))) return;
-      emailCalls.length = 0;
-
-      assert.deepEqual(await (await send(actor)).json(), { sent: false, reason: 'no_address', to: null });
-      assert.equal(emailCalls.length, 0);
     });
   });
 });
@@ -3054,13 +2901,9 @@ describe('sending to Telegram', () => {
  * can speak HTTP.
  */
 describe('why a channel did not deliver', () => {
-  const FROM = 'DailyQ <noreply@dailyq.app>';
-
   after(() => {
     setTelegramSender(null);
     configureTelegram(null);
-    setEmailSender(null);
-    configureEmail(null);
     configurePush(null);
   });
 
@@ -3102,80 +2945,6 @@ describe('why a channel did not deliver', () => {
     answer(403);
     assert.equal(await sendTelegramTo(bob.id, msg), 'gone');
     assert.equal((await prisma.telegramLink.findUnique({ where: { userId: bob.id } }))?.chatId, null);
-  });
-
-  test('email with no key attempts nothing', async () => {
-    let attempts = 0;
-    setEmailSender(async () => {
-      attempts += 1;
-      return { ok: true, id: 'x' };
-    });
-    configureEmail({ apiKey: '', from: FROM });
-
-    assert.equal(emailEnabled(), false, 'an empty key is no key');
-    assert.deepEqual(await sendEmail({ to: 'a@test.local', subject: 's', html: 'h' }), {
-      sent: false,
-      reason: 'disabled',
-    });
-    assert.equal(attempts, 0);
-  });
-
-  test('email goes from the configured sender to the address given', async () => {
-    const seen: { from: string; to: string }[] = [];
-    configureEmail({ apiKey: 're_unit', from: FROM });
-    setEmailSender(async (config, email) => {
-      seen.push({ from: config.from, to: email.to });
-      return { ok: true, id: 'unit-id' };
-    });
-
-    assert.deepEqual(await sendEmail({ to: 'someone@test.local', subject: 's', html: 'h' }), {
-      sent: true,
-      id: 'unit-id',
-    });
-    assert.deepEqual(seen, [{ from: FROM, to: 'someone@test.local' }]);
-  });
-
-  test('a refusal Resend returns rather than throws is not a success', async () => {
-    configureEmail({ apiKey: 're_unit', from: FROM });
-    setEmailSender(async () => ({
-      ok: false,
-      error: { name: 'validation_error', message: UNVERIFIED_MESSAGE },
-    }));
-
-    assert.deepEqual(await sendEmail({ to: 'a@test.local', subject: 's', html: 'h' }), {
-      sent: false,
-      reason: 'sender_unverified',
-      detail: UNVERIFIED_MESSAGE,
-    });
-  });
-
-  test('a transport that throws is reported, not propagated', async () => {
-    configureEmail({ apiKey: 're_unit', from: FROM });
-    setEmailSender(async () => {
-      throw new Error('socket hang up');
-    });
-
-    const outcome = await sendEmail({ to: 'a@test.local', subject: 's', html: 'h' });
-    assert.equal(outcome.sent, false);
-    assert.equal('reason' in outcome ? outcome.reason : null, 'unreachable');
-  });
-
-  test('Resend errors are named for what fixes them', () => {
-    const c = (name: string, message: string) => classifyEmailError({ name, message });
-    assert.equal(c('validation_error', 'API key is invalid'), 'bad_key');
-    assert.equal(c('missing_api_key', 'Missing API key in the authorization header.'), 'bad_key');
-    assert.equal(c('invalid_from_address', 'Invalid `from` field.'), 'sender_unverified');
-    assert.equal(c('validation_error', UNVERIFIED_MESSAGE), 'sender_unverified');
-    assert.equal(
-      c('validation_error', 'You can only send testing emails to your own email address (me@x.com).'),
-      'sender_unverified',
-    );
-    assert.equal(c('rate_limit_exceeded', 'Too many requests.'), 'rate_limited');
-    assert.equal(
-      c('application_error', 'Unable to fetch data. The request could not be resolved.'),
-      'unreachable',
-    );
-    assert.equal(c('validation_error', 'Invalid `to` field.'), 'rejected');
   });
 });
 

@@ -269,13 +269,11 @@ export const api = {
     read: (id) => request('/api/notifications/read', { method: 'POST', body: id ? { id } : {} }),
     clear: () => request('/api/notifications', { method: 'DELETE' }),
     /**
-     * Which delivery channels reach this account: { push, telegram, email },
+     * Which delivery channels reach this account: { push, telegram },
      * each { configured, works, reason, ... }, plus `reminders_via` — the one
      * tonight's reminder would take.
      */
     channels: () => request('/api/notifications/channels'),
-    // { sent, reason, to, detail? }; a 400 `email_disabled` without a key.
-    testEmail: () => request('/api/notifications/email/test', { method: 'POST' }),
   },
 
   /**
