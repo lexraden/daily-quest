@@ -1084,6 +1084,8 @@ export default function DailyTracker() {
   const categoryEntries = useMemo(() => Object.entries(CATEGORIES), []);
 
   const completedCount = Object.keys(completedToday).length;
+    const currentHour = new Date().getHours();
+    const showProtectCard = streak > 0 && completedCount === 0 && currentHour >= 18;
   const totalQuests = Object.keys(CATEGORIES).length;
   const progress = (completedCount / totalQuests) * 100;
   const currentLevel = getCurrentLevel();
@@ -1242,6 +1244,24 @@ export default function DailyTracker() {
         </div>
 
         {/* Motivational Banner */}
+        {/* Protect the streak card */}
+        {showProtectCard && (
+          <div className="bg-orange-50/10 border border-orange-500/20 rounded-lg p-4 mb-4">
+            <div className="flex items-center gap-3">
+              <Flame className="w-6 h-6 text-orange-500" />
+              <div>
+                <h3 className="text-lg font-semibold">{t().protectStreak.title}</h3>
+                <p className="text-sm">{t().protectStreak.description.replace('{{n}}', streak)}</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => document.getElementById('quests-section')?.scrollIntoView({ behavior: 'smooth' })}
+              className="w-full mt-2"
+            >
+              {t().protectStreak.cta}
+            </Button>
+          </div>
+        )}
         <MotivationalBanner 
           userName={user?.full_name}
           completedCount={completedCount}
@@ -1259,7 +1279,7 @@ export default function DailyTracker() {
         />
 
         {/* Quest Categories */}
-        <div className="px-5 mt-1">
+        <div id="quests-section" className="px-5 mt-1">
         <div className="space-y-0">
           {categoryEntries.map(([categoryKey, categoryInfo]) => {
             const quests = questData[categoryKey] || [];

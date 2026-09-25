@@ -295,6 +295,9 @@ const translations = {
       75: { emoji: '🌠', title: '75 дней подряд!', message: 'Три четверти века стрика! Невероятно!' },
       100: { emoji: '✨', title: '100 дней подряд!', message: 'СТО ДНЕЙ! Ты — абсолютная легенда!' },
     },
+    magicNumber: {
+      7: { title: "7 — магическое число", message: "Люди с 7-дневным стриком возвращаются гораздо охотнее." }
+    },
     coach: {
       title: 'Тренер',
       subtitle: 'видит твои квесты, серию и еду',
@@ -369,6 +372,9 @@ const translations = {
       resetStreak: 'Сбросить серию',
       freezeUsed: '❄️ Заморозка использована! Серия сохранена.',
       streakReset: 'Серия сброшена. Начинай заново! 💪',
+    },
+    protectStreak: {
+      title: "Защита стрика", description: "Твой {{n}}‑дневный стрик сгорит сегодня ночью", cta: "Сделать 1 квест сейчас"
     },
     // Motivational
     motivation: {
@@ -852,6 +858,9 @@ const translations = {
       75: { emoji: '🌠', title: '75 days in a row!', message: 'Three quarters of a century streak! Insane!' },
       100: { emoji: '✨', title: '100 days in a row!', message: '100 DAYS! You\'re an absolute legend!' },
     },
+    magicNumber: {
+      7: { title: "Magic Number 7", message: "People with a 7-day streak are much more likely to return." }
+    },
     coach: {
       title: 'Coach',
       subtitle: 'sees your quests, streak and meals',
@@ -924,6 +933,9 @@ const translations = {
       resetStreak: 'Reset streak',
       freezeUsed: '❄️ Freeze used! Streak saved.',
       streakReset: 'Streak reset. Start again! 💪',
+    },
+    protectStreak: {
+      title: "Streak protection", description: "Your {{n}}‑day streak will burn out tonight", cta: "Do 1 quest now"
     },
     motivation: {
       phrases: [
