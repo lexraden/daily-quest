@@ -18,7 +18,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
   onCategoryClick,
   onSaveQuest 
 }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentLevel, setCurrentLevel] = useState(null);
   const [direction, setDirection] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [editedEmoji, setEditedEmoji] = useState('');
@@ -35,8 +35,18 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
     });
   }, [quests, completedToday, categoryKey]);
 
-  const safeIndex = Math.min(currentIndex, sortedQuests.length - 1);
-  const currentQuest = sortedQuests[safeIndex];
+  // Current quest is tracked by level (stable across re-sorts when a quest
+  // becomes completed and moves to the end of sortedQuests), with a fallback
+  // to the first uncompleted quest. This prevents the card from silently
+  // switching to an already-completed level after a tap or re-order.
+  const currentQuest =
+    quests.find((q) => q.level === currentLevel) ||
+    sortedQuests.find((q) => !completedToday[`${categoryKey}_${q.level}`]) ||
+    sortedQuests[0];
+  const activeLevel = currentQuest ? currentQuest.level : null;
+  if (activeLevel !== null && currentLevel !== activeLevel) {
+    setCurrentLevel(activeLevel);
+  }
   const questKey = `${categoryKey}_${currentQuest.level}`;
   const isCompleted = completedToday[questKey];
   const isCelebrating = celebrationQuest === categoryKey;
@@ -44,18 +54,10 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
   const qe = i.questEdit;
   const Icon = categoryInfo.icon;
 
-  const swipeConfidenceThreshold = 10000;
-  const swipePower = (offset, velocity) => {
-    return Math.abs(offset) * velocity;
-  };
-
-  const paginate = (newDirection) => {
-    const newIndex = currentIndex + newDirection;
-    if (newIndex >= 0 && newIndex < sortedQuests.length) {
-      setDirection(newDirection);
-      setCurrentIndex(newIndex);
-    }
-  };
+  // Swipe on the card is intentionally inert: navigating quests by swipe
+  // desynced from the completed-first re-sort and made the card redraw an
+  // already-completed level (XP-loss on the next tap). Quest switching stays
+  // on the dots indicator only.
 
   const handleStartEdit = () => {
     setIsEditing(true);
@@ -119,7 +121,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
         <div className="overflow-hidden min-h-[88px]">
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
-            key={currentIndex}
+            key={questKey}
             custom={direction}
             variants={variants}
             initial="enter"
@@ -131,16 +133,7 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
             }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={1}
-            onDragEnd={(e, { offset, velocity }) => {
-              const swipe = swipePower(offset.x, velocity.x);
-
-              if (swipe < -swipeConfidenceThreshold) {
-                paginate(1);
-              } else if (swipe > swipeConfidenceThreshold) {
-                paginate(-1);
-              }
-            }}
+            dragElastic={0.2}
             onClick={(e) => {
               if (!isEditing && !e.target.closest('button')) {
                 onToggleQuest(categoryKey, currentQuest.level);
@@ -296,14 +289,14 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
             {sortedQuests.map((quest, idx) => {
               const questKey = `${categoryKey}_${quest.level}`;
               const isQuestCompleted = completedToday[questKey];
-              const isSelected = idx === currentIndex;
+              const isSelected = quest.level === activeLevel;
               
               return (
                 <button
-                key={idx}
+                key={quest.level}
                 onClick={() => {
-                  setDirection(idx > currentIndex ? 1 : -1);
-                  setCurrentIndex(idx);
+                  setDirection(quest.level > activeLevel ? 1 : -1);
+                  setCurrentLevel(quest.level);
                 }}
                 aria-label={`Квест ${idx + 1}`}
                 className="flex items-center justify-center px-1 py-1 min-w-[28px] min-h-[36px]"
