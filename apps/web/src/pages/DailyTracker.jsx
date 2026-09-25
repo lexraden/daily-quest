@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { withReminderDefaults } from '@/lib/reminderDefaults';
 // CalendarView replaced by History page
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
 import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
@@ -683,6 +684,16 @@ export default function DailyTracker() {
           setTrialStartedAt(data.trial_started_at || null);
           setIsPremium(!!data.is_premium);
           setPremiumUntil(data.premium_until || null);
+
+          // Reminders are always on, which only the saved row can make true —
+          // see lib/reminderDefaults. Fire and forget: a failure here costs
+          // tonight's reminder, not the page, and the next load tries again.
+          const reminderSettings = withReminderDefaults(data.notification_settings);
+          if (reminderSettings) {
+            api.questData
+              .update({ notification_settings: reminderSettings })
+              .catch(() => {});
+          }
 
           // A level earned on another device, or one whose modal was closed by
           // the app being killed, is still waiting here on the next load.
