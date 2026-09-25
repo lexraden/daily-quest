@@ -153,6 +153,9 @@ const translations = {
       micFailed: 'Не удалось запустить микрофон',
       processError: 'Ошибка обработки',
       voiceInput: 'Голосовой ввод',
+      // Recording stops on a second tap now, so the label has to say so —
+      // "Слушаю…" reads as a state, not as something to press.
+      tapToStop: 'Стоп и отправить',
     },
     // Photo/Calories
     calories: {
@@ -403,6 +406,10 @@ const translations = {
       add: 'Добавить',
     },
     // Premium
+    language: {
+      title: 'Язык',
+      switchTo: 'Переключить на {lang}',
+    },
     // The banner a throwaway account gets, and the consequence spelled out.
     guestAccount: {
       title: 'Гостевой аккаунт',
@@ -539,6 +546,14 @@ const translations = {
       pushUnsupported: 'Этот браузер не умеет показывать уведомления',
       pushDenied: 'Заблокировано — разрешите уведомления в настройках сайта',
       pushOffHint: 'Без этого напоминания приходят только на почту.',
+      // Turns "оно не пришло" into an answer instead of a wait until evening.
+      pushTest: 'Отправить тестовое',
+      pushTesting: 'Отправляю…',
+      pushTestSent: 'Отправлено — должно прийти через пару секунд',
+      pushTestNoDevices: 'Это устройство ещё не подписано',
+      pushTestExpired: 'Подписка устарела — выключи и включи тумблер',
+      pushTestVapid: 'Сервер отклоняют по ключам push — чинить надо на сервере',
+      pushTestFailed: 'Push-сервис отклонил отправку',
       pushServerOff: 'Уведомления пока не настроены на сервере',
       pushFailed: 'Не удалось включить',
       pushNotReady: 'Push-уведомления скоро будут доступны. Пока отправляем email.',
@@ -702,6 +717,7 @@ const translations = {
       micFailed: 'Failed to start microphone',
       processError: 'Processing error',
       voiceInput: 'Voice input',
+      tapToStop: 'Stop and send',
     },
     calories: {
       todayCalories: 'Calories today',
@@ -937,6 +953,10 @@ const translations = {
       questName: 'Quest name',
       add: 'Add',
     },
+    language: {
+      title: 'Language',
+      switchTo: 'Switch to {lang}',
+    },
     guestAccount: {
       title: 'Guest account',
       body: 'It has no sign-in: once you sign out you cannot get back in, and the progress goes with it. Sign in with Google to keep it.',
@@ -1062,6 +1082,13 @@ const translations = {
       pushUnsupported: 'This browser cannot show notifications',
       pushDenied: 'Blocked — allow notifications in site settings',
       pushOffHint: 'Without this, reminders are sent by email only.',
+      pushTest: 'Send a test notification',
+      pushTesting: 'Sending…',
+      pushTestSent: 'Sent — it should appear in a moment',
+      pushTestNoDevices: 'This device is not subscribed yet',
+      pushTestExpired: 'That subscription had expired — turn the switch off and on again',
+      pushTestVapid: 'The server’s push keys are being rejected — this needs fixing on the server',
+      pushTestFailed: 'The push service refused it',
       pushServerOff: 'Notifications are not configured on the server yet',
       pushFailed: 'Could not turn that on',
       pushNotReady: 'Push notifications coming soon. Email reminders active for now.',
@@ -1088,14 +1115,61 @@ function detectLanguage() {
   return lang.startsWith('ru') ? 'ru' : 'en';
 }
 
+/** The two the app is actually written in. */
+export const LANGUAGES = ['ru', 'en'];
+
+const LANG_KEY = 'dailyQuestsLang';
+
+/**
+ * A choice the user made, if they made one.
+ *
+ * It outranks the browser's setting on purpose: someone whose phone is in
+ * English may still want the app in Russian, and the browser cannot know that.
+ * Until this existed the detected language was the only language, and there was
+ * no way to disagree with it.
+ */
+function storedLanguage() {
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    return LANGUAGES.includes(saved) ? saved : null;
+  } catch {
+    return null; // private mode, storage disabled
+  }
+}
+
 // Cached language
 let cachedLang = null;
 
 export function getLang() {
   if (!cachedLang) {
-    cachedLang = detectLanguage();
+    cachedLang = storedLanguage() || detectLanguage();
   }
   return cachedLang;
+}
+
+/**
+ * Remember a language and say whether the caller has to reload.
+ *
+ * It always does, and that is not laziness. `t()` is read at module scope in
+ * several places — Profile builds its level names once at import time, and the
+ * page components are lazily imported, so some of them have already captured
+ * the old strings and some have not. Re-rendering would leave the app half
+ * translated in a way that depends on which tabs had been opened. A reload is
+ * the only way every string comes from the same language.
+ */
+export function setLang(next) {
+  if (!LANGUAGES.includes(next) || next === getLang()) return false;
+
+  try {
+    localStorage.setItem(LANG_KEY, next);
+  } catch {
+    // Without storage the choice cannot outlive the reload below, so there is
+    // nothing to reload for.
+    return false;
+  }
+
+  cachedLang = next;
+  return true;
 }
 
 export function t() {

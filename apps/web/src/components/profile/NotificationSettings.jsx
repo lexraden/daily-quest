@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Flame, Shield, Smartphone } from 'lucide-react';
+import { Bell, Flame, Shield, Smartphone, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { t, getLang } from '@/lib/i18n';
 import { toast } from 'sonner';
 import { enablePush, disablePush, isSubscribed, permission } from '@/lib/push';
+import { api } from '@/api/client';
 import TelegramChannel from '@/components/profile/TelegramChannel';
 
 export default function NotificationSettings({ settings, onSave, theme = 'light' }) {
@@ -35,6 +36,7 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
   const [pushState, setPushState] = useState('default');
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +72,51 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
       toast.error(ns.pushFailed || 'Could not turn that on');
     } finally {
       setPushBusy(false);
+    }
+  };
+
+  /**
+   * Proves it, rather than asking the user to wait until evening and hope.
+   *
+   * The two numbers the server returns are the two failures that look
+   * identical from here: no devices means the permission never produced a
+   * subscription on this browser, and devices with nothing delivered means the
+   * push service refused the ones we have — usually a subscription that died
+   * when the browser data was cleared, and turning the switch off and on again
+   * replaces it.
+   */
+  const sendTest = async () => {
+    if (testing) return;
+    setTesting(true);
+    try {
+      const { devices, delivered, expired = 0, statuses = [] } = await api.push.test();
+
+      if (delivered > 0) {
+        toast.success(ns.pushTestSent || 'Sent — it should appear in a moment');
+      } else if (devices === 0) {
+        toast.error(ns.pushTestNoDevices || 'This device is not subscribed yet');
+      } else if (expired > 0) {
+        // The rows are already gone, so turning the switch off and on makes a
+        // fresh one rather than reviving a corpse.
+        toast.error(ns.pushTestExpired || 'That subscription had expired — turn the switch off and on again');
+      } else if (statuses.some((s) => s === 401 || s === 403)) {
+        /**
+         * Not the user's problem and not fixable from here: the push service
+         * rejected our VAPID credentials, which means the keys on the server
+         * are wrong or mismatched. Saying "resubscribe" would send someone
+         * round a loop that cannot end.
+         */
+        toast.error(ns.pushTestVapid || 'The server’s push keys are being rejected — this needs fixing on the server');
+      } else {
+        toast.error(
+          (ns.pushTestFailed || 'The push service refused it') +
+            (statuses.length ? ` (${statuses.join(', ')})` : ''),
+        );
+      }
+    } catch (error) {
+      toast.error(error?.message || ns.pushTestFailed || 'Could not send it');
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -162,6 +209,19 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
         through once. Renders nothing when no bot is configured.
       */}
       <TelegramChannel theme={theme} onState={setTelegram} />
+
+      {/* Proves push works, rather than asking the user to wait until evening. */}
+      {pushOn && (
+        <Button
+          onClick={sendTest}
+          disabled={testing}
+          variant="outline"
+          className={`w-full min-h-[44px] ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}
+        >
+          <Send className="w-4 h-4 mr-2" />
+          {testing ? ns.pushTesting || 'Sending…' : ns.pushTest || 'Send a test notification'}
+        </Button>
+      )}
 
       {pushState !== 'unsupported' && pushState !== 'denied' && !pushOn && !telegram?.connected && (
         <div className={`flex items-center gap-2 p-3 rounded-xl text-xs ${

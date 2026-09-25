@@ -539,7 +539,14 @@ allowlist as every other field; there is no separate mood endpoint.
   tables when they get long.
 - **The Statistics page needs three check-ins** before it shows charts; below
   that it explains what to do instead of drawing an empty axis.
-- **Push needs a VAPID pair to do anything.** Without `VAPID_PUBLIC_KEY` and
-  `VAPID_PRIVATE_KEY` on both services the endpoints answer "not enabled", the
-  Profile switch says so, and reminders fall back to email. The in-app log works
+- **Push needs a VAPID pair to do anything**, and it must be a *pair*. Without
+  `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` on both services the endpoints
+  answer "not enabled", the Profile switch says so, and reminders fall back to
+  email. Two keys from different pairs are refused the same way, on purpose:
+  the public key of a P-256 pair is derived from the private one, so the
+  mismatch is detectable at boot, and configured-but-broken is the worse state
+  — it hands out a key, the browser subscribes happily, and only the send
+  fails, invisibly. Generate both together (`npx web-push
+  generate-vapid-keys`) and set both. Rotating them invalidates every existing
+  subscription, so every device has to turn the switch off and on again. The in-app log works
   either way — see **Notifications** below.

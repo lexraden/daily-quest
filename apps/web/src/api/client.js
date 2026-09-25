@@ -294,6 +294,9 @@ export const api = {
       request('/api/push/subscribe', { method: 'POST', body: subscription }),
     unsubscribe: (endpoint) =>
       request('/api/push/subscribe', { method: 'DELETE', body: { endpoint } }),
+    // Returns { devices, delivered } — enough to tell "nothing subscribed"
+    // apart from "subscribed and refused".
+    test: () => request('/api/push/test', { method: 'POST' }),
   },
 
   ai: {

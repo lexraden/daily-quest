@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { isDue, minutesSince } from '../src/jobs/window.js';
 import { validProposal } from '../src/lib/coachProposal.js';
-import { configurePush, notifyUser, setSender } from '../src/lib/push.js';
+import { configurePush, notifyUser, setSender, pushEnabled, publicKey } from '../src/lib/push.js';
 import { reminderCopy, situationFor, firstName } from '../src/jobs/copy.js';
 import { record as recordNotification, MAX_PER_USER } from '../src/lib/notifications.js';
 import {
@@ -58,6 +58,9 @@ async function makeUser(name: string): Promise<Actor> {
   // Charge ids in the payment tests are fixed strings, so the rows from the
   // last run would make every one of them look like a redelivery.
   await prisma.payment.deleteMany({ where: { userId: user.id } });
+  // Endpoints are unique across users, so one left behind by a previous run
+  // rejects the next run's create rather than being replaced by it.
+  await prisma.pushSubscription.deleteMany({ where: { userId: user.id } });
   return { id: user.id, email: user.email, token: issueAccessToken(user).token };
 }
 
@@ -2317,6 +2320,112 @@ describe('connecting Telegram', () => {
  * grants exactly one period, and — the part a retry would otherwise break —
  * that Telegram redelivering the same charge does not buy a second month.
  */
+/**
+ * The test send, which exists so "it did not arrive" has an answer.
+ *
+ * The two numbers it returns are the point: no devices and no delivery look
+ * identical from the app and need opposite fixes — subscribe this browser,
+ * versus replace a subscription the push service has stopped accepting. Both
+ * of those are what is checked here.
+ *
+ * What is deliberately not checked is a successful delivery. web-push speaks
+ * TLS whatever scheme the endpoint carries, so standing a stub in for a
+ * browser vendor's push service would mean a self-signed certificate and an
+ * API process told to accept it — weakening the server under test to prove
+ * something only a real push service can prove. That case is exactly what the
+ * button is for a person to check on their own phone.
+ */
+/**
+ * The two VAPID keys are two independent environment variables, which makes
+ * regenerating one and pasting only that an easy mistake — and a completely
+ * silent one before this: the key endpoint hands out a public key, the browser
+ * subscribes against it happily, and only the send fails, invisibly, hours
+ * later.
+ */
+describe('VAPID keys that are not a pair', () => {
+  after(() => configurePush(null));
+
+  test('a matching pair configures push', () => {
+    configurePush({
+      publicKey: VAPID.publicKey,
+      privateKey: VAPID.privateKey,
+      subject: 'mailto:t@t.local',
+    });
+    assert.equal(pushEnabled(), true);
+  });
+
+  test('a mismatched pair is refused rather than accepted and left to fail', () => {
+    const other = webpush.generateVAPIDKeys();
+    configurePush({
+      publicKey: VAPID.publicKey,
+      privateKey: other.privateKey,
+      subject: 'mailto:t@t.local',
+    });
+    assert.equal(pushEnabled(), false, 'configured-but-broken reports itself as working');
+    assert.equal(publicKey(), null, 'and must not hand out a key nothing can sign for');
+  });
+
+  test('a private key that is not a key at all is refused too', () => {
+    configurePush({
+      publicKey: VAPID.publicKey,
+      privateKey: 'not-a-key',
+      subject: 'mailto:t@t.local',
+    });
+    assert.equal(pushEnabled(), false);
+  });
+});
+
+describe('sending a test notification', () => {
+  /** Whether the server this suite is pointed at can send at all. */
+  const pushConfigured = async () =>
+    (await (await call('/api/push/key', { token: alice.token })).json()).enabled === true;
+
+  test('it needs a session', async () => {
+    assert.equal((await call('/api/push/test', { method: 'POST' })).status, 401);
+  });
+
+  test('a server with no VAPID pair says so rather than reporting a silent success', async () => {
+    if (await pushConfigured()) return;
+    const res = await call('/api/push/test', { token: alice.token, method: 'POST' });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).code, 'push_disabled');
+  });
+
+  test('with nothing subscribed it reports no devices, not a failure', async () => {
+    if (!(await pushConfigured())) return;
+    const actor = await makeUser('push-tester');
+    await prisma.pushSubscription.deleteMany({ where: { userId: actor.id } });
+
+    const res = await call('/api/push/test', { token: actor.token, method: 'POST' });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.devices, 0, 'which means: this browser never subscribed');
+    assert.equal(body.delivered, 0);
+  });
+
+  test('a subscription the service refuses is counted but not delivered', async () => {
+    if (!(await pushConfigured())) return;
+    const actor = await makeUser('push-tester-2');
+    await prisma.pushSubscription.deleteMany({ where: { userId: actor.id } });
+    await prisma.pushSubscription.create({
+      data: {
+        userId: actor.id,
+        // Nothing is listening, so this fails the way a subscription that died
+        // with the browser's storage does. Keyed on the user because the column
+        // is unique: a fixed string collides with whoever holds it already.
+        endpoint: `http://127.0.0.1:9/gone-${actor.id}`,
+        p256dh: 'not-a-key',
+        auth: 'nope',
+      },
+    });
+
+    const body = await (await call('/api/push/test', { token: actor.token, method: 'POST' })).json();
+    assert.equal(body.devices, 1);
+    assert.equal(body.delivered, 0, 'which means: subscribed, but the send failed');
+  });
+
+});
+
 describe('paying for Pro', () => {
   before(async () => {
     await startTelegramStub();

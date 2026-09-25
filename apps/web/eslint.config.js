@@ -35,6 +35,16 @@ export default [
       "unused-imports": pluginUnusedImports,
     },
     rules: {
+      /**
+       * A name with nothing behind it.
+       *
+       * Spreading pluginJs.configs.recommended above sets this, and this
+       * `rules` object then replaced the whole thing — so it was off, and a
+       * deleted import shipped as a white screen with `getTheme is not
+       * defined` behind it. Neither the linter nor the bundler said a word;
+       * a browser did.
+       */
+      "no-undef": "error",
       "no-unused-vars": "off",
       "react/jsx-uses-vars": "error",
       "react/jsx-uses-react": "error",

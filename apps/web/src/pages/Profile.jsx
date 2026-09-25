@@ -22,6 +22,7 @@ import DeleteAccountSheet from '@/components/profile/DeleteAccountSheet';
 import PlanCard from '@/components/profile/PlanCard';
 import UpdateCheck from '@/components/profile/UpdateCheck';
 import GuestCard from '@/components/profile/GuestCard';
+import TopControls from '@/components/TopControls';
 import PremiumModal from '@/components/daily/PremiumModal';
 import usePremiumStatus from '@/hooks/usePremiumStatus';
 import { aiErrorMessage } from '@/lib/aiErrors';
@@ -201,8 +202,9 @@ export default function Profile() {
       }`}
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="px-5 py-3 flex items-center justify-between">
+        <div className="px-5 py-3 flex items-center justify-between gap-3">
           <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{i.profilePage.title}</h1>
+          <TopControls theme={theme} language />
         </div>
       </div>
 
