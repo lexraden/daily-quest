@@ -1029,8 +1029,14 @@ export default function DailyTracker() {
         ]
       }));
       
-      // Анимация
-      setCelebrationQuest(category);
+      /**
+       * The celebration belongs to the quest that was completed, not to its
+       * category. It used to be the category — and the card now moves on to
+       * the next open quest 700 ms after a completion, so for the remaining
+       * 800 ms of this timer the quest that had NOT been done yet was the one
+       * pulsing. Keyed on the quest, it leaves with the card it belongs to.
+       */
+      setCelebrationQuest(`${category}_${currentQuest.level}`);
       setTimeout(() => setCelebrationQuest(null), 1500);
       
       // Конфетти

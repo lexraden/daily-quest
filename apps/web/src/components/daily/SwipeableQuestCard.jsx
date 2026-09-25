@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, Circle, Pencil, Check, X, Check as CheckIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { t } from '@/lib/i18n';
@@ -49,7 +49,13 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
   }
   const questKey = `${categoryKey}_${currentQuest.level}`;
   const isCompleted = completedToday[questKey];
-  const isCelebrating = celebrationQuest === categoryKey;
+  // Keyed on the quest, so the next quest in the category — which the card
+  // moves on to 700 ms later — does not inherit the celebration.
+  const isCelebrating = celebrationQuest === questKey;
+  // Motion is decoration here, so it goes entirely for anyone who asked for less.
+  const reduceMotion = useReducedMotion();
+  // What the completion was worth, matching the server's lib/progress.ts.
+  const xpEarned = Math.min(Math.max(Math.trunc(Number(currentQuest.level) || 1), 1), 3);
   const i = t();
   const qe = i.questEdit;
   const Icon = categoryInfo.icon;
@@ -224,11 +230,20 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                   ? 'bg-white border-gray-200 hover:bg-gray-50'
                   : 'bg-[#1e2836] border-white/5 hover:bg-[#242f3d]'
               }
-              ${isCelebrating ? 'scale-[1.02]' : 'scale-100'}
             `}
           >
-            {isCelebrating && (
-              <div className={`absolute inset-0 ${categoryInfo.bgColor} animate-pulse`} />
+            {/*
+              A single flash of the category colour. It was animate-pulse, which
+              loops — an opacity throb that read as "loading" rather than "done"
+              and kept going for as long as the flag was set.
+            */}
+            {isCelebrating && !reduceMotion && (
+              <motion.div
+                className={`absolute inset-0 ${categoryInfo.bgColor}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 0.55, ease: 'easeOut' }}
+              />
             )}
             
             <div className="relative flex items-center gap-4">
@@ -253,9 +268,51 @@ const SwipeableQuestCard = React.memo(function SwipeableQuestCard({
                   `}
                 >
                   {isCompleted ? (
-                    <CheckCircle2 className={`w-6 h-6 ${categoryInfo.textColor}`} />
+                    <motion.span
+                      // Only a fresh completion springs; a quest that was
+                      // already done when the card appeared just shows its tick.
+                      key={isCelebrating ? 'fresh' : 'done'}
+                      initial={isCelebrating && !reduceMotion ? { scale: 0, rotate: -35 } : false}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 520, damping: 14 }}
+                      className="flex"
+                    >
+                      <CheckCircle2 className={`w-6 h-6 ${categoryInfo.textColor}`} />
+                    </motion.span>
                   ) : (
                     <Circle className="w-6 h-6 text-transparent" />
+                  )}
+
+                  {isCelebrating && !reduceMotion && (
+                    <>
+                      {/* The ring: the tap made visible, spreading out and gone. */}
+                      <motion.span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 rounded-full border-2"
+                        style={{ borderColor: categoryInfo.color }}
+                        initial={{ scale: 1, opacity: 0.7 }}
+                        animate={{ scale: 2, opacity: 0 }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                      />
+                      {/*
+                        The reward, where the finger is. The XP bar at the top
+                        moves too, but that is a screen away from the tap; this
+                        ties the number to the thing that earned it.
+                      */}
+                      <motion.span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-1/2 -top-1 -translate-x-1/2 whitespace-nowrap text-sm font-bold"
+                        style={{ color: categoryInfo.color }}
+                        // Inside the card: it clips its overflow for the
+                        // rounded corners, and the first version rose 30 px
+                        // straight out of it, gone by the time it was readable.
+                        initial={{ y: 4, opacity: 0 }}
+                        animate={{ y: -12, opacity: [0, 1, 1, 0] }}
+                        transition={{ duration: 0.65, ease: 'easeOut', times: [0, 0.15, 0.7, 1] }}
+                      >
+                        +{xpEarned} XP
+                      </motion.span>
+                    </>
                   )}
                 </button>
               )}
