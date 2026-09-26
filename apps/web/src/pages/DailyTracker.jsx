@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
+import { COACH_APPLIED } from '@/lib/coachEvents';
 import { Button } from '@/components/ui/button';
 import { withReminderDefaults } from '@/lib/reminderDefaults';
 // CalendarView replaced by History page
@@ -137,11 +139,14 @@ export default function DailyTracker() {
   const [showCoach, setShowCoach] = useState(false);
   // What was said into the tracker's mic, handed to the coach as its first message.
   const [coachMessage, setCoachMessage] = useState(null);
-  const openCoach = useCallback((message = null) => {
+  // Where the coach row was when it was tapped: the chat grows out of it.
+  const [coachAnchor, setCoachAnchor] = useState(null);
+  const openCoach = useCallback((message = null, rect = null) => {
     setCoachMessage(message);
+    setCoachAnchor(rect);
     setShowCoach(true);
   }, []);
-  const openCoachEmpty = useCallback(() => openCoach(null), [openCoach]);
+  const openCoachEmpty = useCallback((rect) => openCoach(null, rect), [openCoach]);
   const [levelUp, setLevelUp] = useState(null);
   const [overallLevel, setOverallLevel] = useState(null);
   // dismissLevelUp is memoised on applyServerProgress alone, so it reads the
@@ -164,6 +169,7 @@ export default function DailyTracker() {
     // again from a second tab, or a reload of a level already shown.
     if (row.celebrate_level) setLevelUp(row.celebrate_level);
   }, []);
+
 
   /**
    * Dismissing the modal is what marks the level as seen. Doing it on close
@@ -230,6 +236,24 @@ export default function DailyTracker() {
   const [showStreakFreeze, setShowStreakFreeze] = useState(false);
   const [pendingFreezeData, setPendingFreezeData] = useState(null);
   const [mealHistory, setMealHistory] = useState([]);
+
+  /**
+   * The chat applied something through the ordinary endpoints; take its word
+   * for the new quests or meals, and the server's row for XP. The same for a
+   * change made from the chat on another tab, which says so by event.
+   */
+  const applyCoachChange = useCallback((change) => {
+    if (change.kind === 'quest') setQuestData(sanitizeQuestData(change.questData, DEFAULT_QUEST_DATA));
+    else if (change.kind === 'meal') setMealHistory(change.mealHistory);
+    else if (change.kind === 'journal') setJournalEntries(change.journalEntries);
+    else applyServerProgress(change.row);
+  }, [applyServerProgress]);
+
+  useEffect(() => {
+    const onChange = (e) => applyCoachChange(e.detail);
+    window.addEventListener(COACH_APPLIED, onChange);
+    return () => window.removeEventListener(COACH_APPLIED, onChange);
+  }, [applyCoachChange]);
   const [pendingMeal, setPendingMeal] = useState(null);
   const [categoryLevelUp, setCategoryLevelUp] = useState(null); // { category, level }
   const [caloriesBurned, setCaloriesBurned] = useState({}); // { "YYYY-MM-DD": number }
@@ -1267,23 +1291,20 @@ export default function DailyTracker() {
       {levelUp && (
         <LevelUpModal level={levelUp} onClose={dismissLevelUp} theme={theme} />
       )}
+      <AnimatePresence>
       {showCoach && (
         <CoachChat
+          key="coach"
           open
           onClose={() => setShowCoach(false)}
           theme={theme}
           questData={questData}
           initialMessage={coachMessage}
-          onApplied={(change) => {
-            // The chat applied something through the ordinary endpoints; take
-            // its word for the new quests or meals, and the server's row for XP.
-            if (change.kind === 'quest') setQuestData(sanitizeQuestData(change.questData, DEFAULT_QUEST_DATA));
-            else if (change.kind === 'meal') setMealHistory(change.mealHistory);
-            else if (change.kind === 'journal') setJournalEntries(change.journalEntries);
-            else applyServerProgress(change.row);
-          }}
+          anchorRect={coachAnchor}
+          onApplied={applyCoachChange}
         />
       )}
+      </AnimatePresence>
       </React.Suspense>
 
       <style>{`

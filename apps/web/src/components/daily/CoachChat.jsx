@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, Send, Sparkles, Loader2, Trash2, Check, Mic, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/api/client';
@@ -53,6 +54,9 @@ export default function CoachChat({
   // Words said into the tracker's mic, sent as the first message once the
   // history has loaded, so they land after it rather than above it.
   initialMessage = null,
+  // Where the tracker's "Ask the coach" row is on screen, to grow out of.
+  // Without it the chat is a bottom sheet.
+  anchorRect = null,
 }) {
   const i = t();
   const copy = i.coach || {};
@@ -67,6 +71,34 @@ export default function CoachChat({
   // What was just applied, shown in the middle of the screen until it fades.
   const [applied, setApplied] = useState(null);
   const endRef = useRef(null);
+  const listRef = useRef(null);
+  const inputRef = useRef(null);
+  const reduce = useReducedMotion();
+
+  /**
+   * The panel's box, worked out once when it opens: from the row down to just
+   * above the tab bar, with a floor so a row near the bottom still opens into
+   * something usable — in which case the panel starts higher and the clip
+   * starts where the row is, so it still grows out of it.
+   */
+  const [anchored] = useState(() => {
+    if (!anchorRect || typeof window === 'undefined') return null;
+    const nav = document.querySelector('nav');
+    const bottomLimit = (nav ? nav.getBoundingClientRect().top : window.innerHeight) - 8;
+    const MIN = 380;
+    let top = Math.max(8, anchorRect.top);
+    if (bottomLimit - top < MIN) top = Math.max(8, bottomLimit - MIN);
+    const height = Math.max(200, bottomLimit - top);
+    const rowTop = Math.max(0, anchorRect.top - top);
+    const rowBottom = Math.max(0, height - rowTop - anchorRect.height);
+    return {
+      top,
+      left: anchorRect.left,
+      width: anchorRect.width,
+      height,
+      from: `inset(${rowTop}px 0px ${rowBottom}px 0px round 16px)`,
+    };
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -89,7 +121,9 @@ export default function CoachChat({
   }, [open]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    // Newest first when anchored, so "the latest" is the top of the list.
+    if (anchored) listRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    else endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, sending]);
 
   // The confirmation is an acknowledgement, not a decision — it clears itself
@@ -133,6 +167,15 @@ export default function CoachChat({
 
   // Said into the mic here: sent as it is, the same as pressing send.
   const dictation = useDictation((spoken) => send(spoken));
+
+  // Anchored, the row that was tapped has become this input, so it takes the
+  // focus — and the keyboard — once it has finished growing. Not when opened
+  // with a voice message: that one is already on its way.
+  useEffect(() => {
+    if (!open || !anchored || initialMessage) return undefined;
+    const timer = setTimeout(() => inputRef.current?.focus(), reduce ? 0 : 320);
+    return () => clearTimeout(timer);
+  }, [open, anchored, initialMessage, reduce]);
 
   const initialSent = useRef(false);
   useEffect(() => {
@@ -297,25 +340,289 @@ export default function CoachChat({
     </motion.div>
   );
 
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true">
+  const empty = loading ? (
+    <Loader2 className="mx-auto mt-6 h-5 w-5 animate-spin text-purple-500" />
+  ) : messages.length === 0 && !sending ? (
+    <p className="mx-auto mt-10 max-w-[15rem] text-center text-sm leading-relaxed text-gray-500">
+      {copy.empty || 'Ask about your quests, your streak, or what to eat next.'}
+    </p>
+  ) : null;
+
+  /**
+   * Two layouts for one conversation.
+   *
+   * On the tracker the chat grows out of the "Ask the coach" row: the row's
+   * place on screen becomes the input, and the conversation opens downward
+   * under it, newest first — the answer lands right under what was asked, and
+   * above the keyboard, which covers the bottom half of a phone as soon as
+   * the field is focused.
+   *
+   * Everywhere else it is the bottom sheet a chat bubble opens, in the usual
+   * order: oldest at the top, the input at the bottom.
+   *
+   * Both are rendered into <body>. The tracker sits in a pull-to-refresh
+   * container that transforms while pulled, and a transformed ancestor would
+   * pin `position: fixed` to itself instead of the screen.
+   */
+  /**
+   * Anchored, the newest exchange comes first — but each exchange still reads
+   * question, then answer. Reversing the messages themselves put every reply
+   * above the question it answered. The pending reply sits in its exchange.
+   */
+  let ordered = messages;
+  if (anchored) {
+    const turns = [];
+    for (const m of messages) {
+      if (m.role === 'user' || turns.length === 0) turns.push([m]);
+      else turns[turns.length - 1].push(m);
+    }
+    if (sending) {
+      if (turns.length === 0) turns.push([]);
+      turns[turns.length - 1].push({ id: '__sending', role: 'pending' });
+    }
+    ordered = turns.reverse().flat();
+  }
+  const panelBg = light ? 'bg-white border-gray-200' : 'bg-[#141b27] border-white/10';
+
+  let body;
+  if (anchored) {
+    body = (
+      <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={copy.title || 'Coach'}>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/45"
+        />
+        <motion.div
+          initial={{ clipPath: anchored.from }}
+          animate={{ clipPath: 'inset(0px 0px 0px 0px round 24px)' }}
+          exit={{ clipPath: anchored.from, opacity: 0 }}
+          transition={{ duration: reduce ? 0 : 0.32, ease: [0.2, 0, 0, 1] }}
+          className={`absolute flex flex-col overflow-hidden rounded-3xl border shadow-2xl ${panelBg}`}
+          style={{ top: anchored.top, left: anchored.left, width: anchored.width, height: anchored.height }}
+        >
+          <div className="p-2">
+            <div className="flex items-center gap-1">
+              <div className="min-w-0 flex-1">
+                {dictation.recording ? (
+                  <button
+                    type="button"
+                    onClick={dictation.stop}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-red-500 text-sm font-medium text-white"
+                  >
+                    <Square className="h-4 w-4" fill="currentColor" />
+                    {i.voice?.tapToStop || 'Stop and send'}
+                    <span className="font-mono tabular-nums opacity-90">{mmss(dictation.elapsed)}</span>
+                  </button>
+                ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={inputRef}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        send();
+                      }
+                    }}
+                    maxLength={MAX_MESSAGE}
+                    placeholder={copy.placeholder || 'Message…'}
+                    aria-label={copy.placeholder || 'Message'}
+                    className={`h-12 flex-1 rounded-2xl px-4 text-sm outline-none ${
+                      light
+                        ? 'bg-gray-100 text-gray-900 placeholder:text-gray-400'
+                        : 'bg-[#1e2836] text-white placeholder:text-gray-500 border border-white/10'
+                    }`}
+                  />
+                  {/*
+                    One button, like every messenger: the mic while the field is
+                    empty, send once there is something to send.
+                  */}
+                  {draft.trim() ? (
+                    <button
+                      onClick={() => send()}
+                      disabled={sending}
+                      aria-label={copy.send || 'Send'}
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-500 disabled:opacity-40"
+                    >
+                      <Send className="h-4 w-4 text-white" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={dictation.start}
+                      disabled={sending}
+                      aria-label={i.voice?.voiceInput || 'Voice input'}
+                      className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 disabled:opacity-40"
+                    >
+                      <Mic className="h-5 w-5 text-white" />
+                    </button>
+                  )}
+                </div>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                aria-label={i.common?.close || 'Close'}
+                className="flex h-12 w-10 shrink-0 items-center justify-center text-gray-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 px-2 pt-2">
+              <Sparkles className={`h-3.5 w-3.5 shrink-0 ${light ? 'text-purple-600' : 'text-purple-400'}`} />
+              <span className="min-w-0 flex-1 truncate text-[11px] text-gray-500">
+                {copy.title || 'Coach'} · {copy.subtitle || 'sees your quests, streak and meals'}
+              </span>
+              {messages.length > 0 && (
+                <button
+                  onClick={clear}
+                  aria-label={copy.clear || 'Clear chat'}
+                  className="-my-2 flex h-9 w-9 items-center justify-center text-gray-500"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div
+            ref={listRef}
+            className={`flex flex-1 flex-col gap-3 overflow-y-auto overscroll-contain border-t px-4 py-4 ${
+              light ? 'border-gray-100' : 'border-white/10'
+            }`}
+          >
+            {empty}
+            {ordered.map((m) => {
+              if (m.id === '__sending') {
+                return (
+                  <div
+                    key={m.id}
+                    className={`self-start rounded-2xl rounded-bl-md px-4 py-3 ${
+                      light ? 'bg-gray-100' : 'bg-[#1e2836] border border-white/10'
+                    }`}
+                  >
+                    <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                  </div>
+                );
+              }
+              const mine = m.role === 'user';
+              const proposal = !mine && m.proposal && !dismissed.has(m.id) ? m.proposal : null;
+              const replaced = proposal?.kind === 'quest_edit'
+                ? (questData?.[proposal.category] || []).find((q) => q.level === proposal.level)
+                : null;
+
+              return (
+                <div
+                  key={m.id}
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${bubble(mine)}`}
+                >
+                  {m.content}
+
+                  {proposal && (
+                    <div
+                      className={`mt-3 rounded-xl border p-3 ${
+                        light ? 'border-gray-200 bg-white' : 'border-white/10 bg-[#141b27]'
+                      }`}
+                    >
+                      <div className="text-[10px] font-bold tracking-[0.15em] text-gray-500">
+                        {(PROPOSAL_LABELS[proposal.kind]?.(copy) || copy.apply || 'Apply').toUpperCase()}
+                      </div>
+
+                      {proposal.kind === 'meal' ? (
+                        <>
+                          <div className={`mt-2 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                            🍽️ {proposal.meal_name}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">
+                            {proposal.calories} kcal · P{proposal.protein} F{proposal.fat} C
+                            {proposal.carbs}
+                          </div>
+                        </>
+                      ) : proposal.kind === 'journal' ? (
+                        <>
+                          <div className={`mt-2 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                            {CATEGORY_EMOJI[proposal.category] || '•'} {proposal.category}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">{proposal.text}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className={`mt-2 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                            {CATEGORY_EMOJI[proposal.category] || '•'} {proposal.category} · L
+                            {proposal.level}
+                          </div>
+
+                          {/* What it replaces, struck through, so the cost is visible. */}
+                          {proposal.kind === 'quest_edit' && replaced && (
+                            <div className="mt-1 text-xs text-gray-500 line-through">
+                              {replaced.emoji} {replaced.name}
+                            </div>
+                          )}
+
+                          {proposal.kind === 'quest_delete' ? (
+                            <div className="mt-1 text-sm text-gray-500 line-through">
+                              {proposal.name}
+                            </div>
+                          ) : proposal.kind === 'quest_add' || proposal.kind === 'quest_edit' ? (
+                            <div className={`mt-1 text-sm ${light ? 'text-gray-900' : 'text-white'}`}>
+                              {proposal.emoji} {proposal.name}
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => apply(m.id, proposal)}
+                          disabled={applying === m.id}
+                          className="flex h-9 flex-1 items-center justify-center rounded-lg bg-purple-600 text-xs font-bold text-white disabled:opacity-60"
+                        >
+                          {applying === m.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            copy.apply || 'Apply'
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setDismissed((prev) => new Set(prev).add(m.id))}
+                          className={`h-9 w-20 rounded-lg border text-xs ${
+                            light ? 'border-gray-200 text-gray-600' : 'border-white/10 text-gray-400'
+                          }`}
+                        >
+                          {copy.skip || 'Skip'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+        <AnimatePresence>{confirmation}</AnimatePresence>
+      </div>
+    );
+  } else {
+    body = (
+      <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={copy.title || 'Coach'}>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/55"
         />
 
         <motion.div
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-          className={`relative flex w-full max-w-md flex-col rounded-t-3xl border-t ${
-            light ? 'bg-white border-gray-200' : 'bg-[#141b27] border-white/10'
-          }`}
+          transition={{ duration: reduce ? 0 : 0.3, ease: [0.2, 0, 0, 1] }}
+          className={`relative flex w-full max-w-md flex-col rounded-t-3xl border-t ${panelBg}`}
           style={{ height: 'min(86vh, 760px)' }}
         >
           <header
@@ -353,15 +660,20 @@ export default function CoachChat({
           </header>
 
           <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-            {loading ? (
-              <Loader2 className="mx-auto mt-6 h-5 w-5 animate-spin text-purple-500" />
-            ) : messages.length === 0 ? (
-              <p className="mx-auto mt-10 max-w-[15rem] text-center text-sm leading-relaxed text-gray-500">
-                {copy.empty || 'Ask about your quests, your streak, or what to eat next.'}
-              </p>
-            ) : null}
-
-            {messages.map((m) => {
+            {empty}
+            {ordered.map((m) => {
+              if (m.id === '__sending') {
+                return (
+                  <div
+                    key={m.id}
+                    className={`self-start rounded-2xl rounded-bl-md px-4 py-3 ${
+                      light ? 'bg-gray-100' : 'bg-[#1e2836] border border-white/10'
+                    }`}
+                  >
+                    <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                  </div>
+                );
+              }
               const mine = m.role === 'user';
               const proposal = !mine && m.proposal && !dismissed.has(m.id) ? m.proposal : null;
               const replaced = proposal?.kind === 'quest_edit'
@@ -485,6 +797,7 @@ export default function CoachChat({
             ) : (
             <div className="flex items-center gap-2">
               <input
+                ref={inputRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -529,9 +842,10 @@ export default function CoachChat({
             )}
           </div>
         </motion.div>
+        <AnimatePresence>{confirmation}</AnimatePresence>
       </div>
+    );
+  }
 
-      {confirmation}
-    </AnimatePresence>
-  );
+  return createPortal(body, document.body);
 }

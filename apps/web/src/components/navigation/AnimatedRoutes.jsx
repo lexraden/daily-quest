@@ -4,6 +4,7 @@ import { useTheme } from '@/lib/useTheme';
 import { AnimatePresence, motion } from 'framer-motion';
 import BottomNavBar from './BottomNavBar';
 import BackButton from './BackButton';
+import CoachLauncher from '@/components/daily/CoachLauncher';
 import useAndroidBackButton from '@/hooks/useAndroidBackButton';
 
 const DailyTracker = React.lazy(() => import('@/pages/DailyTracker'));
@@ -160,6 +161,9 @@ export default function AnimatedRoutes({ children, fallback }) {
           </AnimatePresence>
         )}
       </div>
+
+      {/* The tracker has the coach in its own row; the other tabs get the bubble. */}
+      {showNav && currentTabKey !== 'tracker' && <CoachLauncher theme={theme} />}
 
       {showNav && <BottomNavBar theme={theme} />}
     </>

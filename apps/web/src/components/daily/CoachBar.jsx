@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Mic, Square, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CaloriePhotoInput from './CaloriePhotoInput';
@@ -32,7 +32,10 @@ const CoachBar = React.memo(function CoachBar({
   const i = t();
   const light = theme === 'light';
   const [photoState, setPhotoState] = useState({ hasPhotos: false, isAnalyzing: false });
-  const { recording, elapsed, start, stop } = useDictation((text) => onVoice?.(text));
+  // The chat opens out of this row, so it needs to know where the row is.
+  const rowRef = useRef(null);
+  const rect = () => rowRef.current?.getBoundingClientRect() ?? null;
+  const { recording, elapsed, start, stop } = useDictation((text) => onVoice?.(text, rect()));
 
   const tapMic = () => {
     if (!hasAccess) {
@@ -46,7 +49,7 @@ const CoachBar = React.memo(function CoachBar({
 
   return (
     <div className="px-5 mb-4">
-      <div className="flex gap-2">
+      <div ref={rowRef} className="flex gap-2">
         {recording ? (
           <Button
             onClick={stop}
@@ -65,7 +68,7 @@ const CoachBar = React.memo(function CoachBar({
               {/* Looks like the field it opens, so it reads as "type here". */}
               <button
                 type="button"
-                onClick={onOpenCoach}
+                onClick={() => onOpenCoach?.(rect())}
                 className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-2xl border px-4 text-left text-sm transition-colors ${
                   light
                     ? 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
