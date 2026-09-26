@@ -204,7 +204,7 @@ export default function Profile() {
       >
         <div className="px-5 py-3 flex items-center justify-between gap-3">
           <h1 className={`text-xl font-bold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{i.profilePage.title}</h1>
-          <TopControls theme={theme} language />
+          <TopControls theme={theme} />
         </div>
       </div>
 

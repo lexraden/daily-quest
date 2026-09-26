@@ -55,6 +55,13 @@ export function setMuted(next) {
   } catch {
     // Not remembering the preference is not worth failing over.
   }
+  // Two switches show this value — the menu and the profile — and either can
+  // be on screen while the other changes it.
+  try {
+    window.dispatchEvent(new Event('dailyq-sound-changed'));
+  } catch {
+    // No window (a test, a worker): nothing to keep in step.
+  }
 }
 
 /**

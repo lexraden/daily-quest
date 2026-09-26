@@ -434,6 +434,12 @@ const translations = {
       add: 'Добавить',
     },
     // Premium
+    menu: {
+      title: 'Меню',
+      theme: 'Тема',
+      light: 'Светлая',
+      dark: 'Тёмная',
+    },
     language: {
       title: 'Язык',
       switchTo: 'Переключить на {lang}',
@@ -1031,6 +1037,12 @@ const translations = {
       emojiLabel: 'Emoji',
       questName: 'Quest name',
       add: 'Add',
+    },
+    menu: {
+      title: 'Menu',
+      theme: 'Theme',
+      light: 'Light',
+      dark: 'Dark',
     },
     language: {
       title: 'Language',

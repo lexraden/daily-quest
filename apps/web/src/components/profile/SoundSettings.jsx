@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { t } from '@/lib/i18n';
@@ -19,6 +19,13 @@ export default function SoundSettings({ theme }) {
   const copy = i.sound || {};
   const light = theme === 'light';
   const [on, setOn] = useState(() => !isMuted());
+
+  // The menu has the same switch; follow it when it changes.
+  useEffect(() => {
+    const sync = () => setOn(!isMuted());
+    window.addEventListener('dailyq-sound-changed', sync);
+    return () => window.removeEventListener('dailyq-sound-changed', sync);
+  }, []);
 
   const toggle = (next) => {
     setOn(next);
