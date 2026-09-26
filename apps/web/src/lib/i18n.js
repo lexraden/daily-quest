@@ -441,6 +441,9 @@ const translations = {
       dark: 'Тёмная',
       notifications: 'Уведомления',
       notificationsHint: 'На этом устройстве',
+      update: 'Обновления',
+      upToDate: 'Последняя версия',
+      updateReady: 'Новая версия',
     },
     language: {
       title: 'Язык',
@@ -1022,6 +1025,9 @@ const translations = {
       dark: 'Dark',
       notifications: 'Notifications',
       notificationsHint: 'On this device',
+      update: 'Updates',
+      upToDate: 'Up to date',
+      updateReady: 'New version',
     },
     language: {
       title: 'Language',

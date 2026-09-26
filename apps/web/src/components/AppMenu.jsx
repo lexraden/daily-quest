@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Menu, X, Sun, Moon, Languages, Volume2, VolumeX, Bell, BellOff } from 'lucide-react';
+import { Menu, X, Sun, Moon, Languages, Volume2, VolumeX, Bell, BellOff, RefreshCw, Check, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -8,6 +8,7 @@ import { setTheme } from '@/lib/theme';
 import { t, getLang, setLang } from '@/lib/i18n';
 import { isMuted, setMuted, playSfx } from '@/lib/sfx';
 import { enablePush, disablePush, isSubscribed, permission, PUSH_CHANGED } from '@/lib/push';
+import { checkForUpdate, applyUpdate, currentBuild, shortBuild } from '@/lib/appVersion';
 
 /**
  * The app's own settings, one tap from every tab.
@@ -15,8 +16,8 @@ import { enablePush, disablePush, isSubscribed, permission, PUSH_CHANGED } from 
  * The header used to carry a button per setting, and each new one cost every
  * screen a little more width: theme on all three tabs, language on the
  * profile only because a third button everywhere was too many. Settings are
- * changed rarely, so they share one button and open together. The update
- * check stays on the profile, with the version it reports. The bell stays
+ * changed rarely, so they share one button and open together. The last row
+ * is the version and an update check, the same one the profile has. The bell stays
  * outside the menu — it carries a live count, and a count hidden behind a tap
  * is not a count.
  *
@@ -36,6 +37,9 @@ export default function AppMenu({ theme }) {
   const [pushOn, setPushOn] = useState(false);
   const [pushState, setPushState] = useState(() => permission());
   const [pushBusy, setPushBusy] = useState(false);
+  // idle → checking → current | update | unknown, as on the profile.
+  const [update, setUpdate] = useState('idle');
+  const [serverBuild, setServerBuild] = useState(null);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
   const lang = getLang();
@@ -79,6 +83,10 @@ export default function AppMenu({ theme }) {
   // Read when the menu opens, and whenever the profile's switch changes it.
   useEffect(() => {
     if (!open) return undefined;
+    // An earlier "up to date" is only true of the moment it was asked, and it
+    // hides the button; each opening starts from a fresh check. A waiting
+    // update stays offered.
+    setUpdate((u) => (u === 'current' || u === 'unknown' ? 'idle' : u));
     let cancelled = false;
     const read = () => {
       setPushState(permission());
@@ -121,6 +129,13 @@ export default function AppMenu({ theme }) {
     } finally {
       setPushBusy(false);
     }
+  };
+
+  const checkUpdate = async () => {
+    setUpdate('checking');
+    const { status, commit } = await checkForUpdate();
+    setServerBuild(commit);
+    setUpdate(status);
   };
 
   const toggleSound = (next) => {
@@ -279,6 +294,59 @@ export default function AppMenu({ theme }) {
                   aria-label={m.notifications || 'Notifications'}
                 />
               </label>
+
+              {/*
+                Same shape as the rows above: icon, what is true, the build it
+                is true of, and the one action that applies.
+              */}
+              <div className="flex items-center gap-3">
+                {update === 'current' ? (
+                  <Check className={`h-5 w-5 shrink-0 ${light ? 'text-green-600' : 'text-green-400'}`} />
+                ) : update === 'update' ? (
+                  <Download className={`h-5 w-5 shrink-0 ${light ? 'text-purple-600' : 'text-purple-400'}`} />
+                ) : (
+                  <RefreshCw className={`h-5 w-5 shrink-0 text-gray-500 ${update === 'checking' ? 'animate-spin' : ''}`} />
+                )}
+                <span className="flex-1 min-w-0">
+                  <span className={`block text-sm font-semibold ${ink}`}>
+                    {{
+                      idle: m.update || 'Updates',
+                      checking: i.update?.checking || 'Checking…',
+                      current: m.upToDate || 'Up to date',
+                      unknown: i.update?.unknown || 'Could not check',
+                      update: m.updateReady || 'New version',
+                    }[update]}
+                  </span>
+                  <span
+                    className={`block truncate whitespace-nowrap font-mono ${
+                      update === 'update' ? 'text-[11px]' : 'text-xs'
+                    } ${muted}`}
+                  >
+                    {/* With an update waiting, the two builds say more than the word. */}
+                    {update === 'update' && serverBuild
+                      ? `${shortBuild(currentBuild())} → ${shortBuild(serverBuild)}`
+                      : `${i.update?.version || 'Version'} ${shortBuild(currentBuild())}`}
+                  </span>
+                </span>
+                {/* Nothing to do once it is current, so no button to do it with. */}
+                {update !== 'current' && (
+                <Button
+                  size="sm"
+                  variant={update === 'update' ? 'default' : 'outline'}
+                  onClick={update === 'update' ? applyUpdate : checkUpdate}
+                  disabled={update === 'checking'}
+                  className={`h-8 shrink-0 rounded-xl px-3 text-xs font-semibold ${
+                    update === 'update'
+                      ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white hover:from-purple-700 hover:to-cyan-700'
+                      : light
+                        ? 'border-gray-300'
+                        : 'border-white/20'
+                  }`}
+                >
+                  {update === 'update' ? i.update?.reload || 'Update' : i.update?.checkShort || 'Check'}
+                </Button>
+                )}
+              </div>
             </motion.div>
         )}
       </AnimatePresence>
