@@ -173,11 +173,52 @@ export async function downloadFile(fileId: string, maxBytes: number): Promise<Do
   }
 }
 
+/** A button under a message: a link, or a tap the webhook hears back about. */
+export type Button = { text: string; url: string } | { text: string; callback_data: string };
+
 export interface Message {
   title: string;
   body: string;
   /** Absolute URL for the "open the app" button, if there should be one. */
   url?: string;
+  /** One row of buttons. Takes the place of the `url` button when given. */
+  buttons?: Button[];
+}
+
+/** The text and keyboard of a message, shared by sending and editing. */
+function render(message: Message) {
+  const row = message.buttons ?? (message.url ? [{ text: 'DailyQ', url: message.url }] : []);
+  return {
+    text: `<b>${escapeHtml(message.title)}</b>\n${escapeHtml(message.body)}`,
+    parse_mode: 'HTML',
+    // The preview of our own origin adds nothing and takes half the screen.
+    link_preview_options: { is_disabled: true },
+    ...(row.length ? { reply_markup: { inline_keyboard: [row] } } : {}),
+  };
+}
+
+/**
+ * Rewrites a message the bot sent. The keyboard is always named — empty when
+ * there are no buttons — so an edit that answers a tap also takes away the
+ * buttons that were tapped.
+ */
+export async function editMessage(chatId: string, messageId: number, message: Message): Promise<boolean> {
+  const rendered = render(message);
+  const result = await call('editMessageText', {
+    chat_id: chatId,
+    message_id: messageId,
+    reply_markup: { inline_keyboard: [] },
+    ...rendered,
+  });
+  return result !== null;
+}
+
+/**
+ * Stops the spinner on a tapped button. Telegram shows it until this is called,
+ * so every tap is answered — with a short toast where there is something to say.
+ */
+export async function answerCallback(callbackQueryId: string, text?: string): Promise<void> {
+  await call('answerCallbackQuery', { callback_query_id: callbackQueryId, ...(text ? { text } : {}) });
 }
 
 /** Sends one message to one chat. */
@@ -187,17 +228,7 @@ export async function sendToChat(chatId: string, message: Message): Promise<Send
   try {
     const result = await sender(configured.token, 'sendMessage', {
       chat_id: chatId,
-      text: `<b>${escapeHtml(message.title)}</b>\n${escapeHtml(message.body)}`,
-      parse_mode: 'HTML',
-      // The preview of our own origin adds nothing and takes half the screen.
-      link_preview_options: { is_disabled: true },
-      ...(message.url
-        ? {
-            reply_markup: {
-              inline_keyboard: [[{ text: 'DailyQ', url: message.url }]],
-            },
-          }
-        : {}),
+      ...render(message),
     });
 
     if (result.ok) return 'sent';

@@ -1,11 +1,13 @@
+import { z } from 'zod';
+import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '../db.js';
 import { apiEnv } from '../env.api.js';
 import { analyzeMealPhoto, type MealPhotoAnalyzer } from '../ai/meal.js';
 import { HttpError } from './errors.js';
-import { appendMeal, localDay, mealBody } from './meals.js';
+import { appendMealIn, localDay, mealBody, type MealInput } from './meals.js';
 import { langFor } from './notifications.js';
 import { storeUpload } from './storage.js';
-import { call, downloadFile, sendToChat } from './telegram.js';
+import { answerCallback, call, downloadFile, editMessage, sendToChat } from './telegram.js';
 
 /**
  * A meal photographed straight into the bot.
@@ -16,16 +18,31 @@ import { call, downloadFile, sendToChat } from './telegram.js';
  * appendMeal the app's "save" does. What the bot adds is only the part the app
  * does with a screen: saying what it saw, or why it could not.
  *
- * There is no confirm step, unlike the app's report modal. A chat has no good
- * place for one, and a meal the model got wrong is one tap to fix in the app.
+ * Like the app's report modal, nothing is saved until the user says so: the
+ * reply is a preview with Save and Cancel under it, and the meal waits in
+ * telegram_meal_previews for the tap. The numbers themselves are not editable
+ * here — a chat has no good place for a form — so the preview says they can be
+ * fixed in the app once saved.
  */
 
 type Lang = 'ru' | 'en';
 
 const COPY = {
   ru: {
-    saved: 'Сохранено в дневник питания. Поправить можно в приложении.',
-    macros: (m: MealNumbers) => `${m.calories} ккал · Б ${m.protein} г · Ж ${m.fat} г · У ${m.carbs} г`,
+    macros: (m: MealNumbers) =>
+      `${m.calories} ккал · белки ${m.protein} г · жиры ${m.fat} г · углеводы ${m.carbs} г`,
+    forDay: (day: string) => `Сохраню за сегодня, ${dayLabel(day, 'ru')}.`,
+    confirm: 'Всё верно? Поправить цифры можно будет в приложении после сохранения.',
+    save: '✅ Сохранить',
+    cancel: '❌ Отмена',
+    openHistory: 'Открыть историю',
+    saved: (day: string) =>
+      `Сохранено в дневник питания за ${dayLabel(day, 'ru')}. Поправить можно в приложении.`,
+    savedToast: 'Сохранено',
+    cancelled: 'Не сохранено. Фото распознано, но в дневник ничего не попало.',
+    cancelledToast: 'Отменено',
+    expired: 'Время на подтверждение вышло — ничего не сохранено. Пришли фото ещё раз.',
+    stale: 'Это уже неактуально. Пришли фото ещё раз.',
     tooLarge: {
       title: 'Фото слишком большое',
       body: `Максимум ${maxMb()} МБ. Отправь его как фото, а не файлом — Telegram сам его сожмёт.`,
@@ -47,8 +64,20 @@ const COPY = {
     },
   },
   en: {
-    saved: 'Saved to your meal log. You can edit it in the app.',
-    macros: (m: MealNumbers) => `${m.calories} kcal · P ${m.protein} g · F ${m.fat} g · C ${m.carbs} g`,
+    macros: (m: MealNumbers) =>
+      `${m.calories} kcal · protein ${m.protein} g · fat ${m.fat} g · carbs ${m.carbs} g`,
+    forDay: (day: string) => `I will log it for today, ${dayLabel(day, 'en')}.`,
+    confirm: 'Look right? The numbers can be fixed in the app once it is saved.',
+    save: '✅ Save',
+    cancel: '❌ Cancel',
+    openHistory: 'Open history',
+    saved: (day: string) =>
+      `Saved to your meal log for ${dayLabel(day, 'en')}. You can edit it in the app.`,
+    savedToast: 'Saved',
+    cancelled: 'Not saved. The photo was analyzed, but nothing went into your log.',
+    cancelledToast: 'Cancelled',
+    expired: 'The time to confirm ran out, so nothing was saved. Send the photo again.',
+    stale: 'This is no longer active. Send the photo again.',
     tooLarge: {
       title: 'That photo is too large',
       body: `The limit is ${maxMb()} MB. Send it as a photo rather than a file and Telegram will shrink it.`,
@@ -91,6 +120,27 @@ function maxMb(): number {
   return Math.floor(apiEnv.MAX_UPLOAD_BYTES / 1024 / 1024);
 }
 
+/** "26 сентября" / "26 September", for a YYYY-MM-DD day key. */
+function dayLabel(day: string, lang: Lang): string {
+  // Noon UTC formatted in UTC: the key is already the user's own day, and this
+  // only spells it out.
+  return new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-GB', {
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T12:00:00Z`));
+}
+
+/**
+ * Long enough for the preview to live on. The meal is in the chat above the
+ * buttons, so a user who comes back after this can simply send it again.
+ */
+const PREVIEW_TTL_MS = 30 * 60 * 1000;
+/** 22 characters as base64url, which keeps the button data well inside Telegram's 64 bytes. */
+const TOKEN_BYTES = 16;
+
+const hash = (token: string) => createHash('sha256').update(token).digest('hex');
+
 interface MealNumbers {
   calories: number;
   protein: number;
@@ -121,6 +171,8 @@ class DownloadFailed extends Error {
  */
 export async function handleMealPhoto(
   chatId: string,
+  /** Telegram's id for the sender, the only one allowed to answer the preview. */
+  fromId: string,
   image: IncomingImage,
   analyze: MealPhotoAnalyzer = analyzeMealPhoto,
 ): Promise<void> {
@@ -187,14 +239,168 @@ export async function handleMealPhoto(
       return;
     }
 
-    await appendMeal(userId, meal.data);
+    // One pending meal per chat: this replaces any earlier one, whose buttons
+    // then match nothing and expire politely when tapped.
+    const token = randomBytes(TOKEN_BYTES).toString('base64url');
+    const preview = {
+      userId,
+      fromId,
+      tokenHash: hash(token),
+      meal: meal.data,
+      expiresAt: new Date(Date.now() + PREVIEW_TTL_MS),
+    };
+    await prisma.telegramMealPreview.upsert({
+      where: { chatId },
+      create: { chatId, ...preview },
+      update: preview,
+    });
+
     await sendToChat(chatId, {
       title: `🍽️ ${meal.data.meal_name}`,
-      body: `${copy.macros(meal.data)}\n\n${copy.saved}`,
+      body: `${copy.macros(meal.data)}\n${copy.forDay(meal.data.date)}\n\n${copy.confirm}`,
+      buttons: [
+        { text: copy.save, callback_data: `meal:save:${token}` },
+        { text: copy.cancel, callback_data: `meal:cancel:${token}` },
+      ],
     });
+    console.log('telegram meal: preview sent', summary(userId, meal.data));
   } catch (err) {
     await sendToChat(chatId, failureCopy(err, copy));
   }
+}
+
+/** What the server log says about a meal: the numbers, never the photo. */
+function summary(userId: string, meal: MealInput) {
+  const { meal_name, calories, protein, fat, carbs, date } = meal;
+  return { userId, meal_name, calories, protein, fat, carbs, date };
+}
+
+/** A tapped button, as much of it as this needs. */
+export interface MealCallback {
+  id: string;
+  fromId: string;
+  data: string | undefined;
+  /** The preview the button sits under. Missing only on messages too old for Telegram to send. */
+  message: { chatId: string; messageId: number } | undefined;
+}
+
+/**
+ * Only this module's own buttons. The token is the one minted for the preview;
+ * anything else — another bot's data, a hand-crafted tap — fails here.
+ */
+const callbackData = z
+  .string()
+  .regex(/^meal:(save|cancel):[A-Za-z0-9_-]{22}$/)
+  .transform((data) => {
+    const [, action, token] = data.split(':') as [string, 'save' | 'cancel', string];
+    return { action, token };
+  });
+
+export const isMealCallback = (data: string | undefined): boolean =>
+  data?.startsWith('meal:') ?? false;
+
+/**
+ * Save or Cancel under a preview.
+ *
+ * The button carries only the token. Which account the meal goes to comes from
+ * the preview row the token's hash finds, and it is honoured only while the
+ * chat is still linked to that same account, from the chat the preview was
+ * sent to, and by the person who sent the photo. Anyone else's tap is answered
+ * — Telegram spins the button until it is — and otherwise ignored.
+ *
+ * Saving claims the row and appends the meal in one transaction, so a double
+ * tap or a redelivered update finds nothing to claim the second time.
+ */
+export async function handleMealCallback(query: MealCallback): Promise<void> {
+  const parsed = callbackData.safeParse(query.data);
+  const chatId = query.message?.chatId;
+  const messageId = query.message?.messageId;
+  if (!parsed.success || !chatId || messageId === undefined) {
+    await answerCallback(query.id);
+    return;
+  }
+  const { action, token } = parsed.data;
+
+  const link = await prisma.telegramLink.findUnique({
+    where: { chatId },
+    select: { userId: true },
+  });
+  if (!link) {
+    await answerCallback(query.id);
+    return;
+  }
+  const copy = COPY[await langFor(link.userId)];
+
+  const preview = await prisma.telegramMealPreview.findUnique({
+    where: { tokenHash: hash(token) },
+  });
+  // Replaced by a newer photo, already answered, or meant for another account.
+  // Only a toast: the message may be the one a first tap is editing right now.
+  if (!preview || preview.chatId !== chatId || preview.userId !== link.userId) {
+    await answerCallback(query.id, copy.stale);
+    return;
+  }
+  if (preview.fromId !== query.fromId) {
+    await answerCallback(query.id);
+    return;
+  }
+
+  const meal = mealBody.parse(preview.meal);
+  const title = `🍽️ ${meal.meal_name}`;
+  const claim = { id: preview.id, tokenHash: preview.tokenHash };
+
+  if (preview.expiresAt <= new Date()) {
+    const { count } = await prisma.telegramMealPreview.deleteMany({ where: claim });
+    if (count > 0) await editMessage(chatId, messageId, { title, body: copy.expired });
+    await answerCallback(query.id, copy.stale);
+    return;
+  }
+
+  if (action === 'cancel') {
+    const { count } = await prisma.telegramMealPreview.deleteMany({ where: claim });
+    if (count === 0) {
+      await answerCallback(query.id, copy.stale);
+      return;
+    }
+    await editMessage(chatId, messageId, {
+      title: `❌ ${meal.meal_name}`,
+      body: `${copy.macros(meal)}\n\n${copy.cancelled}`,
+    });
+    await answerCallback(query.id, copy.cancelledToast);
+    console.log('telegram meal: cancelled', summary(link.userId, meal));
+    return;
+  }
+
+  let saved: boolean;
+  try {
+    saved = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.telegramMealPreview.deleteMany({
+        where: { ...claim, expiresAt: { gt: new Date() } },
+      });
+      if (count === 0) return false;
+      await appendMealIn(tx, link.userId, meal);
+      return true;
+    });
+  } catch (err) {
+    // The claim rolled back with the meal, so the same tap can be tried again.
+    const { body } = failureCopy(err, copy);
+    await answerCallback(query.id, body);
+    return;
+  }
+  if (!saved) {
+    await answerCallback(query.id, copy.stale);
+    return;
+  }
+
+  await editMessage(chatId, messageId, {
+    title: `✅ ${meal.meal_name}`,
+    body: `${copy.macros(meal)}\n\n${copy.saved(meal.date)}`,
+    ...(apiEnv.APP_ORIGIN
+      ? { buttons: [{ text: copy.openHistory, url: `${apiEnv.APP_ORIGIN.replace(/\/$/, '')}/History` }] }
+      : {}),
+  });
+  await answerCallback(query.id, copy.savedToast);
+  console.log('telegram meal: saved', summary(link.userId, meal));
 }
 
 function nonNegative(value: unknown): number {

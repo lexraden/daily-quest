@@ -5,10 +5,16 @@ import { prisma } from '../db.js';
 import { apiEnv } from '../env.api.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
 import { badRequest, forbidden } from '../lib/errors.js';
-import { botUsername, telegramEnabled, sendToChat, sendToUser } from '../lib/telegram.js';
+import { answerCallback, botUsername, telegramEnabled, sendToChat, sendToUser } from '../lib/telegram.js';
 import { answerPreCheckout, applyPayment, verifyPayload } from '../lib/billing.js';
 import { langFor } from '../lib/notifications.js';
-import { handleMealPhoto, MEAL_BILINGUAL, type IncomingImage } from '../lib/telegramMeal.js';
+import {
+  handleMealCallback,
+  handleMealPhoto,
+  isMealCallback,
+  MEAL_BILINGUAL,
+  type IncomingImage,
+} from '../lib/telegramMeal.js';
 
 /**
  * Connecting a Telegram account, and hearing back from the bot.
@@ -250,7 +256,18 @@ export default async function telegramRoutes(app: FastifyInstance) {
       const update = updateSchema.safeParse(request.body);
       // A kind of update we do not handle — a channel post, an edit.
       // Telegram must not retry it, so this is a 200 with nothing done.
-      if (!update.success) return reply.send({ ok: true });
+      // If the rejected shape still carries a callback_query id, the tap's
+      // button is spinning right now: answering it stale costs nothing and a
+      // dropped id leaves the spinner until the 30-minute preview expiry.
+      if (!update.success) {
+        const droppedId =
+          typeof request.body === 'object' && request.body !== null &&
+          typeof (request.body as { callback_query?: { id?: unknown } }).callback_query?.id === 'string'
+            ? (request.body as { callback_query: { id: string } }).callback_query.id
+            : null;
+        if (droppedId) await answerCallback(droppedId).catch(() => {});
+        return reply.send({ ok: true });
+      }
 
       /**
        * Checkout approval comes first and answers fastest, because the ten
@@ -261,6 +278,33 @@ export default async function telegramRoutes(app: FastifyInstance) {
       const preCheckout = update.data.pre_checkout_query;
       if (preCheckout) {
         await answerPreCheckout(preCheckout.id, verifyPayload(preCheckout.invoice_payload) !== null);
+        return reply.send({ ok: true });
+      }
+
+      /**
+       * A button tapped under one of the bot's messages. Only meal previews
+       * have any; a tap on anything else is still answered, because Telegram
+       * spins the button until it is. Awaited: it is a claim and an edit, and a
+       * redelivery after a slow one finds the preview already claimed.
+       */
+      const callback = update.data.callback_query;
+      if (callback) {
+        const query = {
+          id: callback.id,
+          fromId: String(callback.from.id),
+          data: callback.data,
+          message: callback.message && {
+            chatId: String(callback.message.chat.id),
+            messageId: callback.message.message_id,
+          },
+        };
+        if (isMealCallback(query.data)) {
+          await handleMealCallback(query).catch((err) => {
+            request.log.error({ err }, 'telegram meal callback crashed');
+          });
+        } else {
+          await answerCallback(query.id);
+        }
         return reply.send({ ok: true });
       }
 
@@ -297,7 +341,8 @@ export default async function telegramRoutes(app: FastifyInstance) {
        */
       const image = imageIn(message);
       if (image) {
-        void handleMealPhoto(chatId, image).catch((err) => {
+        const fromId = String(message.from?.id ?? message.chat.id);
+        void handleMealPhoto(chatId, fromId, image).catch((err) => {
           request.log.error({ err }, 'telegram meal photo crashed');
         });
         return reply.send({ ok: true });
@@ -357,7 +402,9 @@ const updateSchema = z.object({
         // a group — but the username is only read for display.
         username: z.string().optional(),
       }),
-      from: z.object({ username: z.string().optional() }).optional(),
+      // The id binds a meal preview to whoever sent the photo. Absent only on
+      // posts made on behalf of a chat, where the chat itself is the sender.
+      from: z.object({ id: z.number().optional(), username: z.string().optional() }).optional(),
       text: z.string().optional(),
       successful_payment: successfulPaymentSchema.optional(),
       /**
@@ -394,6 +441,26 @@ const updateSchema = z.object({
     .object({
       id: z.string(),
       invoice_payload: z.string(),
+    })
+    .optional(),
+
+  /**
+   * A tapped inline button. Only arrives once `callback_query` is in the
+   * webhook's allowed_updates. `data` is left a plain string here: what it may
+   * contain is the handler's to check, and a tap it does not understand still
+   * has to be answered.
+   */
+  callback_query: z
+    .object({
+      id: z.string(),
+      from: z.object({ id: z.number() }),
+      data: z.string().optional(),
+      message: z
+        .object({
+          message_id: z.number(),
+          chat: z.object({ id: z.number() }),
+        })
+        .optional(),
     })
     .optional(),
 });

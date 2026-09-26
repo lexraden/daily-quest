@@ -71,11 +71,19 @@ export function mealId(meal: unknown): string {
 
 /** Prepends one already-validated meal under the row lock and returns the row. */
 export async function appendMeal(userId: string, input: MealInput) {
+  return prisma.$transaction((tx) => appendMealIn(tx, userId, input));
+}
+
+/**
+ * The same append inside a caller's transaction, for a caller whose own write
+ * has to stand or fall with the meal — the bot claiming a preview, where a
+ * claim that commits without its meal is a meal lost, and a meal without its
+ * claim is one a second tap saves again.
+ */
+export async function appendMealIn(tx: Prisma.TransactionClient, userId: string, input: MealInput) {
   const meal = { id: randomUUID(), ...input, timestamp: new Date().toISOString() };
-  return prisma.$transaction(async (tx) => {
-    const meals = await lockMeals(tx, userId);
-    return writeMeals(tx, userId, [meal, ...meals]);
-  });
+  const meals = await lockMeals(tx, userId);
+  return writeMeals(tx, userId, [meal, ...meals]);
 }
 
 /**

@@ -53,6 +53,7 @@ model User {
   notifications Notification[]
   telegram      TelegramLink?
   payments      Payment[]
+  mealPreviews  TelegramMealPreview[]
 
   @@map("users")
 }
@@ -294,6 +295,38 @@ model TelegramLink {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("telegram_links")
+}
+
+/**
+ * A meal the bot has read off a photo and is waiting on a Save or Cancel for.
+ *
+ * In the database rather than in memory because the tap arrives on a separate
+ * webhook call — after a restart, or on another instance — and because claiming
+ * it has to be one statement for a double tap not to save the meal twice.
+ *
+ * One per chat: a new photo replaces the pending one, so the older preview's
+ * buttons stop matching anything. The token in the buttons is stored only as a
+ * hash, like the /start code, and it is the whole proof — the account comes
+ * from this row, never from what the button carries.
+ */
+model TelegramMealPreview {
+  id     String @id @default(cuid())
+  chatId String @unique @map("chat_id")
+  userId String @map("user_id")
+
+  /** Telegram's id for whoever sent the photo; only they can answer it. */
+  fromId String @map("from_id")
+
+  tokenHash String   @unique @map("token_hash")
+  /** Already validated against mealBody; saved as is. */
+  meal      Json
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("telegram_meal_previews")
 }
 
 /**
