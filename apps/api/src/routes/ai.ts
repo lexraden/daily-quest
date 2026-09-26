@@ -5,6 +5,7 @@ import { requireAuth, currentUserId } from '../auth/middleware.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { requireAiAccess, assertAiQuota, recordAiCall } from '../lib/access.js';
 import { completeJson, strictSchema, nullable, type ImagePart } from '../ai/openai.js';
+import { analyzeMealPhoto, mealSchema, type MealResult } from '../ai/meal.js';
 import * as prompts from '../ai/prompts.js';
 import { CATEGORIES, sanitizeQuestData, sortByLevel } from '../lib/questData.js';
 import { readFileForUser } from '../lib/storage.js';
@@ -31,15 +32,6 @@ const questSchema = strictSchema(
   ),
 );
 
-const mealSchema = strictSchema({
-  meal_name: { type: 'string' },
-  calories: { type: 'number' },
-  protein: { type: 'number' },
-  fat: { type: 'number' },
-  carbs: { type: 'number' },
-  description: nullable('string'),
-});
-
 const intentSchema = strictSchema({
   intent: {
     type: 'string',
@@ -64,15 +56,6 @@ const intentSchema = strictSchema({
   message: { type: 'string' },
   old_name: nullable('string'),
 });
-
-interface MealResult {
-  meal_name: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  carbs: number;
-  description: string | null;
-}
 
 export default async function aiRoutes(app: FastifyInstance) {
   // Authenticate on onRequest, not preHandler: @fastify/rate-limit also hooks
@@ -235,26 +218,17 @@ export default async function aiRoutes(app: FastifyInstance) {
     if (!body.success) throw badRequest('Attach at least one photo');
 
     const userId = currentUserId(request);
-    await requireAiAccess(userId);
-    await assertAiQuota(userId);
-
-    const images: ImagePart[] = [];
-    for (const id of body.data.file_ids) {
-      const file = await readFileForUser(id, userId);
-      if (!file) throw notFound('That photo is no longer available');
-      images.push({ mimeType: file.mimeType, base64: file.bytes.toString('base64') });
-    }
-
-    const result = await completeJson<MealResult>({
-      model: apiEnv.OPENAI_MODEL_VISION,
-      prompt: prompts.mealFromPhoto(body.data.lang),
-      schemaName: 'meal',
-      schema: mealSchema,
-      images,
+    return analyzeMealPhoto(userId, body.data.lang, async () => {
+      const images: ImagePart[] = [];
+      for (const id of body.data.file_ids) {
+        const file = await readFileForUser(id, userId);
+        if (!file) throw notFound('That photo is no longer available');
+        images.push({ mimeType: file.mimeType, base64: file.bytes.toString('base64') });
+      }
+      return images;
     });
-    await recordAiCall(userId);
-    return result;
   });
+
   /**
    * The coach chat.
    *

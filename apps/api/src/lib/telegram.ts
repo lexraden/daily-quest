@@ -128,6 +128,51 @@ export async function call(method: string, payload: unknown): Promise<unknown | 
   }
 }
 
+export type Download = { ok: true; bytes: Buffer } | { ok: false; reason: 'too_large' | 'failed' };
+
+/**
+ * A file someone sent the bot, as bytes: getFile for the path, then the file
+ * endpoint for the content.
+ *
+ * The download URL has the token in it, so nothing here ever logs the URL or
+ * an error that might quote it — only the status. `maxBytes` is checked against
+ * what getFile reports, the Content-Length, and finally the body itself, since
+ * any of the first two can be missing and the last is the one that is true.
+ */
+export async function downloadFile(fileId: string, maxBytes: number): Promise<Download> {
+  if (!configured) return { ok: false, reason: 'failed' };
+
+  const file = (await call('getFile', { file_id: fileId })) as {
+    file_path?: unknown;
+    file_size?: unknown;
+  } | null;
+  if (!file || typeof file.file_path !== 'string') return { ok: false, reason: 'failed' };
+  if (typeof file.file_size === 'number' && file.file_size > maxBytes) {
+    return { ok: false, reason: 'too_large' };
+  }
+
+  try {
+    const res = await fetch(`${apiBase}/file/bot${configured.token}/${file.file_path}`, {
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) {
+      console.error('telegram file download failed:', res.status);
+      return { ok: false, reason: 'failed' };
+    }
+    const declared = Number(res.headers.get('content-length'));
+    if (declared > maxBytes) return { ok: false, reason: 'too_large' };
+
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.length > maxBytes) return { ok: false, reason: 'too_large' };
+    return { ok: true, bytes };
+  } catch (err) {
+    // The name only: a fetch error's message can carry the URL, and the URL
+    // carries the token.
+    console.error('telegram file download threw:', err instanceof Error ? err.name : 'unknown');
+    return { ok: false, reason: 'failed' };
+  }
+}
+
 export interface Message {
   title: string;
   body: string;

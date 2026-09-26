@@ -8,6 +8,7 @@ import { badRequest, forbidden } from '../lib/errors.js';
 import { botUsername, telegramEnabled, sendToChat, sendToUser } from '../lib/telegram.js';
 import { answerPreCheckout, applyPayment, verifyPayload } from '../lib/billing.js';
 import { langFor } from '../lib/notifications.js';
+import { handleMealPhoto, MEAL_BILINGUAL, type IncomingImage } from '../lib/telegramMeal.js';
 
 /**
  * Connecting a Telegram account, and hearing back from the bot.
@@ -247,7 +248,7 @@ export default async function telegramRoutes(app: FastifyInstance) {
       }
 
       const update = updateSchema.safeParse(request.body);
-      // A kind of update we do not handle — a photo, a channel post, an edit.
+      // A kind of update we do not handle — a channel post, an edit.
       // Telegram must not retry it, so this is a 200 with nothing done.
       if (!update.success) return reply.send({ ok: true });
 
@@ -285,6 +286,27 @@ export default async function telegramRoutes(app: FastifyInstance) {
       const start = /^\/start(?:\s+(\S+))?$/.exec(text);
       if (start) {
         await handleStart(chatId, start[1], message.from?.username ?? message.chat.username ?? null);
+        return reply.send({ ok: true });
+      }
+
+      /**
+       * A photo of a meal. Answered 200 straight away and worked on after:
+       * download, the vision call and the save can together outlast Telegram's
+       * patience, and a webhook it gives up on is redelivered — a second copy of
+       * the same meal in someone's log.
+       */
+      const image = imageIn(message);
+      if (image) {
+        void handleMealPhoto(chatId, image).catch((err) => {
+          request.log.error({ err }, 'telegram meal photo crashed');
+        });
+        return reply.send({ ok: true });
+      }
+
+      // Media the bot cannot read yet. Pointed at what it can, rather than at
+      // the generic "what is this bot", which would suggest it did not notice.
+      if (!text && hasOtherMedia(message)) {
+        await sendToChat(chatId, MEAL_BILINGUAL.photosOnly);
         return reply.send({ ok: true });
       }
 
@@ -338,6 +360,29 @@ const updateSchema = z.object({
       from: z.object({ username: z.string().optional() }).optional(),
       text: z.string().optional(),
       successful_payment: successfulPaymentSchema.optional(),
+      /**
+       * Telegram's sizes of one photo, smallest first. Passthrough so a field
+       * it adds later does not turn a photo into an ignored update.
+       */
+      photo: z
+        .array(z.object({ file_id: z.string(), file_size: z.number().optional() }).passthrough())
+        .optional(),
+      /** A file, which is how a photo arrives when sent "without compression". */
+      document: z
+        .object({
+          file_id: z.string(),
+          mime_type: z.string().optional(),
+          file_size: z.number().optional(),
+        })
+        .passthrough()
+        .optional(),
+      // Only their presence is read, to answer "photos only" instead of the
+      // generic reply.
+      voice: z.unknown().optional(),
+      audio: z.unknown().optional(),
+      video: z.unknown().optional(),
+      video_note: z.unknown().optional(),
+      sticker: z.unknown().optional(),
     })
     .optional(),
 
@@ -352,6 +397,35 @@ const updateSchema = z.object({
     })
     .optional(),
 });
+
+type IncomingMessage = NonNullable<z.infer<typeof updateSchema>['message']>;
+
+/**
+ * The image to read, if the message is one. The largest photo size is the last
+ * one; a document counts only when Telegram says it is an image, since a PDF
+ * would otherwise be downloaded just for storeUpload to refuse it.
+ */
+function imageIn(message: IncomingMessage): IncomingImage | null {
+  const largest = message.photo?.at(-1);
+  if (largest) return { fileId: largest.file_id, fileSize: largest.file_size };
+
+  const doc = message.document;
+  if (doc?.mime_type?.startsWith('image/')) {
+    return { fileId: doc.file_id, fileSize: doc.file_size };
+  }
+  return null;
+}
+
+function hasOtherMedia(message: IncomingMessage): boolean {
+  return Boolean(
+    message.document ||
+      message.voice ||
+      message.audio ||
+      message.video ||
+      message.video_note ||
+      message.sticker,
+  );
+}
 
 /**
  * `/start <code>`: the moment the link is made.

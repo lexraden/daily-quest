@@ -30,6 +30,8 @@ import {
   sendToUser as sendTelegramTo,
   setSender as setTelegramSender,
 } from '../src/lib/telegram.js';
+import { handleMealPhoto } from '../src/lib/telegramMeal.js';
+import type { MealPhotoAnalyzer, MealResult } from '../src/ai/meal.js';
 import { isStreakMilestone, copyFor } from '../src/lib/notificationCopy.js';
 import webpush from 'web-push';
 import { isGuestSubject } from '../src/lib/guest.js';
@@ -2959,5 +2961,291 @@ describe('routing', () => {
     const res = await fetch(`${BASE}/api/health`);
     assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
     assert.equal(res.headers.get('x-frame-options'), 'DENY');
+  });
+});
+
+/**
+ * A meal photographed into the bot.
+ *
+ * Two halves, because the model cannot be reached from here. The webhook is
+ * driven over the wire against the running API, which proves the routing and
+ * every refusal — including the model being unavailable, since the suite's
+ * OpenAI key is a placeholder. The success path runs in this process instead,
+ * with the analyzer swapped for a fake, so the save and the reply can be
+ * checked against a meal the test chose.
+ *
+ * Both halves talk to the same stub Bot API, which also serves the file
+ * download, so the real getFile-then-fetch path is what gets exercised.
+ */
+describe('meals photographed into the bot', () => {
+  const BOT_TOKEN = 'test-bot-token';
+  const CHAT = '940001';
+  // Sniffs as a JPEG, which is all storeUpload asks of it.
+  const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(28, 7)]);
+  const FILES = new Map<string, Buffer>([
+    ['meal-small', JPEG],
+    ['meal-large', JPEG],
+    ['meal-doc', JPEG],
+  ]);
+
+  const stubCalls: { method: string; body: Record<string, unknown> }[] = [];
+  let stub: import('node:http').Server | null = null;
+  let actor: Actor;
+
+  const saidHere = (chatId: string) =>
+    stubCalls
+      .filter((c) => c.method === 'sendMessage' && String(c.body.chat_id) === chatId)
+      .map((c) => String(c.body.text));
+  const fileRequests = () =>
+    stubCalls.filter((c) => c.method === 'getFile').map((c) => String(c.body.file_id));
+
+  /** The webhook answers before the work is done, so replies are waited for. */
+  async function replyTo(chatId: string, timeoutMs = 20_000): Promise<string> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const said = saidHere(chatId);
+      if (said.length > 0) return said.join('\n');
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error(`the bot said nothing to ${chatId}`);
+  }
+
+  const webhook = (body: unknown) =>
+    fetch(`${BASE}/api/telegram/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Bot-Api-Secret-Token': WEBHOOK_SECRET,
+      },
+      body: JSON.stringify(body),
+    });
+
+  const meals = async () =>
+    ((await prisma.questData.findUnique({ where: { userId: actor.id } }))?.mealHistory ?? []) as {
+      meal_name: string;
+      calories: number;
+      protein: number;
+      fat: number;
+      carbs: number;
+      date: string;
+      photo_urls: string[];
+    }[];
+
+  async function setLang(lang: 'ru' | 'en') {
+    await prisma.questData.update({
+      where: { userId: actor.id },
+      data: { notificationSettings: { lang, timezone: 'Asia/Dubai' } },
+    });
+  }
+
+  before(async () => {
+    const { createServer } = await import('node:http');
+    stub = createServer((req, res) => {
+      const url = req.url ?? '';
+      // The file endpoint: GET, token in the path, bytes back.
+      if (req.method === 'GET' && url.startsWith(`/file/bot${BOT_TOKEN}/`)) {
+        const id = url.split('/').pop()?.replace(/\.jpg$/, '') ?? '';
+        const bytes = FILES.get(id);
+        stubCalls.push({ method: 'download', body: { file_id: id } });
+        res.writeHead(bytes ? 200 : 404, { 'content-type': 'image/jpeg' });
+        res.end(bytes ?? '');
+        return;
+      }
+      let raw = '';
+      req.on('data', (chunk) => (raw += chunk));
+      req.on('end', () => {
+        const method = url.split('/').pop() ?? '';
+        const body = JSON.parse(raw || '{}') as Record<string, unknown>;
+        stubCalls.push({ method, body });
+        const fileId = String(body.file_id ?? '');
+        const result =
+          method === 'getFile'
+            ? { file_id: fileId, file_path: `photos/${fileId}.jpg`, file_size: FILES.get(fileId)?.length }
+            : true;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, result }));
+      });
+    });
+    await new Promise<void>((resolve) => stub!.listen(TELEGRAM_STUB_PORT, '127.0.0.1', resolve));
+
+    // The in-process half reaches the same stub the running API does.
+    configureTelegram({
+      token: BOT_TOKEN,
+      username: 'dailyq_test_bot',
+      apiBase: `http://127.0.0.1:${TELEGRAM_STUB_PORT}`,
+    });
+
+    actor = await makeUser('meal-bot');
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+    await setLang('en');
+    await prisma.telegramLink.deleteMany({ where: { chatId: CHAT } });
+    await prisma.telegramLink.upsert({
+      where: { userId: actor.id },
+      create: { userId: actor.id, chatId: CHAT, linkedAt: new Date() },
+      update: { chatId: CHAT, linkedAt: new Date(), codeHash: null, codeExpiresAt: null },
+    });
+  });
+
+  after(async () => {
+    configureTelegram(null);
+    await new Promise<void>((resolve) => stub?.close(() => resolve()));
+  });
+
+  test('a photo is stored, read and saved through the app’s own meal path', async () => {
+    stubCalls.length = 0;
+    let seen: { userId: string; lang: string; base64: string } | null = null;
+    const fake: MealPhotoAnalyzer = async (userId, lang, loadImages) => {
+      const [image] = await loadImages();
+      seen = { userId, lang, base64: image!.base64 };
+      return {
+        meal_name: 'Oatmeal with berries',
+        // Fractions, the way the model returns them; the save rounds.
+        calories: 412.6,
+        protein: 12.2,
+        fat: 8,
+        carbs: 70.4,
+        description: null,
+      } satisfies MealResult;
+    };
+
+    await handleMealPhoto(CHAT, { fileId: 'meal-small', fileSize: JPEG.length }, fake);
+
+    assert.deepEqual(seen, { userId: actor.id, lang: 'en', base64: JPEG.toString('base64') });
+
+    const [meal] = await meals();
+    assert.equal(meal?.meal_name, 'Oatmeal with berries');
+    assert.deepEqual(
+      [meal?.calories, meal?.protein, meal?.fat, meal?.carbs],
+      [413, 12, 8, 70],
+      'rounded like the app rounds before POST /meals',
+    );
+    const dubaiDay = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dubai', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    assert.equal(meal?.date, dubaiDay, 'the user’s own day, not UTC’s');
+    assert.ok((meal as { id?: string }).id, 'appendMeal names the meal');
+
+    // The photo is a real upload: the signed URL serves it with no token.
+    assert.equal(meal?.photo_urls.length, 1);
+    const photo = await fetch(`${BASE}${meal!.photo_urls[0]}`);
+    assert.equal(photo.status, 200);
+    assert.deepEqual(Buffer.from(await photo.arrayBuffer()), JPEG);
+
+    const reply = saidHere(CHAT).join('\n');
+    assert.match(reply, /Oatmeal with berries/);
+    assert.match(reply, /413 kcal · P 12 g · F 8 g · C 70 g/);
+    assert.match(reply, /Saved to your meal log/);
+  });
+
+  test('the reply is in the user’s language', async () => {
+    stubCalls.length = 0;
+    await setLang('ru');
+    const fake: MealPhotoAnalyzer = async (_u, lang, loadImages) => {
+      await loadImages();
+      assert.equal(lang, 'ru', 'the prompt is asked in the user’s language too');
+      return { meal_name: 'Борщ', calories: 300, protein: 10, fat: 12, carbs: 30, description: null };
+    };
+    await handleMealPhoto(CHAT, { fileId: 'meal-small' }, fake);
+    const reply = saidHere(CHAT).join('\n');
+    assert.match(reply, /Борщ/);
+    assert.match(reply, /300 ккал · Б 10 г · Ж 12 г · У 30 г/);
+    assert.match(reply, /Сохранено/);
+    await setLang('en');
+  });
+
+  test('a spent quota or trial is said before anything is downloaded', async () => {
+    const before = (await meals()).length;
+    const period = new Date().toISOString().slice(0, 7);
+
+    stubCalls.length = 0;
+    await prisma.aiUsage.upsert({
+      where: { userId_period: { userId: actor.id, period } },
+      create: { userId: actor.id, period, calls: 1_000_000 },
+      update: { calls: 1_000_000 },
+    });
+    await handleMealPhoto(CHAT, { fileId: 'meal-small' });
+    assert.match(saidHere(CHAT).join('\n'), /this month’s limit/);
+    assert.deepEqual(fileRequests(), [], 'nothing fetched for a call that cannot run');
+    await prisma.aiUsage.deleteMany({ where: { userId: actor.id } });
+
+    stubCalls.length = 0;
+    await prisma.user.update({
+      where: { id: actor.id },
+      data: { trialStartedAt: new Date(Date.now() - 10 * 864e5), isPremium: false },
+    });
+    await handleMealPhoto(CHAT, { fileId: 'meal-small' });
+    assert.match(saidHere(CHAT).join('\n'), /Upgrade to Premium/);
+    assert.deepEqual(fileRequests(), []);
+    await prisma.user.update({ where: { id: actor.id }, data: { trialStartedAt: null } });
+
+    assert.equal((await meals()).length, before, 'a refusal saves nothing');
+  });
+
+  test('over the wire: the largest size is read, and a model failure is said and costs nothing', async () => {
+    stubCalls.length = 0;
+    const before = (await meals()).length;
+    const res = await webhook({
+      update_id: 1,
+      message: {
+        chat: { id: Number(CHAT) },
+        caption: 'lunch',
+        photo: [
+          { file_id: 'meal-small', file_unique_id: 's', width: 90, height: 90, file_size: JPEG.length },
+          { file_id: 'meal-large', file_unique_id: 'l', width: 1280, height: 1280, file_size: JPEG.length },
+        ],
+      },
+    });
+    assert.equal(res.status, 200, 'answered before the work, so Telegram never redelivers it');
+
+    // The suite's OpenAI key is a placeholder, so this is the provider failing.
+    assert.match(await replyTo(CHAT), /assistant is unavailable/);
+    assert.deepEqual(fileRequests(), ['meal-large']);
+    assert.equal((await meals()).length, before, 'nothing saved');
+    const usage = await prisma.aiUsage.findFirst({ where: { userId: actor.id } });
+    assert.equal(usage?.calls ?? 0, 0, 'a failed read is not charged');
+  });
+
+  test('an image sent as a file is read like a photo', async () => {
+    stubCalls.length = 0;
+    await webhook({
+      message: {
+        chat: { id: Number(CHAT) },
+        document: { file_id: 'meal-doc', mime_type: 'image/jpeg', file_size: JPEG.length },
+      },
+    });
+    await replyTo(CHAT);
+    assert.deepEqual(fileRequests(), ['meal-doc']);
+  });
+
+  test('refusals that need no model: too large, not linked, not a photo', async () => {
+    stubCalls.length = 0;
+    const tooBig = await webhook({
+      message: {
+        chat: { id: Number(CHAT) },
+        photo: [{ file_id: 'meal-small', file_size: 9 * 1024 * 1024 }],
+      },
+    });
+    assert.equal(tooBig.status, 200);
+    assert.match(await replyTo(CHAT), /too large/);
+    assert.deepEqual(fileRequests(), [], 'refused on the size Telegram reported');
+
+    const stranger = '940099';
+    await prisma.telegramLink.deleteMany({ where: { chatId: stranger } });
+    await webhook({ message: { chat: { id: Number(stranger) }, photo: [{ file_id: 'meal-small' }] } });
+    assert.match(await replyTo(stranger), /Подключить Telegram[\s\S]*Connect Telegram/);
+
+    for (const [chat, media] of [
+      ['940101', { voice: { file_id: 'v', duration: 3 } }],
+      ['940102', { document: { file_id: 'd', mime_type: 'application/pdf' } }],
+      ['940103', { sticker: { file_id: 's' } }],
+    ] as const) {
+      const res = await webhook({ message: { chat: { id: Number(chat) }, ...media } });
+      assert.equal(res.status, 200);
+      assert.match(saidHere(chat).join('\n'), /Photos only for now/, chat);
+    }
+    assert.deepEqual(fileRequests(), []);
   });
 });
