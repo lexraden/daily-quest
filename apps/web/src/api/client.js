@@ -286,8 +286,6 @@ export const api = {
     link: () => request('/api/telegram/link'),
     connect: () => request('/api/telegram/link', { method: 'POST' }),
     disconnect: () => request('/api/telegram/link', { method: 'DELETE' }),
-    // { sent, reason } — reason is 'not_linked', 'chat_gone' or 'failed'.
-    test: () => request('/api/telegram/test', { method: 'POST' }),
   },
 
   billing: {
@@ -302,9 +300,6 @@ export const api = {
       request('/api/push/subscribe', { method: 'POST', body: subscription }),
     unsubscribe: (endpoint) =>
       request('/api/push/subscribe', { method: 'DELETE', body: { endpoint } }),
-    // Returns { devices, delivered } — enough to tell "nothing subscribed"
-    // apart from "subscribed and refused".
-    test: () => request('/api/push/test', { method: 'POST' }),
   },
 
   ai: {

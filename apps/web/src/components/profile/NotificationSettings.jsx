@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Flame, Shield, Smartphone, Send, Loader2 } from 'lucide-react';
+import { Bell, Flame, Shield, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { t, getLang } from '@/lib/i18n';
@@ -7,142 +7,6 @@ import { toast } from 'sonner';
 import { enablePush, disablePush, isSubscribed, permission, PUSH_CHANGED } from '@/lib/push';
 import { api } from '@/api/client';
 import TelegramChannel from '@/components/profile/TelegramChannel';
-
-/**
- * Which channels actually reach this account, one line each, with a way to
- * prove the ones that claim to.
- *
- * The server answers for itself: whether it was given the keys at all (a
- * "not configured" here is the server's problem, not the user's), and whether
- * this account can be reached (a device, a linked chat). The
- * reason is shown instead of a bare "off", because the fix is different on
- * every row and guessing which one applies is the whole difficulty.
- */
-function ChannelsBlock({ channels, theme, pushTestShown, onPushTest, pushTesting, onChanged }) {
-  const c = t().channels || {};
-  const light = theme === 'light';
-  const [busy, setBusy] = useState(false);
-
-  const testTelegram = async () => {
-    setBusy(true);
-    try {
-      const { sent, reason } = await api.telegram.test();
-      if (sent) {
-        toast.success(c.telegramSent || 'Sent — check Telegram');
-      } else if (reason === 'chat_gone') {
-        // The server has just unlinked it, so the rows above need redrawing.
-        toast.error(c.telegramGone || 'The bot was blocked or the chat deleted — connect it again');
-        onChanged?.();
-      } else if (reason === 'not_linked') {
-        toast.error(c.telegramTestNotLinked || 'Telegram is not connected');
-      } else {
-        toast.error(c.telegramFailed || 'Telegram did not take it — try again later');
-      }
-    } catch (error) {
-      toast.error(error?.message || c.failed || 'Could not send it');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const reasonText = {
-    not_configured: c.notConfigured || 'Not configured on the server',
-    keys_mismatch: c.pushKeysMismatch || 'The server’s push keys are not a pair',
-    no_devices: c.pushNoDevices || 'No device subscribed',
-    not_linked: c.telegramNotLinked || 'Not connected',
-  };
-
-  const rows = [
-    {
-      id: 'push',
-      icon: Smartphone,
-      iconClass: 'text-purple-500',
-      label: c.push || 'Push',
-      state: channels.push,
-      detail: (c.devices || 'Devices: {n}').replace('{n}', channels.push.devices),
-      // The full-width button below already tests push while this device is
-      // subscribed; the row only offers it for the account's other devices.
-      onTest: pushTestShown ? null : onPushTest,
-      testing: pushTesting,
-    },
-    {
-      id: 'telegram',
-      icon: Send,
-      iconClass: 'text-sky-500',
-      label: c.telegram || 'Telegram',
-      state: channels.telegram,
-      detail: channels.telegram.username ? `@${channels.telegram.username}` : c.works || 'Works',
-      onTest: testTelegram,
-      testing: busy,
-    },
-  ];
-
-  const via = channels.reminders_via;
-  const labelClass = light ? 'text-gray-900' : 'text-white';
-  const subClass = light ? 'text-gray-500' : 'text-gray-400';
-
-  return (
-    <div
-      className={`rounded-xl p-3 space-y-1 ${
-        light ? 'bg-gray-50 border border-gray-100' : 'bg-white/5 border border-white/10'
-      }`}
-    >
-      <p className={`text-[11px] font-semibold uppercase tracking-wide ${subClass}`}>
-        {c.title || 'Channels'}
-      </p>
-
-      {rows.map(({ id, icon: Icon, iconClass, label, state, detail, onTest, testing }) => (
-        <div key={id} className="flex items-center justify-between gap-3 min-h-[40px]">
-          <div className="flex min-w-0 items-center gap-2">
-            <Icon className={`h-4 w-4 shrink-0 ${iconClass}`} />
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className={`text-sm ${labelClass}`}>{label}</span>
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${state.works ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                  aria-hidden="true"
-                />
-              </div>
-              {/*
-                A reason is a sentence that says what to do, so it wraps rather
-                than being cut to "…" on a phone. A detail is a name or a count
-                and stays on one line.
-              */}
-              <p
-                className={`text-xs ${
-                  state.works
-                    ? `truncate ${subClass}`
-                    : `break-words ${light ? 'text-amber-700' : 'text-amber-400'}`
-                }`}
-              >
-                {state.works ? detail : reasonText[state.reason] || state.reason}
-              </p>
-            </div>
-          </div>
-
-          {state.works && onTest && (
-            <Button
-              onClick={onTest}
-              disabled={testing}
-              variant="outline"
-              className={`h-8 shrink-0 rounded-xl px-3 text-xs font-semibold ${
-                light ? 'border-gray-300' : 'border-white/20'
-              }`}
-            >
-              {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : c.test || 'Test'}
-            </Button>
-          )}
-        </div>
-      ))}
-
-      <p className={`pt-1 text-xs ${subClass}`}>
-        {via
-          ? (c.via || 'Tonight’s reminder goes to: {channel}').replace('{channel}', c[via] || via)
-          : c.viaNone || 'Reminders only show up in the app right now'}
-      </p>
-    </div>
-  );
-}
 
 export default function NotificationSettings({ settings, onSave, theme = 'light' }) {
   const i = t();
@@ -172,28 +36,28 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
   const [pushState, setPushState] = useState('default');
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
-  const [testing, setTesting] = useState(false);
 
-  // What the server says each channel can do for this account. Null until it
-  // answers, and on failure too: no block beats a block that guesses.
-  const [channels, setChannels] = useState(null);
-  // Bumped to remount TelegramChannel when the server unlinks a chat under it.
-  const [telegramKey, setTelegramKey] = useState(0);
-
+  /**
+   * Whether the server itself can send push, asked once. A switch that is on
+   * over a server with a broken VAPID pair looks like it works and delivers
+   * nothing, so that one case is said under the switch; everything else about
+   * a channel is already visible in its own row.
+   */
+  const [pushServerProblem, setPushServerProblem] = useState(null);
   const loadChannels = useCallback(async () => {
     try {
-      setChannels(await api.notifications.channels());
+      const { push } = await api.notifications.channels();
+      setPushServerProblem(
+        push.reason === 'keys_mismatch' || push.reason === 'not_configured' ? push.reason : null,
+      );
     } catch {
-      setChannels(null);
+      setPushServerProblem(null);
     }
   }, []);
 
-  // Again whenever Telegram's own state changes (connected, disconnected),
-  // since that row and the "reminders go to" line both follow it.
-  const telegramConnected = telegram?.connected;
   useEffect(() => {
     loadChannels();
-  }, [loadChannels, telegramConnected]);
+  }, [loadChannels]);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,55 +104,6 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
       toast.error(ns.pushFailed || 'Could not turn that on');
     } finally {
       setPushBusy(false);
-      // The device count just changed, one way or the other.
-      loadChannels();
-    }
-  };
-
-  /**
-   * Proves it, rather than asking the user to wait until evening and hope.
-   *
-   * The two numbers the server returns are the two failures that look
-   * identical from here: no devices means the permission never produced a
-   * subscription on this browser, and devices with nothing delivered means the
-   * push service refused the ones we have — usually a subscription that died
-   * when the browser data was cleared, and turning the switch off and on again
-   * replaces it.
-   */
-  const sendTest = async () => {
-    if (testing) return;
-    setTesting(true);
-    try {
-      const { devices, delivered, expired = 0, statuses = [] } = await api.push.test();
-
-      if (delivered > 0) {
-        toast.success(ns.pushTestSent || 'Sent — it should appear in a moment');
-      } else if (devices === 0) {
-        toast.error(ns.pushTestNoDevices || 'This device is not subscribed yet');
-      } else if (expired > 0) {
-        // The rows are already gone, so turning the switch off and on makes a
-        // fresh one rather than reviving a corpse.
-        toast.error(ns.pushTestExpired || 'That subscription had expired — turn the switch off and on again');
-      } else if (statuses.some((s) => s === 401 || s === 403)) {
-        /**
-         * Not the user's problem and not fixable from here: the push service
-         * rejected our VAPID credentials, which means the keys on the server
-         * are wrong or mismatched. Saying "resubscribe" would send someone
-         * round a loop that cannot end.
-         */
-        toast.error(ns.pushTestVapid || 'The server’s push keys are being rejected — this needs fixing on the server');
-      } else {
-        toast.error(
-          (ns.pushTestFailed || 'The push service refused it') +
-            (statuses.length ? ` (${statuses.join(', ')})` : ''),
-        );
-      }
-    } catch (error) {
-      toast.error(error?.message || ns.pushTestFailed || 'Could not send it');
-    } finally {
-      setTesting(false);
-      // An expired subscription was deleted by that send.
-      loadChannels();
     }
   };
 
@@ -335,7 +150,7 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
       {/* Streak warning */}
       <div className="flex items-center justify-between min-h-[44px]">
         <div className="flex items-center gap-2">
-          <Flame className={`w-4 h-4 text-orange-500`} />
+          <Flame className="w-4 h-4 shrink-0 text-orange-500" />
           <div>
             <span className={`text-sm ${labelClass}`}>{ns.streakWarning || 'Streak warning'}</span>
             <p className={`text-xs ${subClass}`}>{ns.streakWarningDesc || 'Alert before losing streak'}</p>
@@ -355,16 +170,24 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
       */}
       <div className="flex items-center justify-between min-h-[44px]">
         <div className="flex items-center gap-2">
-          <Smartphone className="w-4 h-4 text-purple-500" />
+          <Smartphone className="w-4 h-4 shrink-0 text-purple-500" />
           <div>
             <span className={`text-sm ${labelClass}`}>{ns.pushOnDevice || 'Notify this device'}</span>
-            <p className={`text-xs ${subClass}`}>
-              {pushState === 'unsupported'
-                ? ns.pushUnsupported || 'This browser cannot show notifications'
-                : pushState === 'denied'
-                  ? ns.pushDenied || 'Blocked — allow notifications in site settings'
-                  : ns.pushOnDeviceDesc || 'Reminders arrive with the app closed'}
-            </p>
+            {pushServerProblem ? (
+              <p className={`text-xs ${theme === 'light' ? 'text-amber-700' : 'text-amber-400'}`}>
+                {pushServerProblem === 'keys_mismatch'
+                  ? ns.pushKeysMismatch || 'The server’s push keys are not a pair'
+                  : ns.pushServerOff || 'Notifications are not configured on the server yet'}
+              </p>
+            ) : (
+              <p className={`text-xs ${subClass}`}>
+                {pushState === 'unsupported'
+                  ? ns.pushUnsupported || 'This browser cannot show notifications'
+                  : pushState === 'denied'
+                    ? ns.pushDenied || 'Blocked — allow notifications in site settings'
+                    : ns.pushOnDeviceDesc || 'Reminders arrive with the app closed'}
+              </p>
+            )}
           </div>
         </div>
         <Switch
@@ -380,34 +203,7 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
         deliberate act, where a push permission is a prompt someone tapped
         through once. Renders nothing when no bot is configured.
       */}
-      <TelegramChannel key={telegramKey} theme={theme} onState={setTelegram} />
-
-      {/* Proves push works, rather than asking the user to wait until evening. */}
-      {pushOn && (
-        <Button
-          onClick={sendTest}
-          disabled={testing}
-          variant="outline"
-          className={`w-full min-h-[44px] ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}
-        >
-          <Send className="w-4 h-4 mr-2" />
-          {testing ? ns.pushTesting || 'Sending…' : ns.pushTest || 'Send a test notification'}
-        </Button>
-      )}
-
-      {channels && (
-        <ChannelsBlock
-          channels={channels}
-          theme={theme}
-          pushTestShown={pushOn}
-          onPushTest={sendTest}
-          pushTesting={testing}
-          onChanged={() => {
-            setTelegramKey((k) => k + 1);
-            loadChannels();
-          }}
-        />
-      )}
+      <TelegramChannel theme={theme} onState={setTelegram} />
 
       {pushState !== 'unsupported' && pushState !== 'denied' && !pushOn && !telegram?.connected && (
         <div className={`flex items-center gap-2 p-3 rounded-xl text-xs ${
