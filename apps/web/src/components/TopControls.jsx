@@ -1,4 +1,5 @@
 import React, { useState, Suspense } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
@@ -50,15 +51,19 @@ export default function TopControls({ theme, className = '' }) {
 
       <AppMenu theme={theme} />
 
-      {showInbox && (
-        <Suspense fallback={null}>
-          <NotificationCenter
-            onClose={() => setShowInbox(false)}
-            onUnreadChange={setUnread}
-            theme={theme}
-          />
-        </Suspense>
-      )}
+      {/* Kept mounted through its exit, so closing fades instead of vanishing. */}
+      <Suspense fallback={null}>
+        <AnimatePresence>
+          {showInbox && (
+            <NotificationCenter
+              key="inbox"
+              onClose={() => setShowInbox(false)}
+              onUnreadChange={setUnread}
+              theme={theme}
+            />
+          )}
+        </AnimatePresence>
+      </Suspense>
     </div>
   );
 }

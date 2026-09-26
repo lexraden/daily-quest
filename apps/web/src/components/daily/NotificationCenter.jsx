@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 import { X, Bell, Flame, Trophy, Snowflake, HeartCrack, Clock } from 'lucide-react';
 import { api } from '@/api/client';
 import { t } from '@/lib/i18n';
@@ -63,6 +64,7 @@ export default function NotificationCenter({ onClose, onUnreadChange, theme = 'd
   const copy = i.inbox || {};
   const light = theme === 'light';
 
+  const reduce = useReducedMotion();
   const [items, setItems] = useState(null); // null while loading
   const [clearing, setClearing] = useState(false);
 
@@ -111,8 +113,21 @@ export default function NotificationCenter({ onClose, onUnreadChange, theme = 'd
     }
   };
 
-  return (
-    <AnimatePresence>
+  /**
+   * Rendered into <body>, not where the bell is.
+   *
+   * The bell sits in a header with `backdrop-filter`, and a filtered or
+   * transformed ancestor makes `position: fixed` relative to itself instead of
+   * the screen: the overlay covered the header strip and the panel hung off
+   * it, which is what flickered while it animated. A portal gives it the
+   * viewport back.
+   *
+   * No blur on the overlay: blurring the whole page every frame of a fade is
+   * the most expensive thing a phone can be asked to animate, and a plain dim
+   * reads the same. The panel eases in rather than springing, so it does not
+   * overshoot and settle.
+   */
+  return createPortal(
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
         onClick={onClose}
@@ -124,14 +139,16 @@ export default function NotificationCenter({ onClose, onUnreadChange, theme = 'd
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="absolute inset-0 bg-black/60"
         />
 
         <motion.div
-          initial={{ scale: 0.92, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.92, opacity: 0 }}
-          transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.98 }}
+          transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+          style={{ willChange: 'transform, opacity' }}
           onClick={(e) => e.stopPropagation()}
           /* A fixed fraction of the viewport rather than a fixed height: the
              list has to fit a phone in landscape as well as a tall one. */
@@ -159,7 +176,9 @@ export default function NotificationCenter({ onClose, onUnreadChange, theme = 'd
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {/* A floor under the list, so "…" and the loaded list are close to
+              the same height and the panel does not jump as it fills. */}
+          <div className="min-h-[11rem] flex-1 overflow-y-auto overscroll-contain">
             {items === null ? (
               <div className="px-5 py-10 text-center text-sm text-gray-500">{copy.loading || '…'}</div>
             ) : items.length === 0 ? (
@@ -224,7 +243,7 @@ export default function NotificationCenter({ onClose, onUnreadChange, theme = 'd
             </div>
           )}
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </div>,
+    document.body,
   );
 }
