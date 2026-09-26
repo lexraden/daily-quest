@@ -151,7 +151,9 @@ export default function AppMenu({ theme }) {
     if (setLang(next)) window.location.reload();
   };
 
-  const round = `h-10 w-10 shrink-0 rounded-full ${
+  // 48px, the same on every tab. The icon size is set on the button because
+  // the shared Button forces `size-4` onto any svg inside it.
+  const round = `h-12 w-12 shrink-0 rounded-full [&_svg]:size-6 ${
     light ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'
   }`;
   const ink = light ? 'text-gray-900' : 'text-white';

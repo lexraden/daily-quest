@@ -23,7 +23,9 @@ export default function TopControls({ theme, className = '' }) {
   const { unread, setUnread } = useUnread();
   const [showInbox, setShowInbox] = useState(false);
 
-  const round = `h-10 w-10 shrink-0 rounded-full ${
+  // 48px, the same on every tab. The icon size is set on the button because
+  // the shared Button forces `size-4` onto any svg inside it.
+  const round = `h-12 w-12 shrink-0 rounded-full [&_svg]:size-6 ${
     light ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10'
   }`;
 
@@ -41,7 +43,7 @@ export default function TopControls({ theme, className = '' }) {
             that point is not information anyone acts on. */}
         {unread > 0 && (
           <span
-            className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white"
+            className="absolute top-0 right-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold leading-none text-white"
             aria-hidden="true"
           >
             {unread > 9 ? '9+' : unread}
