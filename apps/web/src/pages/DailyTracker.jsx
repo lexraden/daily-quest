@@ -138,15 +138,7 @@ export default function DailyTracker() {
   /** The progress endpoints return the whole row; the server's numbers win. */
   const [showCoach, setShowCoach] = useState(false);
   // What was said into the tracker's mic, handed to the coach as its first message.
-  const [coachMessage, setCoachMessage] = useState(null);
-  // Where the coach row was when it was tapped: the chat grows out of it.
-  const [coachAnchor, setCoachAnchor] = useState(null);
-  const openCoach = useCallback((message = null, rect = null) => {
-    setCoachMessage(message);
-    setCoachAnchor(rect);
-    setShowCoach(true);
-  }, []);
-  const openCoachEmpty = useCallback((rect) => openCoach(null, rect), [openCoach]);
+  const openChat = useCallback(() => setShowCoach(true), []);
   const [levelUp, setLevelUp] = useState(null);
   const [overallLevel, setOverallLevel] = useState(null);
   // dismissLevelUp is memoised on applyServerProgress alone, so it reads the
@@ -1144,11 +1136,12 @@ export default function DailyTracker() {
           theme={theme}
         />
 
-        {/* The coach, the mic and the meal photo, in one row. */}
+        {/* The coach, the mic and the meal photo, in one row; the answer lands under it. */}
         <CoachBar
           theme={theme}
-          onOpenCoach={openCoachEmpty}
-          onVoice={openCoach}
+          questData={questData}
+          onApplied={applyCoachChange}
+          onOpenChat={openChat}
           onMealAnalyzed={handleMealAnalyzed}
           hasAccess={premiumStatus.hasAccess}
           onLocked={() => setShowPremium(true)}
@@ -1299,8 +1292,6 @@ export default function DailyTracker() {
           onClose={() => setShowCoach(false)}
           theme={theme}
           questData={questData}
-          initialMessage={coachMessage}
-          anchorRect={coachAnchor}
           onApplied={applyCoachChange}
         />
       )}

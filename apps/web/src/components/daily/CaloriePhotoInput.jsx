@@ -163,7 +163,7 @@ export default function CaloriePhotoInput({ onMealAnalyzed, onStateChange, theme
           }}
           size="icon"
           aria-label={t().calories.photoFood}
-          className={`h-12 w-12 rounded-2xl flex-shrink-0 transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600`}
+          className="h-12 w-12 rounded-2xl flex-shrink-0 text-white transition-all bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 [&_svg]:size-5"
         >
           <Camera className="w-5 h-5" />
         </Button>
