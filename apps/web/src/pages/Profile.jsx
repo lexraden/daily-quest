@@ -10,6 +10,7 @@ import { LEVEL_DEFS } from '@/lib/levels';
 import { todayKey } from '@/lib/dates';
 import { mealKey } from '@/lib/meals';
 import OnboardingModal from '@/components/daily/OnboardingModal';
+import { announceQuestsReplaced } from '@/lib/questEvents';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import NotificationSettings from '@/components/profile/NotificationSettings';
 import SoundSettings from '@/components/profile/SoundSettings';
@@ -362,12 +363,17 @@ export default function Profile() {
               try {
                 // Same server endpoint DailyTracker uses for onboarding.
                 const { quest_data } = await api.ai.generateQuests(answers, getLang());
-                await api.questData.create({
+                const row = await api.questData.create({
                   quest_data,
                   onboarding_answers: answers,
                   last_visit_date: todayKey(),
                 });
                 invalidateCache();
+                // The tracker is already mounted with the old set; hand it the
+                // new one, and close this so the Profile tab is not left
+                // showing the onboarding when it is opened again.
+                announceQuestsReplaced(row);
+                setShowOnboarding(false);
 
                 // Straight to the tracker. Closing the modal first and then
                 // reloading the page showed the profile for half a second and

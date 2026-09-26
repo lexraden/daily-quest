@@ -11,7 +11,7 @@ const TRANSLATIONS = {
   ru: {
     welcome: {
       title: 'Прокачай свою жизнь',
-      subtitle: 'с Daily Quests ⚡',
+      subtitle: 'с Daily Quest ⚡',
       description: 'Персональные ежедневные задания для здоровья, работы, отношений и финансов',
       features: ['🎯 AI создаёт твои квесты', '📈 Отслеживай прогресс', '🔥 Строй серии побед'],
       button: '🚀 Начать прямо сейчас',
@@ -88,7 +88,7 @@ const TRANSLATIONS = {
   en: {
     welcome: {
       title: 'Level Up Your Life',
-      subtitle: 'with Daily Quests ⚡',
+      subtitle: 'with Daily Quest ⚡',
       description: 'Personalized daily quests for health, work, relationships, and finances',
       features: ['🎯 AI creates your quests', '📈 Track your progress', '🔥 Build win streaks'],
       button: '🚀 Start Now',

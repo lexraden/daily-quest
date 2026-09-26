@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, Send, Sparkles, Loader2, Trash2, Check, Mic, Square } from 'lucide-react';
@@ -10,6 +10,7 @@ import { playSfx } from '@/lib/sfx';
 import { applyProposal } from '@/lib/coachApply';
 import ProposalCard from './ProposalCard';
 import useDictation, { mmss } from '@/lib/useDictation';
+import { autoGrow } from '@/lib/autoGrow';
 
 /** The server's limit on one message; a long dictation is cut to it. */
 const MAX_MESSAGE = 2000;
@@ -47,6 +48,7 @@ export default function CoachChat({
   // What was just applied, shown in the middle of the screen until it fades.
   const [applied, setApplied] = useState(null);
   const endRef = useRef(null);
+  const fieldRef = useRef(null);
   const reduce = useReducedMotion();
 
   useEffect(() => {
@@ -111,6 +113,8 @@ export default function CoachChat({
       setSending(false);
     }
   };
+
+  useLayoutEffect(() => autoGrow(fieldRef.current), [draft]);
 
   // Said into the mic here: sent as it is, the same as pressing send.
   const dictation = useDictation((spoken) => send(spoken));
@@ -316,8 +320,10 @@ export default function CoachChat({
                 <span className="font-mono tabular-nums opacity-90">{mmss(dictation.elapsed)}</span>
               </button>
             ) : (
-            <div className="flex items-center gap-2">
-              <input
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={fieldRef}
+                rows={1}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -327,9 +333,11 @@ export default function CoachChat({
                   }
                 }}
                 maxLength={MAX_MESSAGE}
+                enterKeyHint="send"
+                autoComplete="off"
                 placeholder={copy.placeholder || 'Message…'}
                 aria-label={copy.placeholder || 'Message'}
-                className={`h-12 flex-1 rounded-2xl px-4 text-sm outline-none ${
+                className={`block min-h-12 flex-1 resize-none overflow-hidden rounded-2xl px-4 py-3 text-sm leading-6 outline-none ${
                   light
                     ? 'bg-gray-100 text-gray-900 placeholder:text-gray-400'
                     : 'bg-[#1e2836] text-white placeholder:text-gray-500 border border-white/10'

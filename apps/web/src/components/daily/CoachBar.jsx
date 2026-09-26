@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Mic, Send, Square, Sparkles, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { aiErrorMessage } from '@/lib/aiErrors';
 import { playSfx } from '@/lib/sfx';
 import { applyProposal } from '@/lib/coachApply';
 import useDictation, { mmss } from '@/lib/useDictation';
+import { autoGrow } from '@/lib/autoGrow';
 import CaloriePhotoInput from './CaloriePhotoInput';
 import ProposalCard from './ProposalCard';
 
@@ -40,6 +41,9 @@ const CoachBar = React.memo(function CoachBar({
   const reduce = useReducedMotion();
 
   const [draft, setDraft] = useState('');
+  const fieldRef = useRef(null);
+  // Also when the draft is cleared on send, or put back after a failure.
+  useLayoutEffect(() => autoGrow(fieldRef.current), [draft]);
   // The last exchange: { question, reply?, proposal?, done?, skipped? }.
   const [exchange, setExchange] = useState(null);
   const [sending, setSending] = useState(false);
@@ -99,7 +103,7 @@ const CoachBar = React.memo(function CoachBar({
 
   return (
     <div className="px-5 mb-4">
-      <div className="flex gap-2">
+      <div className="flex items-end gap-2">
         {recording ? (
           <Button
             onClick={stop}
@@ -116,12 +120,14 @@ const CoachBar = React.memo(function CoachBar({
           !photosActive && (
             <>
               <label
-                className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-2xl border px-4 transition-colors focus-within:border-purple-500 ${
+                className={`flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-2xl border px-4 py-3 transition-colors focus-within:border-purple-500 ${
                   light ? 'border-gray-200 bg-white' : 'border-white/10 bg-[#1e2836]'
                 }`}
               >
                 <Sparkles className={`h-4 w-4 shrink-0 ${light ? 'text-purple-600' : 'text-purple-400'}`} />
-                <input
+                <textarea
+                  ref={fieldRef}
+                  rows={1}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
@@ -132,9 +138,10 @@ const CoachBar = React.memo(function CoachBar({
                   }}
                   maxLength={MAX_MESSAGE}
                   enterKeyHint="send"
+                  autoComplete="off"
                   placeholder={copy.askPlaceholder || 'Ask the coach'}
                   aria-label={copy.askPlaceholder || 'Ask the coach'}
-                  className={`h-full min-w-0 flex-1 bg-transparent text-sm outline-none ${ink} ${
+                  className={`block min-w-0 flex-1 resize-none overflow-hidden bg-transparent text-sm leading-6 outline-none ${ink} ${
                     light ? 'placeholder:text-gray-400' : 'placeholder:text-gray-500'
                   }`}
                 />

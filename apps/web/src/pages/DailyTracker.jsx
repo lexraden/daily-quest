@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { COACH_APPLIED } from '@/lib/coachEvents';
+import { QUESTS_REPLACED } from '@/lib/questEvents';
 import { Button } from '@/components/ui/button';
 import { withReminderDefaults } from '@/lib/reminderDefaults';
 // CalendarView replaced by History page
@@ -54,7 +55,7 @@ import { useTheme } from '@/lib/useTheme';
    ============================================ */
 
 const APP_CONFIG = {
-  title: "Daily Quests",
+  title: "Daily Quest",
   completedText: "✓",
   pendingText: "○",
 };
@@ -239,6 +240,19 @@ export default function DailyTracker() {
     else if (change.kind === 'meal') setMealHistory(change.mealHistory);
     else if (change.kind === 'journal') setJournalEntries(change.journalEntries);
     else applyServerProgress(change.row);
+  }, [applyServerProgress]);
+
+  // Re-onboarding from Profile: the server's row, with today's ticks cleared.
+  useEffect(() => {
+    const onReplaced = (e) => {
+      const row = e.detail;
+      if (!row) return;
+      setQuestData(sanitizeQuestData(row.quest_data, DEFAULT_QUEST_DATA));
+      applyServerProgress(row);
+      setCompletedToday({});
+    };
+    window.addEventListener(QUESTS_REPLACED, onReplaced);
+    return () => window.removeEventListener(QUESTS_REPLACED, onReplaced);
   }, [applyServerProgress]);
 
   useEffect(() => {
@@ -1032,7 +1046,7 @@ export default function DailyTracker() {
 
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-bold leading-tight">
-              {user?.full_name || 'Daily Quests'}
+              {user?.full_name || 'Daily Quest'}
             </h1>
             {/* No icon here — the same one is already in the avatar beside it. */}
             <div className={`truncate text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`}>
