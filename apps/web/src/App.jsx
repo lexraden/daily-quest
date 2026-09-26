@@ -1,4 +1,5 @@
 import { Toaster } from 'sonner'
+import useUpdateWatcher from '@/lib/useUpdateWatcher'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
@@ -46,6 +47,8 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  // A deploy reaches an installed app without anyone having to reload it.
+  useUpdateWatcher();
 
   return (
     <ErrorBoundary>
