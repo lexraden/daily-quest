@@ -1,10 +1,11 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { ChevronRight, Sparkles, Loader2, Mic } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ChevronRight, Sparkles, Loader2, Mic, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { api } from '@/api/client';
-import { useSpeechRecognition } from '@/components/useSpeechRecognition';
+import useDictation, { mmss } from '@/lib/useDictation';
+import { getLang } from '@/lib/i18n';
 
 const TRANSLATIONS = {
   ru: {
@@ -71,7 +72,7 @@ const TRANSLATIONS = {
       }
     ],
     voice: {
-      recording: 'Отпустите для остановки',
+      recording: 'Нажми ещё раз, чтобы остановить',
       record: 'Голосовой ввод',
       success: 'Текст распознан!'
     },
@@ -148,7 +149,7 @@ const TRANSLATIONS = {
       }
     ],
     voice: {
-      recording: 'Release to stop',
+      recording: 'Tap again to stop',
       record: 'Voice input',
       success: 'Text recognized!'
     },
@@ -167,108 +168,37 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
   const [currentStep, setCurrentStep] = useState(-1); // -1 = welcome screen
   const [answers, setAnswers] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-  const { recognition } = useSpeechRecognition();
-  const accumulatedTextRef = useRef('');
   const currentStepRef = useRef(-1);
 
-  // Detect user language
-  const userLang = useMemo(() => {
-    const lang = navigator.language || navigator.userLanguage || 'en';
-    return lang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
-  }, []);
+  // The language the app is in, not the browser's: someone who switched the
+  // app to English on a Russian phone should be asked in English.
+  const userLang = getLang() === 'en' ? 'en' : 'ru';
 
   const t = TRANSLATIONS[userLang];
   const ONBOARDING_QUESTIONS = t.questions;
+  currentStepRef.current = currentStep;
 
-  // Keep currentStepRef in sync with currentStep
-  React.useEffect(() => {
-    currentStepRef.current = currentStep;
-  }, [currentStep]);
-
-
-
-  // Setup speech recognition callbacks
-  React.useEffect(() => {
-    if (!recognition) return;
-
-    recognition.lang = userLang === 'ru' ? 'ru-RU' : 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    const handleStart = () => {
-      setIsRecording(true);
-      accumulatedTextRef.current = '';
-      if (navigator.vibrate) {
-        navigator.vibrate(30);
-      }
-    };
-
-    const handleResult = (event) => {
-      let transcript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript + ' ';
-      }
-      accumulatedTextRef.current = transcript.trim();
-    };
-
-    const handleEnd = () => {
-      // continuous=false: browser auto-stops after silence pause
-      // Process whatever was captured
-      setIsRecording(false);
-      const rawText = accumulatedTextRef.current.trim();
-
-      if (rawText && currentStepRef.current >= 0) {
-        const question = ONBOARDING_QUESTIONS[currentStepRef.current];
-        setIsProcessingVoice(true);
-
-        // Prompt and schema moved server-side with the rest of the AI calls.
-        api.ai
-          .cleanupTranscript(question.question, rawText, userLang).then(result => {
-          const cleanedText = result.cleaned_text || rawText;
-          const cat = ONBOARDING_QUESTIONS[currentStepRef.current]?.category;
-          if (cat) {
-            setAnswers(prev => ({ ...prev, [cat]: cleanedText }));
-          }
-          toast.success(t.voice.success);
-        }).catch(() => {
-          const cat = ONBOARDING_QUESTIONS[currentStepRef.current]?.category;
-          if (cat) {
-            setAnswers(prev => ({ ...prev, [cat]: rawText }));
-          }
-          toast.success(t.voice.success);
-        }).finally(() => {
-          setIsProcessingVoice(false);
-        });
-      }
-    };
-
-    const handleError = (event) => {
-      if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-        toast.error(userLang === 'ru' ? 'Разрешите доступ к микрофону' : 'Allow microphone access');
-        setIsRecording(false);
-      } else if (event.error === 'no-speech') {
-        // Silence — just stop quietly
-        setIsRecording(false);
-      } else if (event.error !== 'aborted') {
-        console.error('Speech error:', event.error);
-        setIsRecording(false);
-      }
-    };
-
-    recognition.onstart = handleStart;
-    recognition.onresult = handleResult;
-    recognition.onend = handleEnd;
-    recognition.onerror = handleError;
-
-    return () => {
-      recognition.onstart = null;
-      recognition.onresult = null;
-      recognition.onend = null;
-      recognition.onerror = null;
-    };
-  }, [recognition, userLang]);
+  /**
+   * Tap to start, tap to stop — the same dictation as the coach's mic, so the
+   * two cannot unwire each other's recogniser. What was said is tidied into a
+   * goal by the server and put in the field, where it can still be edited.
+   */
+  const dictation = useDictation((rawText) => {
+    const step = currentStepRef.current;
+    const question = ONBOARDING_QUESTIONS[step];
+    if (!question) return;
+    setIsProcessingVoice(true);
+    api.ai
+      .cleanupTranscript(question.question, rawText, userLang)
+      .then((result) => setAnswers((prev) => ({ ...prev, [question.category]: result.cleaned_text || rawText })))
+      .catch(() => setAnswers((prev) => ({ ...prev, [question.category]: rawText })))
+      .finally(() => {
+        setIsProcessingVoice(false);
+        toast.success(t.voice.success);
+      });
+  });
+  const isRecording = dictation.recording;
 
   const currentQuestion = currentStep >= 0 ? ONBOARDING_QUESTIONS[currentStep] : null;
   const progress = currentStep >= 0 ? ((currentStep + 1) / ONBOARDING_QUESTIONS.length) * 100 : 0;
@@ -294,20 +224,10 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     await onComplete(answers);
   };
 
-  const startRecording = () => {
-    if (!recognition) {
-      toast.error(userLang === 'ru' ? 'Голосовой ввод не поддерживается' : 'Voice input not supported');
-      return;
-    }
-    if (isRecording || isProcessingVoice) return;
-
-    accumulatedTextRef.current = '';
-    try {
-      recognition.start();
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-      toast.error(userLang === 'ru' ? 'Не удалось запустить микрофон' : 'Failed to start microphone');
-    }
+  const toggleRecording = () => {
+    if (isProcessingVoice) return;
+    if (isRecording) dictation.stop();
+    else dictation.start();
   };
 
   const canProceed = currentStep === -1 || answers[currentQuestion?.category]?.trim().length > 0;
@@ -402,8 +322,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
             {/* CTA */}
             <Button
               onClick={() => setCurrentStep(0)}
-              aria-label="Начать настройку"
-              className="w-full h-14 text-lg font-bold bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 shadow-lg"
+              aria-label={t.welcome.button}
+              className="w-full h-14 text-lg font-bold text-white bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 shadow-lg [&_svg]:size-6"
             >
               {t.welcome.button}
               <ChevronRight className="w-6 h-6 ml-2" />
@@ -433,7 +353,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
           ? 'bg-white/90 border-gray-200' 
           : 'bg-[#0f1419]/90 border-white/10'
       }`}>
-        <div className="px-5 py-4">
+        <div className="px-5 py-3" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}>
           <div className="flex items-center gap-3 mb-3">
             <Sparkles className={`w-6 h-6 ${theme === 'light' ? 'text-purple-600' : 'text-purple-400'}`} />
             <div>
@@ -458,17 +378,22 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-5 py-8">
+      <div className="flex-1 overflow-y-auto px-5 py-5">
         <div className="max-w-2xl mx-auto">
           {/* Question Card */}
-          <div className={`rounded-3xl p-6 border mb-6 ${
+          {/*
+            Compact on purpose: with the keyboard up a phone has about half its
+            height left, and the field is what has to be in it. The big emoji
+            goes when the screen is that short.
+          */}
+          <div className={`rounded-3xl p-5 border ${
             theme === 'light' 
               ? 'bg-white border-gray-200 shadow-lg' 
               : 'bg-[#1e2836] border-white/10'
           }`}>
-            <div className="text-center mb-6">
-              <div className="text-6xl mb-4">{currentQuestion.emoji}</div>
-              <h2 className={`text-2xl font-bold mb-2 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+            <div className="text-center mb-4">
+              <div className="text-5xl mb-3 [@media(max-height:600px)]:hidden">{currentQuestion.emoji}</div>
+              <h2 className={`text-xl font-bold mb-1.5 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
                 {currentQuestion.title}
               </h2>
               <p className={`text-base font-semibold ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>
@@ -478,7 +403,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
 
             {/* Goal examples as chips */}
             {currentQuestion.examples && (
-              <div className="flex flex-wrap gap-2 mb-4 justify-center">
+              <div className="flex flex-wrap gap-2 mb-4 [@media(max-height:600px)]:mb-3 justify-center">
                 {currentQuestion.examples.map((example, idx) => (
                   <button
                     key={idx}
@@ -506,7 +431,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
                 value={answers[currentQuestion.category] || ''}
                 onChange={(e) => handleAnswer(e.target.value)}
                 placeholder={currentQuestion.placeholder}
-                className={`min-h-32 text-base pr-14 ${
+                className={`min-h-32 [@media(max-height:600px)]:min-h-20 text-base pr-14 ${
                   theme === 'light'
                     ? 'bg-gray-50 border-gray-300 text-gray-900'
                     : 'bg-white/5 border-white/10 text-white'
@@ -515,13 +440,13 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
 
               <button
                 type="button"
-                onClick={startRecording}
+                onClick={toggleRecording}
                 disabled={isProcessingVoice}
                 aria-label={
                   isProcessingVoice
                     ? (userLang === 'ru' ? 'Обработка' : 'Processing')
                     : isRecording
-                    ? (userLang === 'ru' ? 'Слушаю' : 'Listening')
+                    ? t.voice.recording
                     : t.voice.record
                 }
                 title={t.voice.record}
@@ -538,14 +463,19 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
               >
                 {isProcessingVoice ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
+                ) : isRecording ? (
+                  <Square className="w-4 h-4" fill="currentColor" />
                 ) : (
                   <Mic className="w-5 h-5" />
                 )}
               </button>
             </div>
+            {isRecording && (
+              <p className="mt-2 text-center text-xs font-medium text-red-500">
+                ● {t.voice.recording} · <span className="font-mono tabular-nums">{mmss(dictation.elapsed)}</span>
+              </p>
+            )}
           </div>
-
-
         </div>
       </div>
 
@@ -561,8 +491,8 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
           <Button
             onClick={handleNext}
             disabled={!canProceed}
-            aria-label={currentStep === ONBOARDING_QUESTIONS.length - 1 ? 'Создать квесты' : 'Далее'}
-            className="w-full h-12 text-base bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 disabled:opacity-50"
+            aria-label={currentStep === ONBOARDING_QUESTIONS.length - 1 ? t.buttons.complete : t.buttons.next}
+            className="w-full h-12 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 disabled:opacity-50 [&_svg]:size-5"
           >
             {currentStep === ONBOARDING_QUESTIONS.length - 1 ? (
               <>

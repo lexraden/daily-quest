@@ -63,7 +63,12 @@ export default function SignIn() {
     try {
       await signInAsGuest();
     } catch (err) {
-      setError(err.message || 'Could not start a guest session.');
+      // The limiter's own message is English whatever the app's language.
+      setError(
+        err?.status === 429
+          ? t().auth?.guestLimited || 'Too many guest sign-ins from here — try again in an hour, or sign in with Google.'
+          : err.message || 'Could not start a guest session.',
+      )
       setStatus('ready');
     }
   };

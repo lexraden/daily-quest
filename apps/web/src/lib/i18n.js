@@ -49,6 +49,7 @@ const translations = {
       // Said on the sign-in screen, before the choice, rather than discovered
       // after it.
       guestNote: 'Без входа — прогресс не сохранится',
+      guestLimited: 'Слишком много гостевых входов отсюда — попробуй через час или войди через Google.',
       signOut: 'Выйти',
     },
     // Navigation
@@ -658,6 +659,7 @@ const translations = {
       signingIn: 'Signing you in…',
       guest: 'Continue as guest',
       guestNote: 'No sign-in — progress will not be kept',
+      guestLimited: 'Too many guest sign-ins from here — try again in an hour, or sign in with Google.',
       signOut: 'Sign out',
     },
     nav: {
