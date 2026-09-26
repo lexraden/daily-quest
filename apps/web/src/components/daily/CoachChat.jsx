@@ -194,9 +194,9 @@ export default function CoachChat({
   );
 
   /**
-   * Rendered into <body>: the tracker sits in a pull-to-refresh container
-   * that transforms while pulled, and a transformed ancestor would pin
-   * `position: fixed` to itself instead of the screen.
+   * Rendered into <body>, so no ancestor with a transform or a filter — the
+   * headers use `backdrop-filter` — can pin `position: fixed` to itself
+   * instead of the screen, which is what made the notifications pop-up jump.
    */
   return createPortal(
     <>
