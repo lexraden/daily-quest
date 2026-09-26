@@ -120,7 +120,7 @@ const CoachBar = React.memo(function CoachBar({
           !photosActive && (
             <>
               <label
-                className={`flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-2xl border px-4 py-3 transition-colors focus-within:border-purple-500 ${
+                className={`flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-2xl border px-4 py-[11px] transition-colors focus-within:border-purple-500 ${
                   light ? 'border-gray-200 bg-white' : 'border-white/10 bg-[#1e2836]'
                 }`}
               >

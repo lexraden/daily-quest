@@ -19,7 +19,11 @@ TEST_API_URL=http://localhost:3000 npm test --workspace apps/api
 
 Telegram messages are sent to a stub the suite runs on port 3112. Start the
 API with `TELEGRAM_API_BASE=http://127.0.0.1:3112` so the bot's replies can be
-asserted on.
+asserted on, and with `TELEGRAM_BOT_TOKEN=test-bot-token`: the stub serves
+photo downloads only under that token's path, so with any other token the
+photo-meal tests download nothing and see "unsupported format". Set
+`APP_ORIGIN` for both the API and the test run — the photo-meal preview links
+to `${APP_ORIGIN}/History` and the tests expect that link.
 
 The AI endpoints are covered up to the point where they call OpenAI: with a
 placeholder `OPENAI_API_KEY` the request fails at the provider, which is exactly

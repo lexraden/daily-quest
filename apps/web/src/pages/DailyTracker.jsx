@@ -127,6 +127,8 @@ export default function DailyTracker() {
   const [categoryLevels, setCategoryLevels] = useState({});
   const [categoryTotalCompleted, setCategoryTotalCompleted] = useState({});
   const [completedToday, setCompletedToday] = useState({});
+  // Bumped whenever the whole quest set is replaced (onboarding, reset).
+  const [questSetVersion, setQuestSetVersion] = useState(0);
   const [completionHistory, setCompletionHistory] = useState({});
   const [totalCompleted, setTotalCompleted] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -250,6 +252,7 @@ export default function DailyTracker() {
       setQuestData(sanitizeQuestData(row.quest_data, DEFAULT_QUEST_DATA));
       applyServerProgress(row);
       setCompletedToday({});
+      setQuestSetVersion((v) => v + 1);
     };
     window.addEventListener(QUESTS_REPLACED, onReplaced);
     return () => window.removeEventListener(QUESTS_REPLACED, onReplaced);
@@ -393,6 +396,7 @@ export default function DailyTracker() {
       // that category and level.
       applyServerProgress(newUserData);
       setCompletedToday({});
+      setQuestSetVersion((v) => v + 1);
 
       setShowOnboarding(false);
       toast.success(t().onboarding.questsReady);
@@ -1168,7 +1172,9 @@ export default function DailyTracker() {
             const quests = questData[categoryKey] || [];
             return (
               <SwipeableQuestCard
-                key={categoryKey}
+                // A new set starts every card over at its first open quest,
+                // rather than on whichever level the old set was showing.
+                key={`${categoryKey}-${questSetVersion}`}
                 categoryKey={categoryKey}
                 categoryInfo={categoryInfo}
                 quests={quests}

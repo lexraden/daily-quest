@@ -337,7 +337,7 @@ export default function CoachChat({
                 autoComplete="off"
                 placeholder={copy.placeholder || 'Message…'}
                 aria-label={copy.placeholder || 'Message'}
-                className={`block min-h-12 flex-1 resize-none overflow-hidden rounded-2xl px-4 py-3 text-sm leading-6 outline-none ${
+                className={`block min-h-12 flex-1 resize-none overflow-hidden rounded-2xl px-4 py-[11px] text-sm leading-6 outline-none ${
                   light
                     ? 'bg-gray-100 text-gray-900 placeholder:text-gray-400'
                     : 'bg-[#1e2836] text-white placeholder:text-gray-500 border border-white/10'
