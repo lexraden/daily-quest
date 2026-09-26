@@ -53,6 +53,9 @@ const schema = z.object({
   TELEGRAM_WEBHOOK_SECRET: z.string().default(''),
   // Overridable only so the tests can point at a stub. Leave it unset.
   TELEGRAM_API_BASE: z.string().default(''),
+  // For the "open in the app" button under a meal the bot saved. Optional: the
+  // confirmation reads fine without the button.
+  APP_ORIGIN: z.string().default(''),
 
   /**
    * What Pro costs, in Telegram Stars, and how long one purchase lasts.

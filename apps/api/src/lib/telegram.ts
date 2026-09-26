@@ -128,11 +128,97 @@ export async function call(method: string, payload: unknown): Promise<unknown | 
   }
 }
 
+export type Download = { ok: true; bytes: Buffer } | { ok: false; reason: 'too_large' | 'failed' };
+
+/**
+ * A file someone sent the bot, as bytes: getFile for the path, then the file
+ * endpoint for the content.
+ *
+ * The download URL has the token in it, so nothing here ever logs the URL or
+ * an error that might quote it — only the status. `maxBytes` is checked against
+ * what getFile reports, the Content-Length, and finally the body itself, since
+ * any of the first two can be missing and the last is the one that is true.
+ */
+export async function downloadFile(fileId: string, maxBytes: number): Promise<Download> {
+  if (!configured) return { ok: false, reason: 'failed' };
+
+  const file = (await call('getFile', { file_id: fileId })) as {
+    file_path?: unknown;
+    file_size?: unknown;
+  } | null;
+  if (!file || typeof file.file_path !== 'string') return { ok: false, reason: 'failed' };
+  if (typeof file.file_size === 'number' && file.file_size > maxBytes) {
+    return { ok: false, reason: 'too_large' };
+  }
+
+  try {
+    const res = await fetch(`${apiBase}/file/bot${configured.token}/${file.file_path}`, {
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) {
+      console.error('telegram file download failed:', res.status);
+      return { ok: false, reason: 'failed' };
+    }
+    const declared = Number(res.headers.get('content-length'));
+    if (declared > maxBytes) return { ok: false, reason: 'too_large' };
+
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.length > maxBytes) return { ok: false, reason: 'too_large' };
+    return { ok: true, bytes };
+  } catch (err) {
+    // The name only: a fetch error's message can carry the URL, and the URL
+    // carries the token.
+    console.error('telegram file download threw:', err instanceof Error ? err.name : 'unknown');
+    return { ok: false, reason: 'failed' };
+  }
+}
+
+/** A button under a message: a link, or a tap the webhook hears back about. */
+export type Button = { text: string; url: string } | { text: string; callback_data: string };
+
 export interface Message {
   title: string;
   body: string;
   /** Absolute URL for the "open the app" button, if there should be one. */
   url?: string;
+  /** One row of buttons. Takes the place of the `url` button when given. */
+  buttons?: Button[];
+}
+
+/** The text and keyboard of a message, shared by sending and editing. */
+function render(message: Message) {
+  const row = message.buttons ?? (message.url ? [{ text: 'DailyQ', url: message.url }] : []);
+  return {
+    text: `<b>${escapeHtml(message.title)}</b>\n${escapeHtml(message.body)}`,
+    parse_mode: 'HTML',
+    // The preview of our own origin adds nothing and takes half the screen.
+    link_preview_options: { is_disabled: true },
+    ...(row.length ? { reply_markup: { inline_keyboard: [row] } } : {}),
+  };
+}
+
+/**
+ * Rewrites a message the bot sent. The keyboard is always named — empty when
+ * there are no buttons — so an edit that answers a tap also takes away the
+ * buttons that were tapped.
+ */
+export async function editMessage(chatId: string, messageId: number, message: Message): Promise<boolean> {
+  const rendered = render(message);
+  const result = await call('editMessageText', {
+    chat_id: chatId,
+    message_id: messageId,
+    reply_markup: { inline_keyboard: [] },
+    ...rendered,
+  });
+  return result !== null;
+}
+
+/**
+ * Stops the spinner on a tapped button. Telegram shows it until this is called,
+ * so every tap is answered — with a short toast where there is something to say.
+ */
+export async function answerCallback(callbackQueryId: string, text?: string): Promise<void> {
+  await call('answerCallbackQuery', { callback_query_id: callbackQueryId, ...(text ? { text } : {}) });
 }
 
 /** Sends one message to one chat. */
@@ -142,17 +228,7 @@ export async function sendToChat(chatId: string, message: Message): Promise<Send
   try {
     const result = await sender(configured.token, 'sendMessage', {
       chat_id: chatId,
-      text: `<b>${escapeHtml(message.title)}</b>\n${escapeHtml(message.body)}`,
-      parse_mode: 'HTML',
-      // The preview of our own origin adds nothing and takes half the screen.
-      link_preview_options: { is_disabled: true },
-      ...(message.url
-        ? {
-            reply_markup: {
-              inline_keyboard: [[{ text: 'DailyQ', url: message.url }]],
-            },
-          }
-        : {}),
+      ...render(message),
     });
 
     if (result.ok) return 'sent';

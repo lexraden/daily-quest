@@ -492,7 +492,7 @@ one of them fails silently on the other.
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | yes | yes, the same values |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` | yes | yes |
 | `TELEGRAM_WEBHOOK_SECRET` | yes | no |
-| `APP_ORIGIN` | no | yes |
+| `APP_ORIGIN` | optional, for the link under a meal the bot saved | yes |
 
 Set each value once, on `dailyq-api`. On `dailyq-reminders`, set it as a
 Railway reference such as `${{dailyq-api.VAPID_PUBLIC_KEY}}` instead of
@@ -515,11 +515,12 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
      -H "Content-Type: application/json" \
      -d '{"url":"https://<your-domain>/api/telegram/webhook",
           "secret_token":"<TELEGRAM_WEBHOOK_SECRET>",
-          "allowed_updates":["message","pre_checkout_query"]}'
+          "allowed_updates":["message","pre_checkout_query","callback_query"]}'
 ```
 
 `allowed_updates` must include `pre_checkout_query`, or every Stars checkout
-times out (see **Paying for Pro**). `getWebhookInfo` on the same URL shows
+times out (see **Paying for Pro**), and `callback_query`, or the Save and
+Cancel buttons under a photographed meal do nothing — the meal is never saved. `getWebhookInfo` on the same URL shows
 what Telegram has stored and the last delivery error. `setWebhook` is needed
 again only if the domain or the secret changes.
 

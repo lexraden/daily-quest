@@ -30,6 +30,8 @@ import {
   sendToUser as sendTelegramTo,
   setSender as setTelegramSender,
 } from '../src/lib/telegram.js';
+import { handleMealPhoto } from '../src/lib/telegramMeal.js';
+import type { MealPhotoAnalyzer, MealResult } from '../src/ai/meal.js';
 import { isStreakMilestone, copyFor } from '../src/lib/notificationCopy.js';
 import webpush from 'web-push';
 import { isGuestSubject } from '../src/lib/guest.js';
@@ -2959,5 +2961,478 @@ describe('routing', () => {
     const res = await fetch(`${BASE}/api/health`);
     assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
     assert.equal(res.headers.get('x-frame-options'), 'DENY');
+  });
+});
+
+/**
+ * A meal photographed into the bot.
+ *
+ * Two halves, because the model cannot be reached from here. The webhook is
+ * driven over the wire against the running API, which proves the routing and
+ * every refusal — including the model being unavailable, since the suite's
+ * OpenAI key is a placeholder. The success path runs in this process instead,
+ * with the analyzer swapped for a fake, so the save and the reply can be
+ * checked against a meal the test chose.
+ *
+ * Both halves talk to the same stub Bot API, which also serves the file
+ * download, so the real getFile-then-fetch path is what gets exercised.
+ */
+describe('meals photographed into the bot', () => {
+  const BOT_TOKEN = 'test-bot-token';
+  const CHAT = '940001';
+  // Sniffs as a JPEG, which is all storeUpload asks of it.
+  const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(28, 7)]);
+  const FILES = new Map<string, Buffer>([
+    ['meal-small', JPEG],
+    ['meal-large', JPEG],
+    ['meal-doc', JPEG],
+  ]);
+
+  const stubCalls: { method: string; body: Record<string, unknown> }[] = [];
+  let stub: import('node:http').Server | null = null;
+  let actor: Actor;
+
+  const saidHere = (chatId: string) =>
+    stubCalls
+      .filter((c) => c.method === 'sendMessage' && String(c.body.chat_id) === chatId)
+      .map((c) => String(c.body.text));
+  const fileRequests = () =>
+    stubCalls.filter((c) => c.method === 'getFile').map((c) => String(c.body.file_id));
+
+  /** The webhook answers before the work is done, so replies are waited for. */
+  async function replyTo(chatId: string, timeoutMs = 20_000): Promise<string> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const said = saidHere(chatId);
+      if (said.length > 0) return said.join('\n');
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw new Error(`the bot said nothing to ${chatId}`);
+  }
+
+  const webhook = (body: unknown) =>
+    fetch(`${BASE}/api/telegram/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Bot-Api-Secret-Token': WEBHOOK_SECRET,
+      },
+      body: JSON.stringify(body),
+    });
+
+  const meals = async () =>
+    ((await prisma.questData.findUnique({ where: { userId: actor.id } }))?.mealHistory ?? []) as {
+      meal_name: string;
+      calories: number;
+      protein: number;
+      fat: number;
+      carbs: number;
+      date: string;
+      photo_urls: string[];
+    }[];
+
+  async function setLang(lang: 'ru' | 'en') {
+    await prisma.questData.update({
+      where: { userId: actor.id },
+      data: { notificationSettings: { lang, timezone: 'Asia/Dubai' } },
+    });
+  }
+
+  before(async () => {
+    const { createServer } = await import('node:http');
+    stub = createServer((req, res) => {
+      const url = req.url ?? '';
+      // The file endpoint: GET, token in the path, bytes back.
+      if (req.method === 'GET' && url.startsWith(`/file/bot${BOT_TOKEN}/`)) {
+        const id = url.split('/').pop()?.replace(/\.jpg$/, '') ?? '';
+        const bytes = FILES.get(id);
+        stubCalls.push({ method: 'download', body: { file_id: id } });
+        res.writeHead(bytes ? 200 : 404, { 'content-type': 'image/jpeg' });
+        res.end(bytes ?? '');
+        return;
+      }
+      let raw = '';
+      req.on('data', (chunk) => (raw += chunk));
+      req.on('end', () => {
+        const method = url.split('/').pop() ?? '';
+        const body = JSON.parse(raw || '{}') as Record<string, unknown>;
+        stubCalls.push({ method, body });
+        const fileId = String(body.file_id ?? '');
+        const result =
+          method === 'getFile'
+            ? { file_id: fileId, file_path: `photos/${fileId}.jpg`, file_size: FILES.get(fileId)?.length }
+            : true;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, result }));
+      });
+    });
+    await new Promise<void>((resolve) => stub!.listen(TELEGRAM_STUB_PORT, '127.0.0.1', resolve));
+
+    // The in-process half reaches the same stub the running API does.
+    configureTelegram({
+      token: BOT_TOKEN,
+      username: 'dailyq_test_bot',
+      apiBase: `http://127.0.0.1:${TELEGRAM_STUB_PORT}`,
+    });
+
+    actor = await makeUser('meal-bot');
+    const res = await call('/api/quest-data', {
+      token: actor.token, method: 'POST', body: { quest_data: QUESTS },
+    });
+    assert.equal(res.status, 201);
+    await setLang('en');
+    await prisma.telegramLink.deleteMany({ where: { chatId: CHAT } });
+    await prisma.telegramLink.upsert({
+      where: { userId: actor.id },
+      create: { userId: actor.id, chatId: CHAT, linkedAt: new Date() },
+      update: { chatId: CHAT, linkedAt: new Date(), codeHash: null, codeExpiresAt: null },
+    });
+  });
+
+  after(async () => {
+    configureTelegram(null);
+    await new Promise<void>((resolve) => stub?.close(() => resolve()));
+  });
+
+  const buttonsOf = (c: { body: Record<string, unknown> } | undefined) =>
+    ((c?.body.reply_markup as { inline_keyboard?: Record<string, string>[][] } | undefined)
+      ?.inline_keyboard?.[0] ?? []);
+  const lastPreview = () =>
+    stubCalls.filter((c) => c.method === 'sendMessage' && String(c.body.chat_id) === CHAT).at(-1);
+  /** The token the preview's Save button carries, read the way Telegram would echo it. */
+  const tokenOf = (c: { body: Record<string, unknown> } | undefined) => {
+    const data = buttonsOf(c).find((b) => b.callback_data?.startsWith('meal:save:'))?.callback_data;
+    assert.ok(data, 'the preview has a Save button');
+    return data.slice('meal:save:'.length);
+  };
+  const answers = () =>
+    stubCalls.filter((c) => c.method === 'answerCallbackQuery').map((c) => c.body.text ?? null);
+  const edits = () => stubCalls.filter((c) => c.method === 'editMessageText');
+
+  let messageIds = 700;
+  /** A tap on one of the preview's buttons, delivered the way Telegram delivers it. */
+  const tap = (
+    action: 'save' | 'cancel',
+    token: string,
+    { chat = CHAT, from = CHAT, data }: { chat?: string; from?: string; data?: string } = {},
+  ) =>
+    webhook({
+      update_id: 2,
+      callback_query: {
+        id: `cb-${++messageIds}`,
+        from: { id: Number(from), is_bot: false, first_name: 'T' },
+        chat_instance: 'x',
+        data: data ?? `meal:${action}:${token}`,
+        message: { message_id: messageIds, chat: { id: Number(chat), type: 'private' }, date: 0 },
+      },
+    });
+
+  const oatmeal: MealPhotoAnalyzer = async (_u, _l, loadImages) => {
+    await loadImages();
+    return { meal_name: 'Oatmeal with berries', calories: 412.6, protein: 12.2, fat: 8, carbs: 70.4, description: null };
+  };
+
+  /** A fresh preview in CHAT, and the token its buttons carry. */
+  async function preview(analyze: MealPhotoAnalyzer = oatmeal): Promise<string> {
+    stubCalls.length = 0;
+    await handleMealPhoto(CHAT, CHAT, { fileId: 'meal-small' }, analyze);
+    return tokenOf(lastPreview());
+  }
+
+  test('a photo is stored and read, and the answer is a preview — nothing is saved yet', async () => {
+    stubCalls.length = 0;
+    const before = (await meals()).length;
+    let seen: { userId: string; lang: string; base64: string } | null = null;
+    const fake: MealPhotoAnalyzer = async (userId, lang, loadImages) => {
+      const [image] = await loadImages();
+      seen = { userId, lang, base64: image!.base64 };
+      return {
+        meal_name: 'Oatmeal with berries',
+        // Fractions, the way the model returns them; the save rounds.
+        calories: 412.6,
+        protein: 12.2,
+        fat: 8,
+        carbs: 70.4,
+        description: null,
+      } satisfies MealResult;
+    };
+
+    await handleMealPhoto(CHAT, CHAT, { fileId: 'meal-small', fileSize: JPEG.length }, fake);
+
+    assert.deepEqual(seen, { userId: actor.id, lang: 'en', base64: JPEG.toString('base64') });
+    assert.equal((await meals()).length, before, 'waiting for a tap, not saved');
+
+    const sent = lastPreview();
+    const text = String(sent?.body.text);
+    assert.match(text, /Oatmeal with berries/);
+    assert.match(text, /413 kcal · protein 12 g · fat 8 g · carbs 70 g/, 'rounded like the app rounds');
+    assert.match(text, /log it for today/);
+    const buttons = buttonsOf(sent);
+    assert.deepEqual(buttons.map((b) => b.text), ['✅ Save', '❌ Cancel']);
+    for (const b of buttons) {
+      assert.ok(Buffer.byteLength(b.callback_data!) <= 64, 'inside Telegram’s callback_data limit');
+      assert.doesNotMatch(b.callback_data!, new RegExp(actor.id), 'the button names no account');
+    }
+
+    const row = await prisma.telegramMealPreview.findUnique({ where: { chatId: CHAT } });
+    assert.ok(row);
+    assert.notEqual(row.tokenHash, tokenOf(sent), 'the token is stored only as a hash');
+    const dubaiDay = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dubai', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
+    assert.equal((row.meal as { date: string }).date, dubaiDay, 'the user’s own day, not UTC’s');
+
+    // The photo is a real upload already: the signed URL serves it with no token.
+    const [photoUrl] = (row.meal as { photo_urls: string[] }).photo_urls;
+    const photo = await fetch(`${BASE}${photoUrl}`);
+    assert.equal(photo.status, 200);
+    assert.deepEqual(Buffer.from(await photo.arrayBuffer()), JPEG);
+  });
+
+  test('Save saves through the app’s meal path and turns the preview into a confirmation', async () => {
+    const token = await preview();
+    const before = (await meals()).length;
+    const row = await prisma.telegramMealPreview.findUnique({ where: { chatId: CHAT } });
+
+    const res = await tap('save', token);
+    assert.equal(res.status, 200);
+
+    const all = await meals();
+    assert.equal(all.length, before + 1);
+    const [meal] = all;
+    assert.equal(meal?.meal_name, 'Oatmeal with berries');
+    assert.deepEqual([meal?.calories, meal?.protein, meal?.fat, meal?.carbs], [413, 12, 8, 70]);
+    assert.equal(meal?.date, (row!.meal as { date: string }).date);
+    assert.deepEqual(meal?.photo_urls, (row!.meal as { photo_urls: string[] }).photo_urls);
+    assert.ok((meal as { id?: string }).id, 'appendMeal names the meal');
+
+    const [edit] = edits();
+    assert.equal(edit?.body.message_id, messageIds, 'the tapped message is the one edited');
+    assert.match(String(edit?.body.text), /413 kcal · protein 12 g/);
+    assert.match(String(edit?.body.text), /Saved to your meal log for/);
+    assert.deepEqual(
+      buttonsOf(edit).map((b) => b.url),
+      [`${process.env.APP_ORIGIN}/History`],
+      'Save and Cancel are gone; the link to the history replaces them',
+    );
+    assert.deepEqual(answers(), ['Saved']);
+    assert.equal(await prisma.telegramMealPreview.count({ where: { chatId: CHAT } }), 0);
+  });
+
+  test('a second tap saves nothing, even when both arrive together', async () => {
+    // One after the other: the first claimed the preview.
+    let token = await preview();
+    let before = (await meals()).length;
+    await tap('save', token);
+    stubCalls.length = 0;
+    await tap('save', token);
+    await tap('cancel', token);
+    assert.equal((await meals()).length, before + 1);
+    assert.deepEqual(edits(), [], 'the confirmation is not overwritten');
+    assert.deepEqual(answers(), [
+      'This is no longer active. Send the photo again.',
+      'This is no longer active. Send the photo again.',
+    ]);
+
+    // At once: the claim and the append share a transaction.
+    token = await preview();
+    before = (await meals()).length;
+    const results = await Promise.all([1, 2, 3].map(() => tap('save', token)));
+    assert.deepEqual(results.map((r) => r.status), [200, 200, 200]);
+    assert.equal((await meals()).length, before + 1, 'saved exactly once');
+    assert.equal(answers().filter((a) => a === 'Saved').length, 1);
+  });
+
+  test('Cancel saves nothing and says so', async () => {
+    const token = await preview();
+    const before = (await meals()).length;
+
+    await tap('cancel', token);
+    assert.equal((await meals()).length, before);
+    const [edit] = edits();
+    assert.match(String(edit?.body.text), /Not saved\. The photo was analyzed/);
+    assert.deepEqual(buttonsOf(edit), []);
+    assert.deepEqual(answers(), ['Cancelled']);
+
+    stubCalls.length = 0;
+    await tap('save', token);
+    assert.equal((await meals()).length, before, 'a cancelled preview cannot be saved after');
+    assert.deepEqual(answers(), ['This is no longer active. Send the photo again.']);
+  });
+
+  test('a newer photo leaves the older preview’s buttons stale', async () => {
+    const older = await preview();
+    const newer = await preview(async (_u, _l, loadImages) => {
+      await loadImages();
+      return { meal_name: 'Salad', calories: 150, protein: 5, fat: 9, carbs: 12, description: null };
+    });
+    const before = (await meals()).length;
+
+    stubCalls.length = 0;
+    await tap('save', older);
+    assert.equal((await meals()).length, before);
+    assert.deepEqual(answers(), ['This is no longer active. Send the photo again.']);
+
+    await tap('save', newer);
+    assert.equal((await meals()).length, before + 1);
+    assert.equal((await meals())[0]?.meal_name, 'Salad');
+  });
+
+  test('taps from anyone else, malformed ones and expired ones save nothing', async () => {
+    const token = await preview();
+    const before = (await meals()).length;
+
+    // Someone else in the chat — the preview belongs to whoever sent the photo.
+    stubCalls.length = 0;
+    await tap('save', token, { from: '940555' });
+    // Another linked chat replaying this chat's token.
+    const other = await makeUser('meal-bot-other');
+    const OTHER_CHAT = '940002';
+    await prisma.telegramLink.deleteMany({ where: { chatId: OTHER_CHAT } });
+    await prisma.telegramLink.create({
+      data: { userId: other.id, chatId: OTHER_CHAT, linkedAt: new Date() },
+    });
+    await tap('save', token, { chat: OTHER_CHAT, from: OTHER_CHAT });
+    // A chat that is not linked at all.
+    await tap('save', token, { chat: '940003', from: '940003' });
+    // Data that is not ours, or is ours but mangled.
+    await tap('save', token, { data: 'something-else' });
+    await tap('save', token, { data: 'meal:save:short' });
+    await tap('save', token, { data: `meal:delete:${token}` });
+
+    assert.equal((await meals()).length, before, 'none of them saved');
+    assert.deepEqual(edits(), [], 'none of them touched the preview');
+    assert.deepEqual(
+      answers(),
+      [null, 'Это уже неактуально. Пришли фото ещё раз.', null, null, null, null],
+      'every tap answered; only the other linked chat is told anything',
+    );
+    assert.equal(stubCalls.filter((c) => c.method === 'answerCallbackQuery').length, 6);
+    assert.equal(await prisma.telegramMealPreview.count({ where: { chatId: CHAT } }), 1, 'still pending');
+
+    // Past its thirty minutes.
+    await prisma.telegramMealPreview.update({
+      where: { chatId: CHAT },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+    stubCalls.length = 0;
+    await tap('save', token);
+    assert.equal((await meals()).length, before);
+    assert.match(String(edits()[0]?.body.text), /time to confirm ran out/);
+    assert.deepEqual(answers(), ['This is no longer active. Send the photo again.']);
+    assert.equal(await prisma.telegramMealPreview.count({ where: { chatId: CHAT } }), 0);
+  });
+
+  test('the preview and its answers are in the user’s language', async () => {
+    await setLang('ru');
+    const token = await preview(async (_u, lang, loadImages) => {
+      await loadImages();
+      assert.equal(lang, 'ru', 'the prompt is asked in the user’s language too');
+      return { meal_name: 'Борщ', calories: 300, protein: 10, fat: 12, carbs: 30, description: null };
+    });
+    const sent = lastPreview();
+    assert.match(String(sent?.body.text), /Борщ/);
+    assert.match(String(sent?.body.text), /300 ккал · белки 10 г · жиры 12 г · углеводы 30 г/);
+    assert.match(String(sent?.body.text), /Сохраню за сегодня/);
+    assert.deepEqual(buttonsOf(sent).map((b) => b.text), ['✅ Сохранить', '❌ Отмена']);
+
+    await tap('save', token);
+    assert.match(String(edits()[0]?.body.text), /Сохранено в дневник питания/);
+    assert.deepEqual(buttonsOf(edits()[0]).map((b) => b.text), ['Открыть историю']);
+    assert.deepEqual(answers(), ['Сохранено']);
+    await setLang('en');
+  });
+
+  test('a spent quota or trial is said before anything is downloaded', async () => {
+    const before = (await meals()).length;
+    const period = new Date().toISOString().slice(0, 7);
+
+    stubCalls.length = 0;
+    await prisma.aiUsage.upsert({
+      where: { userId_period: { userId: actor.id, period } },
+      create: { userId: actor.id, period, calls: 1_000_000 },
+      update: { calls: 1_000_000 },
+    });
+    await handleMealPhoto(CHAT, CHAT, { fileId: 'meal-small' });
+    assert.match(saidHere(CHAT).join('\n'), /this month’s limit/);
+    assert.deepEqual(fileRequests(), [], 'nothing fetched for a call that cannot run');
+    await prisma.aiUsage.deleteMany({ where: { userId: actor.id } });
+
+    stubCalls.length = 0;
+    await prisma.user.update({
+      where: { id: actor.id },
+      data: { trialStartedAt: new Date(Date.now() - 10 * 864e5), isPremium: false },
+    });
+    await handleMealPhoto(CHAT, CHAT, { fileId: 'meal-small' });
+    assert.match(saidHere(CHAT).join('\n'), /Upgrade to Premium/);
+    assert.deepEqual(fileRequests(), []);
+    await prisma.user.update({ where: { id: actor.id }, data: { trialStartedAt: null } });
+
+    assert.equal((await meals()).length, before, 'a refusal saves nothing');
+  });
+
+  test('over the wire: the largest size is read, and a model failure is said and costs nothing', async () => {
+    stubCalls.length = 0;
+    const before = (await meals()).length;
+    const res = await webhook({
+      update_id: 1,
+      message: {
+        chat: { id: Number(CHAT) },
+        caption: 'lunch',
+        photo: [
+          { file_id: 'meal-small', file_unique_id: 's', width: 90, height: 90, file_size: JPEG.length },
+          { file_id: 'meal-large', file_unique_id: 'l', width: 1280, height: 1280, file_size: JPEG.length },
+        ],
+      },
+    });
+    assert.equal(res.status, 200, 'answered before the work, so Telegram never redelivers it');
+
+    // The suite's OpenAI key is a placeholder, so this is the provider failing.
+    assert.match(await replyTo(CHAT), /assistant is unavailable/);
+    assert.deepEqual(fileRequests(), ['meal-large']);
+    assert.equal((await meals()).length, before, 'nothing saved');
+    const usage = await prisma.aiUsage.findFirst({ where: { userId: actor.id } });
+    assert.equal(usage?.calls ?? 0, 0, 'a failed read is not charged');
+  });
+
+  test('an image sent as a file is read like a photo', async () => {
+    stubCalls.length = 0;
+    await webhook({
+      message: {
+        chat: { id: Number(CHAT) },
+        document: { file_id: 'meal-doc', mime_type: 'image/jpeg', file_size: JPEG.length },
+      },
+    });
+    await replyTo(CHAT);
+    assert.deepEqual(fileRequests(), ['meal-doc']);
+  });
+
+  test('refusals that need no model: too large, not linked, not a photo', async () => {
+    stubCalls.length = 0;
+    const tooBig = await webhook({
+      message: {
+        chat: { id: Number(CHAT) },
+        photo: [{ file_id: 'meal-small', file_size: 9 * 1024 * 1024 }],
+      },
+    });
+    assert.equal(tooBig.status, 200);
+    assert.match(await replyTo(CHAT), /too large/);
+    assert.deepEqual(fileRequests(), [], 'refused on the size Telegram reported');
+
+    const stranger = '940099';
+    await prisma.telegramLink.deleteMany({ where: { chatId: stranger } });
+    await webhook({ message: { chat: { id: Number(stranger) }, photo: [{ file_id: 'meal-small' }] } });
+    assert.match(await replyTo(stranger), /Подключить Telegram[\s\S]*Connect Telegram/);
+
+    for (const [chat, media] of [
+      ['940101', { voice: { file_id: 'v', duration: 3 } }],
+      ['940102', { document: { file_id: 'd', mime_type: 'application/pdf' } }],
+      ['940103', { sticker: { file_id: 's' } }],
+    ] as const) {
+      const res = await webhook({ message: { chat: { id: Number(chat) }, ...media } });
+      assert.equal(res.status, 200);
+      assert.match(saidHere(chat).join('\n'), /Photos only for now/, chat);
+    }
+    assert.deepEqual(fileRequests(), []);
   });
 });

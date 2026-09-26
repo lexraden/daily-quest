@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import type { Prisma } from '@prisma/client';
-import { randomUUID } from 'node:crypto';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
 import {
   deriveProgress,
@@ -21,8 +20,15 @@ import {
 import { toJson } from '../lib/json.js';
 import { record as recordNotification, langFor } from '../lib/notifications.js';
 import { copyFor, isStreakMilestone } from '../lib/notificationCopy.js';
-
-const dayString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected a YYYY-MM-DD date');
+import {
+  appendMeal,
+  dayString,
+  lockMeals,
+  mealBody,
+  mealId,
+  mealPatchBody,
+  writeMeals,
+} from '../lib/meals.js';
 
 const jsonObject = z.record(z.unknown());
 const jsonArray = z.array(z.unknown());
@@ -93,25 +99,6 @@ const completionRemoveBody = z
     level: z.number().int().min(1).max(99),
   })
   .strict();
-
-/**
- * A meal as the client records it. The id is assigned server-side on append so
- * that editing and deleting can name a specific meal rather than a position in
- * an array that another device may already have changed underneath them.
- */
-const mealBody = z
-  .object({
-    meal_name: z.string().trim().min(1).max(200),
-    calories: z.number().int().min(0).max(100000),
-    protein: z.number().int().min(0).max(10000).default(0),
-    fat: z.number().int().min(0).max(10000).default(0),
-    carbs: z.number().int().min(0).max(10000).default(0),
-    photo_urls: z.array(z.string().max(2048)).max(8).default([]),
-    date: dayString,
-  })
-  .strict();
-
-const mealPatchBody = mealBody.partial().strict();
 
 /** Calories burned on one local day, as the watch or the user reports them. */
 const caloriesBurnedBody = z
@@ -290,38 +277,6 @@ function writeQuests(tx: Prisma.TransactionClient, userId: string, quests: Quest
     data: { questData: toJson(sortByLevel(quests)) },
     include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
   });
-}
-
-/** Reads meal_history under a row lock, tolerating anything stored before this. */
-async function lockMeals(
-  tx: Prisma.TransactionClient,
-  userId: string,
-): Promise<Record<string, unknown>[]> {
-  const locked = await tx.$queryRaw<{ meal_history: unknown }[]>`
-    SELECT meal_history FROM quest_data WHERE user_id = ${userId} FOR UPDATE`;
-  if (locked.length === 0) throw notFound('Finish onboarding before saving meals');
-  const value = locked[0]?.meal_history;
-  return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
-}
-
-function writeMeals(tx: Prisma.TransactionClient, userId: string, meals: unknown[]) {
-  return tx.questData.update({
-    where: { userId },
-    data: { mealHistory: toJson(meals) },
-    include: { user: { select: { trialStartedAt: true, isPremium: true, premiumUntil: true } } },
-  });
-}
-
-/**
- * Meals written before ids existed have none. Falling back to the timestamp
- * keeps those editable instead of stranding them, and two meals logged in the
- * same millisecond is not a case worth a migration.
- */
-function mealId(meal: unknown): string {
-  if (!meal || typeof meal !== 'object') return '';
-  const m = meal as { id?: unknown; timestamp?: unknown };
-  if (typeof m.id === 'string' && m.id) return m.id;
-  return typeof m.timestamp === 'string' ? m.timestamp : '';
 }
 
 /** Fallback only — a client that sends its own local day is preferred. */
@@ -735,13 +690,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
       const field = issue?.path.length ? `${issue.path.join('.')}: ` : '';
       throw badRequest(`Cannot save the meal — ${field}${issue?.message ?? 'invalid data'}`);
     }
-    const userId = currentUserId(request);
-    const meal = { id: randomUUID(), ...parsed.data, timestamp: new Date().toISOString() };
-
-    const row = await prisma.$transaction(async (tx) => {
-      const meals = await lockMeals(tx, userId);
-      return writeMeals(tx, userId, [meal, ...meals]);
-    });
+    const row = await appendMeal(currentUserId(request), parsed.data);
 
     reply.code(201);
     return toWire(row);
