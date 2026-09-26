@@ -1319,7 +1319,7 @@ describe('coach chat', () => {
 
   test('an empty or oversized message is refused before any model call', async () => {
     await onboard(alice);
-    for (const message of ['', '   ', 'x'.repeat(1001)]) {
+    for (const message of ['', '   ', 'x'.repeat(2001)]) {
       const res = await call('/api/ai/chat', { token: alice.token, method: 'POST', body: { message } });
       assert.equal(res.status, 400);
     }

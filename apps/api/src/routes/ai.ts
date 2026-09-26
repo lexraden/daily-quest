@@ -280,7 +280,7 @@ export default async function aiRoutes(app: FastifyInstance) {
 
   app.post('/chat', async (request) => {
     const body = z
-      .object({ message: z.string().trim().min(1).max(1000), lang })
+      .object({ message: z.string().trim().min(1).max(2000), lang })
       .safeParse(request.body);
     if (!body.success) throw badRequest('Write something first');
 

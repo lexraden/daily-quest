@@ -316,11 +316,6 @@ export const api = {
 
     generateQuests: (answers, lang) =>
       request('/api/ai/quests/generate', { method: 'POST', body: { answers, lang } }),
-    voiceIntent: (text, questData, lang) =>
-      request('/api/ai/quests/voice', {
-        method: 'POST',
-        body: { text, quest_data: questData, lang },
-      }),
     cleanupTranscript: (question, text, lang) =>
       request('/api/ai/text/cleanup', { method: 'POST', body: { question, text, lang } }),
     mealFromText: (text, lang) =>

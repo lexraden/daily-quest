@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity, MessageCircle } from 'lucide-react';
+import { Flame, Heart, Brain, Briefcase, DollarSign, Users, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { withReminderDefaults } from '@/lib/reminderDefaults';
 // CalendarView replaced by History page
 import SwipeableQuestCard from '@/components/daily/SwipeableQuestCard.jsx';
-import VoiceQuestInput from '@/components/daily/VoiceQuestInput.jsx';
+import CoachBar from '@/components/daily/CoachBar.jsx';
 import MotivationalBanner from '@/components/daily/MotivationalBanner.jsx';
 import CaloriesIndicators from '@/components/daily/CaloriesIndicators.jsx';
 import { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.jsx';
@@ -13,7 +13,6 @@ import { getStreakMilestone } from '@/components/daily/StreakCelebrationModal.js
 const PremiumModal = React.lazy(() => import('@/components/daily/PremiumModal.jsx'));
 const CategoryProgressModal = React.lazy(() => import('@/components/daily/CategoryProgressModal.jsx'));
 const QuestSuggestionModal = React.lazy(() => import('@/components/daily/QuestSuggestionModal.jsx'));
-const AIResponseModal = React.lazy(() => import('@/components/daily/AIResponseModal.jsx'));
 const OnboardingModal = React.lazy(() => import('@/components/daily/OnboardingModal.jsx'));
 const StreakCelebrationModal = React.lazy(() => import('@/components/daily/StreakCelebrationModal.jsx'));
 const StreakFreezeModal = React.lazy(() => import('@/components/daily/StreakFreezeModal.jsx'));
@@ -136,6 +135,13 @@ export default function DailyTracker() {
 
   /** The progress endpoints return the whole row; the server's numbers win. */
   const [showCoach, setShowCoach] = useState(false);
+  // What was said into the tracker's mic, handed to the coach as its first message.
+  const [coachMessage, setCoachMessage] = useState(null);
+  const openCoach = useCallback((message = null) => {
+    setCoachMessage(message);
+    setShowCoach(true);
+  }, []);
+  const openCoachEmpty = useCallback(() => openCoach(null), [openCoach]);
   const [levelUp, setLevelUp] = useState(null);
   const [overallLevel, setOverallLevel] = useState(null);
   // dismissLevelUp is memoised on applyServerProgress alone, so it reads the
@@ -217,7 +223,6 @@ export default function DailyTracker() {
   const questDataRef = useRef(questData);
   questDataRef.current = questData;
 
-  const [aiResponse, setAiResponse] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [user, setUser] = useState(null);
   const [userDataId, setUserDataId] = useState(null);
@@ -328,197 +333,6 @@ export default function DailyTracker() {
         toast.error(t().errors?.saveFailed || 'Could not save that — try again');
       });
   };
-
-  const handleQuestSuggestion = useCallback((suggestion) => {
-    // Показать модал с AI ответом
-    setAiResponse(suggestion);
-  }, []);
-
-  const handleAcceptAiResponse = () => {
-    const { intent, category, emoji, name, description, action, level } = aiResponse;
-
-    if (intent === 'EDIT_QUEST') {
-          const categoryQuests = questData[category] || [];
-          const oldName = (aiResponse.old_name || '').toLowerCase().trim();
-
-          // Find quest by old name
-          let questIndex = categoryQuests.findIndex(q => 
-            q.name.toLowerCase().trim() === oldName
-          );
-
-          // Partial match
-          if (questIndex === -1 && oldName) {
-            const matches = categoryQuests
-              .map((q, i) => ({ q, i }))
-              .filter(({ q }) => 
-                q.name.toLowerCase().includes(oldName) || oldName.includes(q.name.toLowerCase())
-              );
-            if (matches.length === 1) {
-              questIndex = matches[0].i;
-            }
-          }
-
-          // By level
-          if (questIndex === -1 && level) {
-            questIndex = categoryQuests.findIndex(q => q.level === level);
-          }
-
-          if (questIndex !== -1) {
-            setQuestData(prev => ({
-              ...prev,
-              [category]: prev[category].map((q, i) => 
-                i === questIndex ? { ...q, name: name, emoji: emoji } : q
-              )
-            }));
-            toast.success(aiResponse.message || '✏️');
-          } else {
-            toast.error(t().common.error);
-          }
-        } else if (intent === 'DELETE_QUEST') {
-          // Найти квест по имени
-          const categoryQuests = questData[category] || [];
-          const questName = (name || '').toLowerCase().trim();
-
-          // Ищем по точному совпадению имени сначала
-          let questIndex = categoryQuests.findIndex(q => 
-            q.name.toLowerCase().trim() === questName
-          );
-
-          // Если не нашли точно — ищем по частичному совпадению (но только один)
-          if (questIndex === -1 && questName) {
-            const matches = categoryQuests
-              .map((q, i) => ({ q, i }))
-              .filter(({ q }) => 
-                q.name.toLowerCase().includes(questName) || questName.includes(q.name.toLowerCase())
-              );
-            if (matches.length === 1) {
-              questIndex = matches[0].i;
-            }
-          }
-
-          // Если не нашли по имени — по уровню
-          if (questIndex === -1 && level) {
-            questIndex = categoryQuests.findIndex(q => q.level === level);
-          }
-
-          if (questIndex !== -1) {
-            const deletedQuest = categoryQuests[questIndex];
-            const deletedKey = `${category}_${deletedQuest.level}`;
-            
-            // Remove quest from data
-            setQuestData(prev => ({
-              ...prev,
-              [category]: prev[category].filter((_, i) => i !== questIndex)
-            }));
-            
-            // Clean up completedToday for the deleted quest
-            setCompletedToday(prev => {
-              const newState = { ...prev };
-              delete newState[deletedKey];
-              return newState;
-            });
-            
-            // Clean up today's completion history
-            const today = getTodayKey();
-            setCompletionHistory(prev => {
-              const newHistory = { ...prev };
-              if (newHistory[today]) {
-                newHistory[today] = newHistory[today].filter(
-                  c => !(c.category === category && c.level === deletedQuest.level)
-                );
-                if (newHistory[today].length === 0) delete newHistory[today];
-              }
-              return newHistory;
-            });
-            
-            toast.success(aiResponse.message || '🗑️');
-          } else {
-            toast.error(t().common.error);
-          }
-        } else if (intent === 'COMPLETED_QUEST') {
-      // Найти подходящий квест в текущей категории
-      const categoryQuests = questData[category] || [];
-      // eslint-disable-next-line no-use-before-define -- run-time call, not a dependency array
-      const currentQuest = getCurrentQuest(category);
-      const userInput = (aiResponse.userInput || '').toLowerCase();
-      
-      // Попробовать найти квест по тексту пользователя
-      let foundQuest = null;
-      for (const quest of categoryQuests) {
-        const questKey = `${category}_${quest.level}`;
-        const questName = quest.name.toLowerCase();
-        const isCompleted = completedToday[questKey];
-        
-        // Проверяем совпадение с пользовательским вводом и что квест еще не выполнен
-        if (!isCompleted && (
-          userInput.includes(questName) || 
-          questName.includes(userInput) ||
-          quest.level === currentQuest.level
-        )) {
-          foundQuest = quest;
-          break;
-        }
-      }
-      
-      // Отметить найденный квест или текущий
-      const questToComplete = foundQuest || currentQuest;
-      // eslint-disable-next-line no-use-before-define -- run-time call, not a dependency array
-      toggleQuest(category, questToComplete.level);
-      
-      // Добавить в журнал
-      const today = getTodayKey();
-      const newEntry = {
-        id: Date.now(),
-        date: today,
-        category,
-        emoji,
-        text: description || name,
-        rawText: aiResponse.userInput || '',
-        type: 'quest_completed',
-        questLevel: questToComplete.level,
-        timestamp: new Date().toISOString()
-      };
-      setJournalEntries(prev => [newEntry, ...prev]);
-      saveJournalEntry(newEntry);
-
-      toast.success(aiResponse.message || '🎉');
-    } else if (intent === 'ADD_QUEST') {
-      // Добавить новый квест напрямую
-      const existingLevels = (questData[category] || []).map(q => q.level);
-      let newLevel = level || (Math.max(...existingLevels, 0) + 1);
-      while (existingLevels.includes(newLevel)) {
-        newLevel++;
-      }
-      setQuestData(prev => ({
-        ...prev,
-        [category]: [...(prev[category] || []), { level: newLevel, name, emoji }]
-      }));
-      toast.success(aiResponse.message || '✅');
-    } else if (intent === 'JOURNAL') {
-      // Добавить заметку в журнал
-      const today = getTodayKey();
-      const newEntry = {
-        id: Date.now(),
-        date: today,
-        category,
-        emoji,
-        text: description || name,
-        rawText: aiResponse.userInput || '',
-        type: 'journal',
-        timestamp: new Date().toISOString()
-      };
-      setJournalEntries(prev => [newEntry, ...prev]);
-      saveJournalEntry(newEntry);
-
-      toast.success(aiResponse.message || '📝');
-    }
-
-    setAiResponse(null);
-  };
-
-  const handleRejectAiResponse = useCallback(() => {
-    setAiResponse(null);
-  }, []);
 
   const handleOnboardingComplete = async (answers) => {
     try {
@@ -1306,12 +1120,12 @@ export default function DailyTracker() {
           theme={theme}
         />
 
-        {/* Voice Quest Input + Calorie Photo */}
-        <VoiceQuestInput 
-          onQuestSuggestion={handleQuestSuggestion}
-          onMealAnalyzed={handleMealAnalyzed}
+        {/* The coach, the mic and the meal photo, in one row. */}
+        <CoachBar
           theme={theme}
-          questData={questData}
+          onOpenCoach={openCoachEmpty}
+          onVoice={openCoach}
+          onMealAnalyzed={handleMealAnalyzed}
           hasAccess={premiumStatus.hasAccess}
           onLocked={() => setShowPremium(true)}
         />
@@ -1358,18 +1172,6 @@ export default function DailyTracker() {
           currentLevel={categoryLevels[selectedCategory] || 1}
           completionHistory={completionHistory}
           onClose={() => setSelectedCategory(null)}
-          theme={theme}
-        />
-      )}
-
-      {/* AI Response Modal */}
-      {aiResponse && (
-        <AIResponseModal
-          userInput={aiResponse.userInput}
-          aiResponse={aiResponse}
-          onClose={handleRejectAiResponse}
-          onAccept={handleAcceptAiResponse}
-          onReject={handleRejectAiResponse}
           theme={theme}
         />
       )}
@@ -1442,22 +1244,6 @@ export default function DailyTracker() {
         />
       )}
 
-      {/*
-        The coach, one tap away from anywhere on this screen. It sits above the
-        tab bar rather than beside the Voice button: Voice is how quests get
-        made, and burying it behind a second affordance would cost more than the
-        chat gains. `display: none` on the inactive tab wrapper takes this with
-        it, so it never appears over History or Profile.
-      */}
-      <button
-        onClick={() => setShowCoach(true)}
-        aria-label={t().coach?.title || 'Coach'}
-        className="fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-500 shadow-lg shadow-purple-900/40 active:scale-95 transition-transform"
-        style={{ bottom: 'calc(3.75rem + env(safe-area-inset-bottom, 0px))' }}
-      >
-        <MessageCircle className="w-6 h-6 text-white" />
-      </button>
-
       {/* Streak Freeze Modal */}
       {showStreakFreeze && pendingFreezeData && (
         <StreakFreezeModal
@@ -1487,6 +1273,7 @@ export default function DailyTracker() {
           onClose={() => setShowCoach(false)}
           theme={theme}
           questData={questData}
+          initialMessage={coachMessage}
           onApplied={(change) => {
             // The chat applied something through the ordinary endpoints; take
             // its word for the new quests or meals, and the server's row for XP.

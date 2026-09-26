@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Loader2, Trash2, Check } from 'lucide-react';
+import { X, Send, Sparkles, Loader2, Trash2, Check, Mic, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/api/client';
 import { t, getLang } from '@/lib/i18n';
 import { aiErrorMessage } from '@/lib/aiErrors';
 import { playSfx } from '@/lib/sfx';
 import { todayKey } from '@/lib/dates';
+import useDictation, { mmss } from '@/lib/useDictation';
+
+/** The server's limit on one message; a long dictation is cut to it. */
+const MAX_MESSAGE = 2000;
 
 /** The line above each card, by what it is offering to do. */
 const PROPOSAL_LABELS = {
@@ -46,6 +50,9 @@ export default function CoachChat({
   theme = 'dark',
   questData,
   onApplied,
+  // Words said into the tracker's mic, sent as the first message once the
+  // history has loaded, so they land after it rather than above it.
+  initialMessage = null,
 }) {
   const i = t();
   const copy = i.coach || {};
@@ -93,14 +100,15 @@ export default function CoachChat({
     return () => clearTimeout(timer);
   }, [applied]);
 
-  const send = async () => {
-    const message = draft.trim();
+  const send = async (text) => {
+    const message = (typeof text === 'string' ? text : draft).trim().slice(0, MAX_MESSAGE);
     if (!message || sending) return;
+    const typed = typeof text !== 'string';
 
     // Shown straight away with a temporary id; the server's copy replaces the
     // list on the next successful reply.
     setMessages((prev) => [...prev, { id: `local-${Date.now()}`, role: 'user', content: message }]);
-    setDraft('');
+    if (typed) setDraft('');
     setSending(true);
 
     try {
@@ -114,13 +122,25 @@ export default function CoachChat({
       playSfx('message');
     } catch (error) {
       toast.error(aiErrorMessage(error, i));
-      // Put the text back rather than losing what they typed.
+      // Put the text back rather than losing it — said or typed, it is now
+      // in the field to send again.
       setDraft(message);
       setMessages((prev) => prev.filter((m) => m.content !== message || m.role !== 'user'));
     } finally {
       setSending(false);
     }
   };
+
+  // Said into the mic here: sent as it is, the same as pressing send.
+  const dictation = useDictation((spoken) => send(spoken));
+
+  const initialSent = useRef(false);
+  useEffect(() => {
+    if (!open || loading || !initialMessage || initialSent.current) return;
+    initialSent.current = true;
+    send(initialMessage);
+    // `send` is recreated every render; the ref makes this run once.
+  }, [open, loading, initialMessage]);
 
   /** Applies a proposal through the ordinary endpoints and reports what changed. */
   const apply = async (messageId, proposal) => {
@@ -452,6 +472,17 @@ export default function CoachChat({
             className={`border-t px-4 pt-3 ${light ? 'border-gray-200' : 'border-white/10'}`}
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
           >
+            {dictation.recording ? (
+              <button
+                type="button"
+                onClick={dictation.stop}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-red-500 text-sm font-medium text-white"
+              >
+                <Square className="h-4 w-4" fill="currentColor" />
+                {i.voice?.tapToStop || 'Stop and send'}
+                <span className="font-mono tabular-nums opacity-90">{mmss(dictation.elapsed)}</span>
+              </button>
+            ) : (
             <div className="flex items-center gap-2">
               <input
                 value={draft}
@@ -462,7 +493,7 @@ export default function CoachChat({
                     send();
                   }
                 }}
-                maxLength={1000}
+                maxLength={MAX_MESSAGE}
                 placeholder={copy.placeholder || 'Message…'}
                 aria-label={copy.placeholder || 'Message'}
                 className={`h-12 flex-1 rounded-2xl px-4 text-sm outline-none ${
@@ -471,15 +502,31 @@ export default function CoachChat({
                     : 'bg-[#1e2836] text-white placeholder:text-gray-500 border border-white/10'
                 }`}
               />
-              <button
-                onClick={send}
-                disabled={!draft.trim() || sending}
-                aria-label={copy.send || 'Send'}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-500 disabled:opacity-40"
-              >
-                <Send className="h-4 w-4 text-white" />
-              </button>
+              {/*
+                One button, like every messenger: the mic while the field is
+                empty, send once there is something to send.
+              */}
+              {draft.trim() ? (
+                <button
+                  onClick={() => send()}
+                  disabled={sending}
+                  aria-label={copy.send || 'Send'}
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-500 disabled:opacity-40"
+                >
+                  <Send className="h-4 w-4 text-white" />
+                </button>
+              ) : (
+                <button
+                  onClick={dictation.start}
+                  disabled={sending}
+                  aria-label={i.voice?.voiceInput || 'Voice input'}
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 disabled:opacity-40"
+                >
+                  <Mic className="h-5 w-5 text-white" />
+                </button>
+              )}
             </div>
+            )}
           </div>
         </motion.div>
       </div>
