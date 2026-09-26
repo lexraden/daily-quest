@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { t, getLang } from '@/lib/i18n';
 import { toast } from 'sonner';
-import { enablePush, disablePush, isSubscribed, permission } from '@/lib/push';
+import { enablePush, disablePush, isSubscribed, permission, PUSH_CHANGED } from '@/lib/push';
 import { api } from '@/api/client';
 import TelegramChannel from '@/components/profile/TelegramChannel';
 
@@ -203,6 +203,17 @@ export default function NotificationSettings({ settings, onSave, theme = 'light'
     });
     return () => { cancelled = true; };
   }, []);
+
+  // The menu's switch changes the same subscription; follow it.
+  useEffect(() => {
+    const sync = () => {
+      setPushState(permission());
+      isSubscribed().then(setPushOn);
+      loadChannels();
+    };
+    window.addEventListener(PUSH_CHANGED, sync);
+    return () => window.removeEventListener(PUSH_CHANGED, sync);
+  }, [loadChannels]);
 
   const togglePush = async (next) => {
     if (pushBusy) return;

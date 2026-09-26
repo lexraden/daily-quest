@@ -439,6 +439,8 @@ const translations = {
       theme: 'Тема',
       light: 'Светлая',
       dark: 'Тёмная',
+      notifications: 'Уведомления',
+      notificationsHint: 'На этом устройстве',
     },
     language: {
       title: 'Язык',
@@ -1043,6 +1045,8 @@ const translations = {
       theme: 'Theme',
       light: 'Light',
       dark: 'Dark',
+      notifications: 'Notifications',
+      notificationsHint: 'On this device',
     },
     language: {
       title: 'Language',

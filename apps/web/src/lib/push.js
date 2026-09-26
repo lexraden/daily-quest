@@ -84,6 +84,7 @@ export async function enablePush() {
 
   const { endpoint, keys } = subscription.toJSON();
   await api.push.subscribe({ endpoint, keys });
+  changed();
   return { ok: true };
 }
 
@@ -98,6 +99,20 @@ export async function disablePush() {
   // the row would linger and the push service would reject it forever.
   await api.push.unsubscribe(subscription.endpoint).catch(() => {});
   await subscription.unsubscribe().catch(() => {});
+  changed();
+}
+
+/**
+ * Two switches drive this subscription — the menu's and the profile's — and
+ * either can be on screen while the other flips it.
+ */
+export const PUSH_CHANGED = 'dailyq-push-changed';
+function changed() {
+  try {
+    window.dispatchEvent(new Event(PUSH_CHANGED));
+  } catch {
+    // No window: nothing to keep in step.
+  }
 }
 
 /** Whether this browser currently holds a subscription. */

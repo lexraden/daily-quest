@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Menu, X, Sun, Moon, Languages, Volume2, VolumeX, RefreshCw, Check, Download } from 'lucide-react';
+import { Menu, X, Sun, Moon, Languages, Volume2, VolumeX, Bell, BellOff } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { setTheme } from '@/lib/theme';
 import { t, getLang, setLang } from '@/lib/i18n';
 import { isMuted, setMuted, playSfx } from '@/lib/sfx';
-import { checkForUpdate, applyUpdate, currentBuild, shortBuild } from '@/lib/appVersion';
+import { enablePush, disablePush, isSubscribed, permission, PUSH_CHANGED } from '@/lib/push';
 
 /**
  * The app's own settings, one tap from every tab.
@@ -14,12 +15,14 @@ import { checkForUpdate, applyUpdate, currentBuild, shortBuild } from '@/lib/app
  * The header used to carry a button per setting, and each new one cost every
  * screen a little more width: theme on all three tabs, language on the
  * profile only because a third button everywhere was too many. Settings are
- * changed rarely, so they share one button and open together. The bell stays
+ * changed rarely, so they share one button and open together. The update
+ * check stays on the profile, with the version it reports. The bell stays
  * outside the menu — it carries a live count, and a count hidden behind a tap
  * is not a count.
  *
  * Each row changes one thing and shows its current value, so opening the menu
- * also answers "which theme / language / sound am I on".
+ * also answers "which theme / language / sound am I on, and does this phone
+ * get notifications".
  */
 export default function AppMenu({ theme }) {
   const i = t();
@@ -29,7 +32,10 @@ export default function AppMenu({ theme }) {
 
   const [open, setOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(() => !isMuted());
-  const [update, setUpdate] = useState('idle');
+  // This device's push subscription: the same one the profile switch drives.
+  const [pushOn, setPushOn] = useState(false);
+  const [pushState, setPushState] = useState(() => permission());
+  const [pushBusy, setPushBusy] = useState(false);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
   const lang = getLang();
@@ -70,6 +76,53 @@ export default function AppMenu({ theme }) {
     return () => window.removeEventListener('dailyq-sound-changed', sync);
   }, []);
 
+  // Read when the menu opens, and whenever the profile's switch changes it.
+  useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    const read = () => {
+      setPushState(permission());
+      isSubscribed().then((on) => !cancelled && setPushOn(on));
+    };
+    read();
+    window.addEventListener(PUSH_CHANGED, read);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(PUSH_CHANGED, read);
+    };
+  }, [open]);
+
+  const togglePush = async (next) => {
+    if (pushBusy) return;
+    const ns = i.notifications || {};
+    setPushBusy(true);
+    setPushOn(next);
+    try {
+      if (next) {
+        const { ok, reason } = await enablePush();
+        setPushState(permission());
+        setPushOn(ok);
+        if (!ok) {
+          toast.error(
+            reason === 'server_disabled'
+              ? ns.pushServerOff || 'Notifications are not configured on the server yet'
+              : reason === 'denied'
+                ? ns.pushDenied || 'Blocked — allow notifications in site settings'
+                : ns.pushFailed || 'Could not turn that on',
+          );
+        }
+      } else {
+        await disablePush();
+        setPushOn(false);
+      }
+    } catch {
+      setPushOn(!next);
+      toast.error(ns.pushFailed || 'Could not turn that on');
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
   const toggleSound = (next) => {
     setSoundOn(next);
     setMuted(!next);
@@ -81,12 +134,6 @@ export default function AppMenu({ theme }) {
     // setLang is false when nothing changes or the choice could not be stored;
     // copy is read at module scope in places, so a change needs a reload.
     if (setLang(next)) window.location.reload();
-  };
-
-  const check = async () => {
-    setUpdate('checking');
-    const { status } = await checkForUpdate();
-    setUpdate(status);
   };
 
   const round = `h-10 w-10 shrink-0 rounded-full ${
@@ -136,15 +183,6 @@ export default function AppMenu({ theme }) {
       {control}
     </div>
   );
-
-  const UpdateIcon = update === 'current' ? Check : update === 'update' ? Download : RefreshCw;
-  const updateLabel = {
-    idle: i.update?.checkShort || 'Check',
-    checking: i.update?.checking || 'Checking…',
-    current: i.update?.upToDate || 'Up to date',
-    unknown: i.update?.unknown || 'Could not check',
-    update: i.update?.reload || 'Update',
-  }[update];
 
   return (
     <div className="relative">
@@ -214,27 +252,33 @@ export default function AppMenu({ theme }) {
                 <Switch checked={soundOn} onCheckedChange={toggleSound} aria-label={i.sound?.title || 'Sound effects'} />
               </label>
 
-              <div className={`flex items-center gap-3 border-t pt-3 ${light ? 'border-gray-100' : 'border-white/10'}`}>
-                <span className={`flex-1 font-mono text-xs ${muted}`}>
-                  {i.update?.version || 'Version'} {shortBuild(currentBuild())}
+              {/*
+                Unsupported or blocked is not something the switch can fix, so
+                it is shown off and disabled with the reason underneath.
+              */}
+              <label className={`flex items-center gap-3 ${pushState === 'unsupported' || pushState === 'denied' ? '' : 'cursor-pointer'}`}>
+                {pushOn ? (
+                  <Bell className={`h-5 w-5 ${light ? 'text-purple-600' : 'text-purple-400'}`} />
+                ) : (
+                  <BellOff className="h-5 w-5 text-gray-500" />
+                )}
+                <span className="flex-1 min-w-0">
+                  <span className={`block text-sm font-semibold ${ink}`}>{m.notifications || 'Notifications'}</span>
+                  <span className={`block text-xs ${muted}`}>
+                    {pushState === 'unsupported'
+                      ? i.notifications?.pushUnsupported || 'This browser cannot show notifications'
+                      : pushState === 'denied'
+                        ? i.notifications?.pushDenied || 'Blocked — allow notifications in site settings'
+                        : m.notificationsHint || 'On this device'}
+                  </span>
                 </span>
-                <Button
-                  size="sm"
-                  variant={update === 'update' ? 'default' : 'outline'}
-                  onClick={update === 'update' ? applyUpdate : check}
-                  disabled={update === 'checking'}
-                  className={`h-8 rounded-xl px-3 text-xs font-semibold ${
-                    update === 'update'
-                      ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white'
-                      : light
-                        ? 'border-gray-300'
-                        : 'border-white/20'
-                  }`}
-                >
-                  <UpdateIcon className={`mr-1.5 h-3.5 w-3.5 ${update === 'checking' ? 'animate-spin' : ''}`} />
-                  {updateLabel}
-                </Button>
-              </div>
+                <Switch
+                  checked={pushOn}
+                  onCheckedChange={togglePush}
+                  disabled={pushBusy || pushState === 'unsupported' || pushState === 'denied'}
+                  aria-label={m.notifications || 'Notifications'}
+                />
+              </label>
             </motion.div>
         )}
       </AnimatePresence>
