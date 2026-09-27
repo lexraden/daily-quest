@@ -333,6 +333,16 @@ export const api = {
           lang,
         },
       }),
+    /**
+     * A recording, as text, in whatever language it was spoken — the server
+     * detects it. The file name carries the container (webm, mp4, ogg).
+     */
+    transcribe(blob) {
+      const ext = /mp4/.test(blob.type) ? 'mp4' : /ogg/.test(blob.type) ? 'ogg' : 'webm';
+      const form = new FormData();
+      form.append('audio', blob, `speech.${ext}`);
+      return request('/api/ai/transcribe', { method: 'POST', body: form, isForm: true });
+    },
     mealFromPhoto: (fileIds, lang) =>
       request('/api/ai/meal/photo', { method: 'POST', body: { file_ids: fileIds, lang } }),
   },

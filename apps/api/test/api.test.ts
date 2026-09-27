@@ -756,6 +756,59 @@ describe('entitlement', () => {
   });
 });
 
+/**
+ * The mic's speech to text. The recording goes to the server and the language
+ * is detected there, because the browser's recogniser hears one language only.
+ */
+describe('transcribing the mic', () => {
+  const send = (token: string | undefined, blob: Blob | null, filename = 'speech.webm') => {
+    const form = new FormData();
+    if (blob) form.append('audio', blob, filename);
+    return fetch(`${BASE}/api/ai/transcribe`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+  };
+  // Bytes are not inspected here — the provider does that — only labelled.
+  const webm = () => new Blob([Buffer.from('1a45dfa3', 'hex'), Buffer.alloc(64, 1)], { type: 'audio/webm;codecs=opus' });
+
+  test('needs a session', async () => {
+    assert.equal((await send(undefined, webm())).status, 401);
+  });
+
+  test('an empty or unlabelled recording is refused before any model call', async () => {
+    const speaker = await makeUser('speaker');
+    assert.equal((await send(speaker.token, new Blob([], { type: 'audio/webm' }))).status, 400);
+    const text = await send(speaker.token, new Blob(['hello'], { type: 'text/plain' }), 'speech.txt');
+    assert.equal(text.status, 400);
+    assert.equal((await text.json()).code, 'unsupported_audio');
+    const json = await call('/api/ai/transcribe', { token: speaker.token, method: 'POST', body: { text: 'hi' } });
+    assert.equal(json.status, 400, 'not multipart');
+  });
+
+  test('behind the same gate as every AI call', async () => {
+    const lapsed = await makeUser('lapsed-speaker');
+    await prisma.user.update({
+      where: { id: lapsed.id },
+      data: { trialStartedAt: new Date(Date.now() - 10 * 864e5), isPremium: false },
+    });
+    const res = await send(lapsed.token, webm());
+    assert.equal(res.status, 403);
+    assert.equal((await res.json()).code, 'premium_required');
+  });
+
+  // The suite's OpenAI key is a placeholder, so this is the provider failing.
+  test('a provider failure is said, and costs no quota', async () => {
+    const speaker = await makeUser('speaker');
+    const res = await send(speaker.token, webm());
+    assert.equal(res.status, 502);
+    assert.equal((await res.json()).code, 'ai_unavailable');
+    const usage = await prisma.aiUsage.findFirst({ where: { userId: speaker.id } });
+    assert.equal(usage?.calls ?? 0, 0);
+  });
+});
+
 describe('what the coach is allowed to offer', () => {
   const quests = {
     health: [{ level: 1, name: 'Walk 15 minutes', emoji: '🚶' }],

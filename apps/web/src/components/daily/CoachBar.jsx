@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Mic, Send, Square, Sparkles, X, Check } from 'lucide-react';
+import { Mic, Send, Square, Sparkles, X, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { api } from '@/api/client';
@@ -70,7 +70,7 @@ const CoachBar = React.memo(function CoachBar({
     }
   };
 
-  const { recording, elapsed, start, stop } = useDictation((spoken) => send(spoken));
+  const { recording, transcribing, elapsed, start, stop } = useDictation((spoken) => send(spoken));
 
   const tapMic = () => {
     if (!hasAccess) {
@@ -154,8 +154,14 @@ const CoachBar = React.memo(function CoachBar({
                   <Send />
                 </Button>
               ) : (
-                <Button onClick={tapMic} disabled={sending} size="icon" aria-label={i.voice.voiceInput} className={iconButton}>
-                  <Mic />
+                <Button
+                  onClick={tapMic}
+                  disabled={sending || transcribing}
+                  size="icon"
+                  aria-label={transcribing ? i.voice.transcribing : i.voice.voiceInput}
+                  className={iconButton}
+                >
+                  {transcribing ? <Loader2 className="animate-spin" /> : <Mic />}
                 </Button>
               )}
             </>

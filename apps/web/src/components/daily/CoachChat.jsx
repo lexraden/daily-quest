@@ -359,11 +359,15 @@ export default function CoachChat({
               ) : (
                 <button
                   onClick={dictation.start}
-                  disabled={sending}
-                  aria-label={i.voice?.voiceInput || 'Voice input'}
+                  disabled={sending || dictation.transcribing}
+                  aria-label={dictation.transcribing ? i.voice?.transcribing || 'Transcribing…' : i.voice?.voiceInput || 'Voice input'}
                   className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 disabled:opacity-40"
                 >
-                  <Mic className="h-5 w-5 text-white" />
+                  {dictation.transcribing ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  ) : (
+                    <Mic className="h-5 w-5 text-white" />
+                  )}
                 </button>
               )}
             </div>

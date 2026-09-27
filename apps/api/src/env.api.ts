@@ -27,6 +27,9 @@ const schema = z.object({
   OPENAI_MODEL_QUESTS: z.string().default('gpt-4o'),
   OPENAI_MODEL_MEAL: z.string().default('gpt-4o-mini'),
   OPENAI_MODEL_VISION: z.string().default('gpt-4o'),
+  // Speech to text for the mic. It detects the language itself, which the
+  // browser's recogniser cannot: that one listens for one language at a time.
+  OPENAI_MODEL_TRANSCRIBE: z.string().default('gpt-4o-mini-transcribe'),
 
   /**
    * Web Push signing pair. Optional: without them the app runs and simply never

@@ -154,6 +154,8 @@ const translations = {
       notSupported: 'Голосовой ввод не поддерживается',
       micFailed: 'Не удалось запустить микрофон',
       processError: 'Ошибка обработки',
+      transcribing: 'Распознаю…',
+      nothingHeard: 'Ничего не расслышал — попробуй ещё раз поближе к микрофону',
       voiceInput: 'Голосовой ввод',
       // Recording stops on a second tap now, so the label has to say so —
       // "Слушаю…" reads as a state, not as something to press.
@@ -759,6 +761,8 @@ const translations = {
       notSupported: 'Voice input not supported',
       micFailed: 'Failed to start microphone',
       processError: 'Processing error',
+      transcribing: 'Transcribing…',
+      nothingHeard: 'Nothing was heard — try again a little closer',
       voiceInput: 'Voice input',
       tapToStop: 'Stop and send',
     },

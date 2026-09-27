@@ -2,9 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { apiEnv } from '../env.api.js';
 import { requireAuth, currentUserId } from '../auth/middleware.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { badRequest, notFound, payloadTooLarge } from '../lib/errors.js';
 import { requireAiAccess, assertAiQuota, recordAiCall } from '../lib/access.js';
-import { completeJson, strictSchema, nullable, type ImagePart } from '../ai/openai.js';
+import { completeJson, strictSchema, nullable, transcribeAudio, type ImagePart } from '../ai/openai.js';
 import { analyzeMealPhoto, mealSchema, type MealResult } from '../ai/meal.js';
 import * as prompts from '../ai/prompts.js';
 import { CATEGORIES, sanitizeQuestData, sortByLevel } from '../lib/questData.js';
@@ -56,6 +56,23 @@ const intentSchema = strictSchema({
   message: { type: 'string' },
   old_name: nullable('string'),
 });
+
+/**
+ * What a browser's MediaRecorder produces, by the extension OpenAI reads the
+ * format from: Chrome and Firefox record webm or ogg, Safari mp4.
+ */
+const AUDIO_TYPES: Record<string, string> = {
+  'audio/webm': 'webm',
+  'video/webm': 'webm',
+  'audio/ogg': 'ogg',
+  'audio/mp4': 'mp4',
+  'video/mp4': 'mp4',
+  'audio/x-m4a': 'm4a',
+  'audio/m4a': 'm4a',
+  'audio/mpeg': 'mp3',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+};
 
 export default async function aiRoutes(app: FastifyInstance) {
   // Authenticate on onRequest, not preHandler: @fastify/rate-limit also hooks
@@ -147,6 +164,49 @@ export default async function aiRoutes(app: FastifyInstance) {
         schema: intentSchema,
       }),
     );
+  });
+
+  /**
+   * Speech to text for the mic, with the language detected rather than
+   * assumed.
+   *
+   * The browser's recogniser listens for exactly one language, taken from the
+   * app's: speak Russian into an app set to English and it writes nonsense.
+   * The app now records the audio itself and sends it here.
+   *
+   * Behind the access gate and the quota check like every AI call, but not
+   * counted against the quota: a transcript is only the way into a coach
+   * message or an onboarding answer, and those are counted when they are
+   * made. Counting both would halve what the mic costs a user for nothing.
+   */
+  app.post('/transcribe', async (request) => {
+    if (!request.isMultipart()) throw badRequest('Send the recording as multipart form data');
+    const userId = currentUserId(request);
+    await requireAiAccess(userId);
+    await assertAiQuota(userId);
+
+    const part = await request.file({ limits: { fileSize: apiEnv.MAX_UPLOAD_BYTES } });
+    if (!part) throw badRequest('No recording was attached');
+    let bytes: Buffer;
+    try {
+      bytes = await part.toBuffer();
+    } catch {
+      throw payloadTooLarge('That recording is too long');
+    }
+    if (part.file.truncated) throw payloadTooLarge('That recording is too long');
+    if (bytes.length === 0) throw badRequest('The recording is empty');
+
+    const mimeType = (part.mimetype || '').split(';')[0]?.trim().toLowerCase() ?? '';
+    const ext = AUDIO_TYPES[mimeType];
+    if (!ext) throw badRequest('Record as webm, ogg, mp4, m4a, mp3 or wav', 'unsupported_audio');
+
+    const text = await transcribeAudio({
+      model: apiEnv.OPENAI_MODEL_TRANSCRIBE,
+      bytes,
+      filename: `speech.${ext}`,
+      mimeType,
+    });
+    return { text };
   });
 
   // Cleans up a voice transcript during onboarding. Cheapest model: this is a

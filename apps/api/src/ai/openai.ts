@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import { apiEnv } from '../env.api.js';
 import { HttpError } from '../lib/errors.js';
 
@@ -94,3 +94,32 @@ export function strictSchema(properties: Record<string, unknown>): Record<string
 }
 
 export const nullable = (type: string) => ({ type: [type, 'null'] });
+
+/**
+ * What was said in a recording, in whatever language it was said in.
+ *
+ * No language is passed: the model detects it, so someone whose app is in
+ * English can speak Russian, or mix the two, and get back what they said. The
+ * file name carries the container format, which is how the API tells webm
+ * from mp4 — the bytes arrive with no other label.
+ */
+export async function transcribeAudio(opts: {
+  model: string;
+  bytes: Buffer;
+  filename: string;
+  mimeType: string;
+}): Promise<string> {
+  try {
+    const file = await toFile(opts.bytes, opts.filename, { type: opts.mimeType });
+    const result = await client.audio.transcriptions.create({ file, model: opts.model });
+    return (result.text ?? '').trim();
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    console.error('[ai] %s failed: status=%s %s', opts.model, status ?? 'none',
+      err instanceof Error ? err.message : String(err));
+    if (status === 429) {
+      throw new HttpError(503, 'The assistant is busy, try again in a moment', 'ai_busy');
+    }
+    throw new HttpError(502, 'The assistant is unavailable right now', 'ai_unavailable');
+  }
+}

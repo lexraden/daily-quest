@@ -224,8 +224,11 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
     await onComplete(answers);
   };
 
+  // Transcribing on the server, then tidying into a goal: one spinner for both.
+  const voiceBusy = isProcessingVoice || dictation.transcribing;
+
   const toggleRecording = () => {
-    if (isProcessingVoice) return;
+    if (voiceBusy) return;
     if (isRecording) dictation.stop();
     else dictation.start();
   };
@@ -441,9 +444,9 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
               <button
                 type="button"
                 onClick={toggleRecording}
-                disabled={isProcessingVoice}
+                disabled={voiceBusy}
                 aria-label={
-                  isProcessingVoice
+                  voiceBusy
                     ? (userLang === 'ru' ? 'Обработка' : 'Processing')
                     : isRecording
                     ? t.voice.recording
@@ -452,7 +455,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
                 title={t.voice.record}
                 className={`absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full
                   flex items-center justify-center transition-colors
-                  ${isProcessingVoice
+                  ${voiceBusy
                     ? 'opacity-50 cursor-not-allowed'
                     : isRecording
                     ? 'bg-red-500 text-white animate-pulse'
@@ -461,7 +464,7 @@ export default function OnboardingModal({ onComplete, theme = 'dark' }) {
                     : 'text-gray-400 hover:text-white hover:bg-white/10'
                   }`}
               >
-                {isProcessingVoice ? (
+                {voiceBusy ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : isRecording ? (
                   <Square className="w-4 h-4" fill="currentColor" />
