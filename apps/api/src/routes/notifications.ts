@@ -125,11 +125,11 @@ export default async function notificationRoutes(app: FastifyInstance) {
       push,
       telegram,
       /**
-       * Which one tonight's reminder would take, in the job's own order — one
-       * channel, not all three, so this is the one worth testing. Null means
+       * Which one a reminder would take, in the job's own order — push, then
+       * Telegram; one channel, not both, so this is the one worth testing. Null means
        * the in-app log is all that is left.
        */
-      reminders_via: telegram.works ? 'telegram' : push.works ? 'push' : null,
+      reminders_via: push.works ? 'push' : telegram.works ? 'telegram' : null,
     };
   });
 

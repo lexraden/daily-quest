@@ -11,10 +11,10 @@
 
 import { prisma } from '../db.js';
 import { jobEnv } from '../env.job.js';
-import { isDue } from './window.js';
+import { dueSlot } from './window.js';
 import { configurePush, notifyUser } from '../lib/push.js';
 import { configureTelegram, notifyUser as notifyTelegram } from '../lib/telegram.js';
-import { reminderCopy, situationFor, firstName } from './copy.js';
+import { reminderCopy, situationForSlot, firstName } from './copy.js';
 import { sanitizeQuestData } from '../lib/questData.js';
 import { record as recordNotification } from '../lib/notifications.js';
 
@@ -141,7 +141,10 @@ async function main() {
       continue;
     }
 
-    if (!isDue(hour * 60 + minute, remH * 60 + remM)) {
+    // Morning, evening or last call — whichever of today's reminders is due
+    // now, if any (see window.ts).
+    const slot = dueSlot(hour * 60 + minute, remH * 60 + remM);
+    if (!slot) {
       results.skipped++;
       continue;
     }
@@ -153,7 +156,7 @@ async function main() {
       continue;
     }
 
-    const situation = situationFor(row.streak, doneToday, settings.streak_warning !== false);
+    const situation = situationForSlot(slot, row.streak, doneToday, settings.streak_warning !== false);
     if (!situation) {
       results.skipped++;
       continue;
@@ -168,10 +171,12 @@ async function main() {
         quest: undoneQuest(row.questData),
       },
       row.userId,
-      dayKey,
+      `${dayKey}:${slot}`,
     );
+    // One claim per reminder, not per day: the day has up to three.
+    const claimKey = `${dayKey}:${slot}`;
 
-    // Claim the day before sending, not after. The predicate is the whole
+    // Claim the reminder before sending, not after. The predicate is the whole
     // mechanism: `IS DISTINCT FROM` matches a row whose last reminder is null or
     // some other day, so whichever run gets there first is the only one that
     // sends. A retry after a crash, a manual trigger running beside the
@@ -186,9 +191,9 @@ async function main() {
     // would ever receive a reminder again.
     const claimed = await prisma.$executeRaw`
       UPDATE quest_data
-         SET last_reminder_day = ${dayKey}, updated_at = now()
+         SET last_reminder_day = ${claimKey}, updated_at = now()
        WHERE user_id = ${row.userId}
-         AND last_reminder_day IS DISTINCT FROM ${dayKey}`;
+         AND last_reminder_day IS DISTINCT FROM ${claimKey}`;
     if (claimed === 0) {
       results.skipped++;
       continue;
@@ -208,7 +213,7 @@ async function main() {
       title: copy.title,
       body: copy.body,
       data: { streak: row.streak },
-      dedupeKey: `reminder-${dayKey}`,
+      dedupeKey: `reminder-${dayKey}-${slot}`,
     });
 
     /**
@@ -216,45 +221,48 @@ async function main() {
      * the rest are skipped. Two notifications for one reminder is nagging, and
      * nagging is how the permission gets revoked.
      *
-     * Telegram leads because connecting it is a deliberate act — a user went to
-     * their profile and linked an account — where a push permission is a prompt
-     * someone tapped through once. Push comes next.
+     * Push leads: a notification on the phone is what a reminder is for, and
+     * someone who switched on "notify this device" asked for exactly that.
+     * Telegram used to go first, which for anyone with both meant the phone
+     * never showed a reminder at all — only the chat did. It is now the
+     * fallback, for accounts with no device subscribed or a push that was
+     * refused.
      *
      * There is no email fallback. It was dropped: an email about a habit
      * tracker is read hours later if at all, and it needed a sender domain and
      * a provider account for the least useful channel of the three.
      */
-    const telegrammed = await notifyTelegram(row.userId, {
-      title: copy.title,
-      body: copy.body,
-      url: jobEnv.APP_ORIGIN,
-    }).catch((err) => {
-      // A Telegram outage must not cost push as well.
-      console.error(`telegram failed for ${row.userId}:`, err);
-      return false;
-    });
-
-    if (telegrammed) {
-      results.telegrammed++;
-      results.sent++;
-      continue;
-    }
-
     const pushed = await notifyUser(row.userId, {
       title: copy.title,
       body: copy.body,
       url: '/',
-      // One tag for all of them: a reminder that replaced yesterday's is
+      // One tag for all of them: a reminder that replaced the morning's is
       // right, two stacked in the shade is nagging.
       tag: 'dailyq-reminder',
     }).catch((err) => {
-      // A push service outage must not stop the run.
+      // A push service outage must not cost Telegram as well.
       console.error(`push failed for ${row.userId}:`, err);
       return 0;
     });
 
     if (pushed > 0) {
       results.pushed++;
+      results.sent++;
+      continue;
+    }
+
+    const telegrammed = await notifyTelegram(row.userId, {
+      title: copy.title,
+      body: copy.body,
+      url: jobEnv.APP_ORIGIN,
+    }).catch((err) => {
+      // A Telegram outage must not stop the run.
+      console.error(`telegram failed for ${row.userId}:`, err);
+      return false;
+    });
+
+    if (telegrammed) {
+      results.telegrammed++;
       results.sent++;
       continue;
     }

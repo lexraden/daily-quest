@@ -12,7 +12,7 @@
 import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
-import { isDue, minutesSince } from '../src/jobs/window.js';
+import { isDue, minutesSince, dueSlot, slotsFor } from '../src/jobs/window.js';
 import { validProposal } from '../src/lib/coachProposal.js';
 import {
   configurePush,
@@ -22,7 +22,7 @@ import {
   publicKey,
   pushProblem,
 } from '../src/lib/push.js';
-import { reminderCopy, situationFor, firstName } from '../src/jobs/copy.js';
+import { reminderCopy, situationForSlot, firstName } from '../src/jobs/copy.js';
 import { record as recordNotification, MAX_PER_USER } from '../src/lib/notifications.js';
 import {
   configureTelegram,
@@ -1485,16 +1485,22 @@ describe('what a reminder says', () => {
     assert.equal(firstName('Bartholomewwwwwwwwwwwwwwwww'), '', 'absurdly long is not a name');
   });
 
-  test('the situation follows the streak and what was done', () => {
-    assert.equal(situationFor(6, true, true), null, 'nothing is sent once the day is done');
-    assert.equal(situationFor(6, false, true), 'streak_warning');
-    assert.equal(situationFor(6, false, false), 'reminder_streak', 'warning off, still a reminder');
-    assert.equal(situationFor(0, false, true), 'reminder_cold', 'no streak to warn about');
+  test('what each of the day\'s reminders says', () => {
+    for (const slot of ['morning', 'evening', 'last_call'] as const) {
+      assert.equal(situationForSlot(slot, 6, true, true), null, `${slot}: nothing once the day is done`);
+    }
+    assert.equal(situationForSlot('morning', 6, false, true), 'morning');
+    assert.equal(situationForSlot('morning', 0, false, true), 'morning', 'the morning one is for everyone');
+    assert.equal(situationForSlot('evening', 6, false, true), 'reminder_streak');
+    assert.equal(situationForSlot('evening', 0, false, true), 'reminder_cold');
+    assert.equal(situationForSlot('last_call', 6, false, true), 'streak_warning');
+    assert.equal(situationForSlot('last_call', 6, false, false), null, 'streak protection off: no last call');
+    assert.equal(situationForSlot('last_call', 0, false, true), null, 'no streak to save');
   });
 
   test('both languages carry every situation', () => {
     for (const lang of ['en', 'ru'] as const) {
-      for (const situation of ['streak_warning', 'reminder_streak', 'reminder_cold'] as const) {
+      for (const situation of ['morning', 'streak_warning', 'reminder_streak', 'reminder_cold'] as const) {
         const { title, body } = reminderCopy(lang, situation, ctx, 'u', 'd');
         assert.ok(title && body, `${lang}/${situation} is missing text`);
         // Android truncates a long title to nothing useful.
@@ -1726,6 +1732,35 @@ describe('reminders', () => {
     }
     assert.equal(due.length, 2, 'the window may span runs; the claim dedupes');
     assert.deepEqual(due, [9 * 60, 9 * 60 + 30], 'and never before the time itself');
+  });
+
+  /**
+   * One reminder a day, at the evening time, reached nobody who had quests done
+   * by then and came too late for everyone else. A day now has up to three.
+   */
+  test('a day has a morning, an evening and a last call, each due once', async () => {
+    const evening = 20 * 60;
+    assert.deepEqual(slotsFor(evening).map((s) => [s.slot, s.at]), [
+      ['morning', 9 * 60],
+      ['evening', 20 * 60],
+      ['last_call', 22 * 60 + 30],
+    ]);
+    const runs: string[] = [];
+    for (let m = 0; m < 24 * 60; m += 30) {
+      const slot = dueSlot(m, evening);
+      if (slot) runs.push(`${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} ${slot}`);
+    }
+    assert.deepEqual(runs, [
+      '9:00 morning', '9:30 morning',
+      '20:00 evening', '20:30 evening',
+      '22:30 last_call', '23:00 last_call',
+    ], 'each window may span two runs; the claim sends it once');
+  });
+
+  test('no two reminders an hour apart saying the same thing', async () => {
+    assert.deepEqual(slotsFor(10 * 60).map((s) => s.slot), ['evening', 'last_call'], 'a morning time has no separate morning');
+    assert.deepEqual(slotsFor(23 * 60).map((s) => s.slot), ['morning', 'evening'], 'a late evening has no last call after it');
+    assert.equal(slotsFor(21 * 60 + 30).at(-1)?.at, 23 * 60 + 30, 'the last call moves later, not past 23:30');
   });
 
   test('the window wraps midnight', async () => {
@@ -2539,8 +2574,8 @@ describe('which channels reach a user', () => {
     assert.equal(body.telegram.username, 'linked_person');
     assert.equal(body.push.devices, 1);
     assert.equal(body.push.works, body.push.configured);
-    // The job's order: Telegram first, whatever else works.
-    assert.equal(body.reminders_via, 'telegram');
+    // The job's order: push first, Telegram when no device can take it.
+    assert.equal(body.reminders_via, body.push.works ? 'push' : 'telegram');
   });
 
   test('another account is not counted', async () => {

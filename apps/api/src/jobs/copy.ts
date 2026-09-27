@@ -11,8 +11,10 @@
  * gets ignored.
  */
 
+import type { Slot } from './window.js';
+
 export type Lang = 'ru' | 'en';
-export type Situation = 'streak_warning' | 'reminder_streak' | 'reminder_cold';
+export type Situation = 'morning' | 'streak_warning' | 'reminder_streak' | 'reminder_cold';
 
 export interface CopyContext {
   name: string;
@@ -41,6 +43,21 @@ export function firstName(fullName: string | null | undefined): string {
 }
 
 const EN: Record<Situation, Line[]> = {
+  morning: [
+    {
+      title: (c) => (c.name ? `Morning, ${c.name}` : 'Good morning'),
+      body: (c) => (c.quest ? `Today starts with "${c.quest}".` : 'Your quests for today are ready.'),
+    },
+    {
+      title: () => 'Today’s quests are in',
+      body: (c) => (c.streak > 0 ? `${c.streak} days so far. Make it ${c.streak + 1}.` : 'One quest is a good start.'),
+    },
+    {
+      title: () => 'A quick one before the day gets busy',
+      body: (c) => (c.quest ? `"${c.quest}" takes minutes.` : 'Pick the easiest and tick it off.'),
+    },
+  ],
+
   streak_warning: [
     {
       title: (c) => (c.name ? `${c.name}, your streak ends tonight` : 'Your streak ends tonight'),
@@ -109,6 +126,21 @@ const EN: Record<Situation, Line[]> = {
 };
 
 const RU: Record<Situation, Line[]> = {
+  morning: [
+    {
+      title: (c) => (c.name ? `Доброе утро, ${c.name}` : 'Доброе утро'),
+      body: (c) => (c.quest ? `День начинается с «${c.quest}».` : 'Квесты на сегодня готовы.'),
+    },
+    {
+      title: () => 'Квесты на сегодня',
+      body: (c) => (c.streak > 0 ? `${c.streak} дн. в серии. Сделай ${c.streak + 1}.` : 'Один квест — уже хорошее начало.'),
+    },
+    {
+      title: () => 'Пока день не закрутил',
+      body: (c) => (c.quest ? `«${c.quest}» — пара минут.` : 'Возьми самый лёгкий и отметь.'),
+    },
+  ],
+
   streak_warning: [
     {
       title: (c) => (c.name ? `${c.name}, серия оборвётся сегодня` : 'Серия оборвётся сегодня'),
@@ -203,10 +235,21 @@ export function reminderCopy(
   return { title: line.title(context), body: line.body(context) };
 }
 
-/** Which of the three situations this user is in tonight. */
-export function situationFor(streak: number, doneToday: boolean, warnAllowed: boolean): Situation | null {
+/**
+ * What a reminder slot says, or null for nothing.
+ *
+ * Nothing at all once a quest is done that day — every reminder is about
+ * starting, and one that arrives after the day is done is noise. The last call
+ * is only for a streak worth saving, and only with streak protection on.
+ */
+export function situationForSlot(
+  slot: Slot,
+  streak: number,
+  doneToday: boolean,
+  warnAllowed: boolean,
+): Situation | null {
   if (doneToday) return null;
-  if (streak > 0 && warnAllowed) return 'streak_warning';
-  if (streak > 0) return 'reminder_streak';
-  return 'reminder_cold';
+  if (slot === 'morning') return 'morning';
+  if (slot === 'last_call') return streak > 0 && warnAllowed ? 'streak_warning' : null;
+  return streak > 0 ? 'reminder_streak' : 'reminder_cold';
 }

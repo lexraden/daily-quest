@@ -271,9 +271,16 @@ This service serves the SPA as well as the API, so there is one domain, no CORS,
 and no cookie `SameSite` problems.
 
 **`dailyq-reminders`** — same repo, also at the repo root, but point its
-**Config-as-code path at `railway.reminders.json`** and set a cron schedule;
-every 30 minutes is a good default, and the job no longer depends on the period
-being exact.
+**Config-as-code path at `railway.reminders.json`**. The schedule is in that
+file — every 30 minutes (`*/30 * * * *`) — so it no longer depends on a
+dashboard setting nobody can see from the repository; the job does not depend
+on the period being exact.
+
+A day has up to three reminders, each sent only while nothing has been done
+that day: 09:00 (today's quests), the user's reminder time (20:00 by default),
+and a last call for the streak around 22:30 when streak protection is on. Each
+goes by push to the user's devices first, and to Telegram only when no device
+took it.
 
 The separate config file is the whole trick. Railway applies the repo's
 `railway.json` to every service built from it, and config-as-code takes
@@ -412,17 +419,19 @@ than retelling it in whatever language is current. Writes are idempotent through
 a `(user_id, dedupe_key)` unique index, and the table is trimmed to the newest
 forty rows per user on write, so it is bounded rather than paginated.
 
-Events logged: the daily reminder and the streak warning (from the job), a new
+Events logged: the day's reminders and the streak warning (from the job), a new
 overall level, a streak milestone (3, 7, 14, 30, 50, 100, 150, 200, 365 days), a
 spent streak freeze, and a lost streak.
 
-Then **one** of the three delivery channels, not all of them — whichever is
+Then **one** of the delivery channels, not all of them — whichever is
 reachable first wins and the rest are skipped, because two notifications for one
 reminder is nagging and nagging is how the permission gets revoked.
 
-**Telegram** is tried first. Connecting it is a deliberate act — the user opened
-their profile and linked an account — where a push permission is a prompt
-somebody tapped through once. Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`
+**Web push** is tried first, and **Telegram** only when no device took it.
+Telegram used to lead — linking it is a deliberate act — but for anyone with
+both that meant the phone never showed a reminder, only the chat did, and a
+notification on the phone is what someone who turned on "notify this device"
+asked for. For Telegram, set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`
 and `TELEGRAM_WEBHOOK_SECRET` (see `.env.example` for the one-off `setWebhook`
 call); leave them empty and the profile hides the button. `GET
 /api/telegram/config` answers whether the API actually got them — `enabled:
@@ -446,7 +455,7 @@ route refuses everyone rather than trusting its caller. Every answer is 200:
 Telegram retries a non-2xx with backoff and eventually drops the webhook, and
 none of the failures here are ones a retry fixes.
 
-**Web push** goes next, to every browser the user has subscribed — `POST
+**Web push** goes to every browser the user has subscribed — `POST
 /api/push/subscribe` per device, keyed on the endpoint, with a 404 or 410 from
 the push service meaning the subscription is gone and the row is deleted. The
 service worker also messages any open page when a push lands, so the bell's
