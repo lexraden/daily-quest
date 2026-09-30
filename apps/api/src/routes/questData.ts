@@ -27,6 +27,7 @@ import {
   mealBody,
   mealId,
   mealPatchBody,
+  updateMeal,
   writeMeals,
 } from '../lib/meals.js';
 
@@ -702,17 +703,7 @@ export default async function questDataRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const userId = currentUserId(request);
 
-    const row = await prisma.$transaction(async (tx) => {
-      const meals = await lockMeals(tx, userId);
-      const index = meals.findIndex((m) => mealId(m) === id);
-      // A meal edited on one device and deleted on another is gone, not an
-      // error worth interrupting anyone over.
-      if (index === -1) return null;
-      const next = [...meals];
-      next[index] = { ...(next[index] as object), ...parsed.data };
-      return writeMeals(tx, userId, next);
-    });
-
+    const row = await updateMeal(userId, id, parsed.data);
     if (!row) throw notFound('That meal is no longer there');
     return toWire(row);
   });

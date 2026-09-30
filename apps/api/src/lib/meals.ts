@@ -37,6 +37,8 @@ export type MealInput = z.infer<typeof mealBody>;
 
 export const mealPatchBody = mealBody.partial().strict();
 
+export type MealPatch = z.infer<typeof mealPatchBody>;
+
 /** Reads meal_history under a row lock, tolerating anything stored before this. */
 export async function lockMeals(
   tx: Prisma.TransactionClient,
@@ -80,10 +82,39 @@ export async function appendMeal(userId: string, input: MealInput) {
  * claim that commits without its meal is a meal lost, and a meal without its
  * claim is one a second tap saves again.
  */
-export async function appendMealIn(tx: Prisma.TransactionClient, userId: string, input: MealInput) {
-  const meal = { id: randomUUID(), ...input, timestamp: new Date().toISOString() };
+export async function appendMealIn(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  input: MealInput,
+  /** Chosen by a caller that has to name the meal afterwards — the bot's Edit button. */
+  id: string = randomUUID(),
+) {
+  const meal = { id, ...input, timestamp: new Date().toISOString() };
   const meals = await lockMeals(tx, userId);
   return writeMeals(tx, userId, [meal, ...meals]);
+}
+
+/**
+ * Changes one meal, found by id, under the row lock. Null when the meal is no
+ * longer there — edited on one device and deleted on another is gone, not an
+ * error worth interrupting anyone over; each caller says so its own way.
+ */
+export async function updateMealIn(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  id: string,
+  patch: MealPatch,
+) {
+  const meals = await lockMeals(tx, userId);
+  const index = meals.findIndex((m) => mealId(m) === id);
+  if (index === -1) return null;
+  const next = [...meals];
+  next[index] = { ...(next[index] as object), ...patch };
+  return writeMeals(tx, userId, next);
+}
+
+export async function updateMeal(userId: string, id: string, patch: MealPatch) {
+  return prisma.$transaction((tx) => updateMealIn(tx, userId, id, patch));
 }
 
 /**

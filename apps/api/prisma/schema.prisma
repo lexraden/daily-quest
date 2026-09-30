@@ -54,6 +54,7 @@ model User {
   telegram      TelegramLink?
   payments      Payment[]
   mealPreviews  TelegramMealPreview[]
+  mealEdits     TelegramMealEdit[]
 
   @@map("users")
 }
@@ -327,6 +328,42 @@ model TelegramMealPreview {
 
   @@index([userId])
   @@map("telegram_meal_previews")
+}
+
+/**
+ * A meal saved from the bot, open for editing from the bot.
+ *
+ * One per chat, like the preview: saving another meal replaces it, and the
+ * older message's buttons then match nothing. `field` is set while the bot is
+ * waiting for the user's next message to be that field's new value, and only
+ * until `pendingUntil`.
+ */
+model TelegramMealEdit {
+  id     String @id @default(cuid())
+  chatId String @unique @map("chat_id")
+  userId String @map("user_id")
+
+  /** Telegram's id for whoever saved the meal; only they can edit it here. */
+  fromId String @map("from_id")
+
+  tokenHash String @unique @map("token_hash")
+  /** The meal's id in meal_history. */
+  mealId    String @map("meal_id")
+  /** The message the menu lives in, rewritten after each change. */
+  messageId Int    @map("message_id")
+
+  field        String?
+  pendingUntil DateTime? @map("pending_until")
+  /** Whether anything was changed, for the closing line. */
+  changed      Boolean   @default(false)
+
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("telegram_meal_edits")
 }
 
 /**

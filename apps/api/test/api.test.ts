@@ -3211,10 +3211,12 @@ describe('meals photographed into the bot', () => {
     assert.match(String(edit?.body.text), /413 kcal · protein 12 g/);
     assert.match(String(edit?.body.text), /Saved to your meal log for/);
     assert.deepEqual(
-      buttonsOf(edit).map((b) => b.url),
-      [`${process.env.APP_ORIGIN}/History`],
-      'Save and Cancel are gone; the link to the history replaces them',
+      buttonsOf(edit).map((b) => b.text),
+      ['✏️ Edit', 'Open history'],
+      'Save and Cancel are gone; Edit and the link to the history replace them',
     );
+    assert.match(String(buttonsOf(edit)[0]?.callback_data), /^mealedit:open:[A-Za-z0-9_-]{22}$/);
+    assert.equal(buttonsOf(edit)[1]?.url, `${process.env.APP_ORIGIN}/History`);
     assert.deepEqual(answers(), ['Saved']);
     assert.equal(await prisma.telegramMealPreview.count({ where: { chatId: CHAT } }), 0);
   });
@@ -3338,7 +3340,7 @@ describe('meals photographed into the bot', () => {
 
     await tap('save', token);
     assert.match(String(edits()[0]?.body.text), /Сохранено в дневник питания/);
-    assert.deepEqual(buttonsOf(edits()[0]).map((b) => b.text), ['Открыть историю']);
+    assert.deepEqual(buttonsOf(edits()[0]).map((b) => b.text), ['✏️ Изменить', 'Открыть историю']);
     assert.deepEqual(answers(), ['Сохранено']);
     await setLang('en');
   });
@@ -3434,5 +3436,327 @@ describe('meals photographed into the bot', () => {
       assert.match(saidHere(chat).join('\n'), /Photos only for now/, chat);
     }
     assert.deepEqual(fileRequests(), []);
+  });
+  describe('editing a saved meal from the bot', () => {
+    const rowsOf = (c: { body: Record<string, unknown> } | undefined) =>
+      ((c?.body.reply_markup as { inline_keyboard?: Record<string, string>[][] } | undefined)
+        ?.inline_keyboard ?? []);
+    const session = () => prisma.telegramMealEdit.findUnique({ where: { chatId: CHAT } });
+    const lastEdit = () => edits().at(-1);
+    const tokenIn = (c: { body: Record<string, unknown> } | undefined) => {
+      const data = rowsOf(c).flat().find((b) => b.callback_data?.startsWith('mealedit:'))?.callback_data;
+      assert.ok(data, 'the message has edit buttons');
+      return data.split(':')[2]!;
+    };
+
+    /** Saves a fresh meal and returns the confirmation's message id and its Edit token. */
+    async function saved() {
+      const token = await preview();
+      await tap('save', token);
+      const confirmation = lastEdit();
+      return { messageId: Number(confirmation?.body.message_id), token: tokenIn(confirmation) };
+    }
+
+    const tapEdit = (
+      action: string,
+      token: string,
+      messageId: number,
+      { chat = CHAT, from = CHAT }: { chat?: string; from?: string } = {},
+    ) =>
+      webhook({
+        update_id: 3,
+        callback_query: {
+          id: `cbe-${++messageIds}`,
+          from: { id: Number(from), is_bot: false, first_name: 'T' },
+          chat_instance: 'x',
+          data: `mealedit:${action}:${token}`,
+          message: { message_id: messageId, chat: { id: Number(chat), type: 'private' }, date: 0 },
+        },
+      });
+
+    const say = (text: string, from = CHAT) =>
+      webhook({ update_id: 4, message: { chat: { id: Number(CHAT) }, from: { id: Number(from) }, text } });
+
+    /** Opens the menu on a fresh meal and returns what the next taps need. */
+    async function opened() {
+      const s = await saved();
+      stubCalls.length = 0;
+      await tapEdit('open', s.token, s.messageId);
+      return { messageId: s.messageId, token: tokenIn(lastEdit()) };
+    }
+
+    test('Edit turns the confirmation into a menu with the meal’s current values', async () => {
+      const { messageId, token } = await saved();
+      stubCalls.length = 0;
+      const res = await tapEdit('open', token, messageId);
+      assert.equal(res.status, 200);
+
+      const [menu] = edits();
+      assert.equal(menu?.body.message_id, messageId, 'the confirmation itself becomes the menu');
+      const text = String(menu?.body.text);
+      assert.match(text, /Name: Oatmeal with berries/);
+      assert.match(text, /Calories: 413 kcal\nProtein: 12 g\nFat: 8 g\nCarbs: 70 g/);
+      assert.match(text, /Pick what to change/);
+      const rows = rowsOf(menu);
+      assert.deepEqual(rows.map((r) => r.map((b) => b.text)), [
+        ['Name'], ['kcal'], ['Protein'], ['Fat'], ['Carbs'], ['❌ Done'],
+      ]);
+      for (const b of rows.flat()) {
+        assert.ok(Buffer.byteLength(b.callback_data!) <= 64, 'inside Telegram’s callback_data limit');
+        assert.doesNotMatch(b.callback_data!, new RegExp(actor.id), 'the button names no account');
+      }
+      assert.deepEqual(answers(), [null]);
+      assert.notEqual((await session())?.tokenHash, token, 'the token is stored only as a hash');
+    });
+
+    test('tapping a field waits for the value; tapping again only asks again', async () => {
+      const { messageId, token } = await opened();
+      const before = await meals();
+
+      stubCalls.length = 0;
+      await tapEdit('kcal', token, messageId);
+      let row = await session();
+      assert.equal(row?.field, 'kcal');
+      assert.ok(row?.pendingUntil && row.pendingUntil.getTime() > Date.now() + 14 * 60_000, 'fifteen minutes');
+      assert.deepEqual(answers(), ['Send the new value for calories.']);
+      assert.match(String(lastEdit()?.body.text), /Waiting for the new value for calories/);
+
+      await tapEdit('kcal', token, messageId);
+      await tapEdit('protein', token, messageId);
+      row = await session();
+      assert.equal(row?.field, 'protein', 'the last tap is the field waited on');
+      assert.deepEqual(answers().slice(1), ['Send the new value for calories.', 'Send the new value for protein.']);
+      assert.deepEqual(await meals(), before, 'a tap writes nothing');
+    });
+
+    test('a valid value is saved to the meal and the menu shows it', async () => {
+      const { messageId, token } = await opened();
+      const id = (await meals())[0] as unknown as { id: string };
+
+      await tapEdit('kcal', token, messageId);
+      stubCalls.length = 0;
+      assert.equal((await say('250 kcal')).status, 200);
+      let [meal] = await meals();
+      assert.equal((meal as unknown as { id: string }).id, id.id, 'the same meal, by id');
+      assert.equal(meal?.calories, 250);
+      assert.deepEqual([meal?.protein, meal?.fat, meal?.carbs], [12, 8, 70], 'nothing else touched');
+      assert.equal(meal?.meal_name, 'Oatmeal with berries');
+
+      const menu = lastEdit();
+      assert.equal(menu?.body.message_id, messageId, 'the menu is rewritten in place');
+      assert.match(String(menu?.body.text), /Calories: 250 kcal/);
+      assert.match(String(menu?.body.text), /Updated ✓ \(calories\)/);
+      assert.equal(rowsOf(menu).length, 6, 'the menu is still there');
+      assert.deepEqual(saidHere(CHAT), [], 'no extra message');
+      const row = await session();
+      assert.equal(row?.field, null, 'the wait is spent');
+      assert.equal(row?.changed, true);
+
+      // Comma decimals round like the app; a name is free text.
+      // Each change redraws the menu under a fresh token.
+      const fresh = tokenIn(menu);
+      assert.notEqual(fresh, token);
+      await tapEdit('protein', fresh, messageId);
+      await say('12,6 г');
+      await tapEdit('name', tokenIn(lastEdit()), messageId);
+      await say('  Porridge  ');
+      [meal] = await meals();
+      assert.equal(meal?.protein, 13);
+      assert.equal(meal?.meal_name, 'Porridge');
+
+      // The value applied, a second message is not a second value.
+      stubCalls.length = 0;
+      await say('999');
+      assert.equal((await meals())[0]?.calories, 250);
+      assert.match(saidHere(CHAT).join('\n'), /Pick a field first/);
+    });
+
+    test('two values arriving together change the meal once', async () => {
+      const { messageId, token } = await opened();
+      await tapEdit('fat', token, messageId);
+      stubCalls.length = 0;
+      await Promise.all([say('30'), say('40')]);
+      const fat = (await meals())[0]?.fat;
+      assert.ok(fat === 30 || fat === 40, `one of them won: ${fat}`);
+      assert.equal(edits().filter((e) => /Updated ✓/.test(String(e.body.text))).length, 1);
+    });
+
+    test('an invalid value is refused and the bot keeps waiting', async () => {
+      const { messageId, token } = await opened();
+      await tapEdit('carbs', token, messageId);
+      const before = await meals();
+
+      stubCalls.length = 0;
+      await say('lots');
+      await say('-5');
+      await say('99999999');
+      assert.deepEqual(await meals(), before);
+      assert.equal(saidHere(CHAT).filter((t) => /A number is needed/.test(t)).length, 3);
+      assert.equal((await session())?.field, 'carbs', 'still waiting');
+
+      await say('55');
+      assert.equal((await meals())[0]?.carbs, 55, 'the next good value lands');
+
+      await tapEdit('name', tokenIn(lastEdit()), messageId);
+      stubCalls.length = 0;
+      await say('x'.repeat(201));
+      assert.match(saidHere(CHAT).join('\n'), /The name takes 1 to 200 characters/);
+      assert.equal((await session())?.field, 'name');
+    });
+
+    test('foreign, stale and expired taps are answered and change nothing', async () => {
+      const { messageId, token } = await opened();
+      const before = await meals();
+
+      stubCalls.length = 0;
+      // Someone else in the chat.
+      await tapEdit('kcal', token, messageId, { from: '940555' });
+      // Another linked chat replaying this chat's token.
+      const other = await makeUser('meal-edit-other');
+      const OTHER_CHAT = '940004';
+      await prisma.telegramLink.deleteMany({ where: { chatId: OTHER_CHAT } });
+      await prisma.telegramLink.create({ data: { userId: other.id, chatId: OTHER_CHAT, linkedAt: new Date() } });
+      await tapEdit('kcal', token, messageId, { chat: OTHER_CHAT, from: OTHER_CHAT });
+      // A chat that is not linked, and data that is ours but mangled.
+      await tapEdit('kcal', token, messageId, { chat: '940005', from: '940005' });
+      await tapEdit('delete', token, messageId);
+      assert.deepEqual(answers(), [null, 'Это уже неактуально. Поправить можно в приложении.', null, null]);
+      assert.equal((await session())?.field, null, 'nobody armed a wait');
+      assert.deepEqual(edits(), []);
+
+      // A value typed by someone else in the chat is not taken either.
+      await tapEdit('kcal', token, messageId);
+      stubCalls.length = 0;
+      await say('1', '940555');
+      assert.deepEqual(await meals(), before);
+
+      // The wait has run out.
+      await prisma.telegramMealEdit.update({
+        where: { chatId: CHAT },
+        data: { pendingUntil: new Date(Date.now() - 1000) },
+      });
+      stubCalls.length = 0;
+      await say('300');
+      assert.deepEqual(await meals(), before);
+      assert.match(saidHere(CHAT).join('\n'), /Time ran out/);
+      assert.equal((await session())?.field, null);
+
+      // The whole session has run out.
+      await prisma.telegramMealEdit.update({
+        where: { chatId: CHAT },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
+      stubCalls.length = 0;
+      await tapEdit('kcal', token, messageId);
+      assert.deepEqual(answers(), ['This is no longer active. You can edit it in the app.']);
+      assert.equal(await session(), null);
+
+      // A newer meal's session leaves the older menu's buttons stale.
+      const older = await opened();
+      await saved();
+      stubCalls.length = 0;
+      await tapEdit('kcal', older.token, older.messageId);
+      assert.deepEqual(answers(), ['This is no longer active. You can edit it in the app.']);
+    });
+
+    test('a meal deleted in the app is said politely, not recreated', async () => {
+      const { messageId, token } = await opened();
+      const id = ((await meals())[0] as unknown as { id: string }).id;
+      await tapEdit('kcal', token, messageId);
+
+      const del = await call(`/api/quest-data/meals/${id}`, { token: actor.token, method: 'DELETE' });
+      assert.equal(del.status, 200);
+      const count = (await meals()).length;
+
+      stubCalls.length = 0;
+      await say('250');
+      assert.equal((await meals()).length, count, 'nothing written back');
+      assert.ok(!(await meals()).some((m) => (m as unknown as { id: string }).id === id));
+      const gone = lastEdit();
+      assert.equal(gone?.body.message_id, messageId);
+      assert.match(String(gone?.body.text), /already changed or deleted in the app — refresh your history/);
+      assert.deepEqual(rowsOf(gone).flat().map((b) => b.text), ['Open history']);
+      assert.equal(await session(), null, 'the session is over');
+
+      // The same from a tap on the menu.
+      const again = await opened();
+      const id2 = ((await meals())[0] as unknown as { id: string }).id;
+      await call(`/api/quest-data/meals/${id2}`, { token: actor.token, method: 'DELETE' });
+      stubCalls.length = 0;
+      await tapEdit('protein', again.token, again.messageId);
+      assert.deepEqual(answers(), ['Already changed in the app']);
+      assert.match(String(lastEdit()?.body.text), /refresh your history/);
+    });
+
+    test('Done closes the menu into the final confirmation', async () => {
+      const { messageId, token } = await opened();
+      await tapEdit('kcal', token, messageId);
+      await say('321');
+
+      const fresh = tokenIn(lastEdit());
+      stubCalls.length = 0;
+      await tapEdit('done', fresh, messageId);
+      const done = lastEdit();
+      assert.equal(done?.body.message_id, messageId);
+      assert.match(String(done?.body.text), /✅ Oatmeal with berries/);
+      assert.match(String(done?.body.text), /321 kcal · protein 12 g/);
+      assert.match(String(done?.body.text), /Saved to your meal log, with your changes/);
+      assert.deepEqual(rowsOf(done).flat().map((b) => b.url), [`${process.env.APP_ORIGIN}/History`]);
+      assert.deepEqual(answers(), ['Done']);
+      assert.equal(await session(), null);
+
+      // Nothing is waited on any more: a number is just a message again.
+      stubCalls.length = 0;
+      await tapEdit('kcal', fresh, messageId);
+      assert.deepEqual(answers(), ['This is no longer active. You can edit it in the app.']);
+      await say('500');
+      assert.equal((await meals())[0]?.calories, 321);
+      assert.match(saidHere(CHAT).join('\n'), /This bot delivers DailyQ reminders/);
+    });
+
+    test('/stop and a new photo drop the wait politely; /stop does not disconnect then', async () => {
+      const { messageId, token } = await opened();
+      await tapEdit('kcal', token, messageId);
+
+      stubCalls.length = 0;
+      await say('/stop');
+      assert.match(saidHere(CHAT).join('\n'), /No longer waiting for a value/);
+      assert.equal((await prisma.telegramLink.findUnique({ where: { userId: actor.id } }))?.chatId, CHAT);
+      assert.equal((await session())?.field, null);
+
+      // The menu still works after it.
+      await tapEdit('kcal', token, messageId);
+      stubCalls.length = 0;
+      await webhook({
+        message: { chat: { id: Number(CHAT) }, photo: [{ file_id: 'meal-small', file_size: 9 * 1024 * 1024 }] },
+      });
+      const said = await replyTo(CHAT);
+      assert.match(said, /looking at the new photo/);
+      assert.equal((await session())?.field, null);
+      // The photo gets its own answer (here: too large).
+      const deadline = Date.now() + 5000;
+      while (!saidHere(CHAT).some((t) => /too large/.test(t)) && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      assert.ok(saidHere(CHAT).some((t) => /too large/.test(t)));
+    });
+
+    test('the menu speaks the user’s language', async () => {
+      await setLang('ru');
+      const { messageId, token } = await opened();
+      const text = String(lastEdit()?.body.text);
+      assert.match(text, /Название: Oatmeal with berries\nКалории: 413 ккал/);
+      assert.deepEqual(rowsOf(lastEdit()).map((r) => r[0]?.text), [
+        'Название', 'ккал', 'Белки', 'Жиры', 'Углеводы', '❌ Готово',
+      ]);
+      stubCalls.length = 0;
+      await tapEdit('kcal', token, messageId);
+      assert.deepEqual(answers(), ['Пришли новое значение калорий.']);
+      await say('много');
+      assert.match(saidHere(CHAT).join('\n'), /Нужно число/);
+      await say('300 ккал');
+      assert.match(String(lastEdit()?.body.text), /Обновлено ✓/);
+      await setLang('en');
+    });
   });
 });

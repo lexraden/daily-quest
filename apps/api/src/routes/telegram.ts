@@ -15,6 +15,7 @@ import {
   MEAL_BILINGUAL,
   type IncomingImage,
 } from '../lib/telegramMeal.js';
+import { cancelPendingEdit, handleMealEditCallback, handleMealEditText, isMealEditCallback } from '../lib/telegramMealEdit.js';
 
 /**
  * Connecting a Telegram account, and hearing back from the bot.
@@ -283,7 +284,7 @@ export default async function telegramRoutes(app: FastifyInstance) {
 
       /**
        * A button tapped under one of the bot's messages. Only meal previews
-       * have any; a tap on anything else is still answered, because Telegram
+       * and saved meals have any; a tap on anything else is still answered, because Telegram
        * spins the button until it is. Awaited: it is a claim and an edit, and a
        * redelivery after a slow one finds the preview already claimed.
        */
@@ -298,7 +299,11 @@ export default async function telegramRoutes(app: FastifyInstance) {
             messageId: callback.message.message_id,
           },
         };
-        if (isMealCallback(query.data)) {
+        if (isMealEditCallback(query.data)) {
+          await handleMealEditCallback(query).catch((err) => {
+            request.log.error({ err }, 'telegram meal edit callback crashed');
+          });
+        } else if (isMealCallback(query.data)) {
           await handleMealCallback(query).catch((err) => {
             request.log.error({ err }, 'telegram meal callback crashed');
           });
@@ -322,7 +327,12 @@ export default async function telegramRoutes(app: FastifyInstance) {
         return reply.send({ ok: true });
       }
 
+      const fromId = String(message.from?.id ?? message.chat.id);
+
       if (text === '/stop') {
+        // Mid-edit, /stop means "stop waiting for my value", not "disconnect":
+        // only the wait is dropped, and a second /stop disconnects as usual.
+        if (await cancelPendingEdit(chatId, 'stop')) return reply.send({ ok: true });
         await handleStop(chatId);
         return reply.send({ ok: true });
       }
@@ -341,7 +351,8 @@ export default async function telegramRoutes(app: FastifyInstance) {
        */
       const image = imageIn(message);
       if (image) {
-        const fromId = String(message.from?.id ?? message.chat.id);
+        // A new photo moves on from any edit the bot was waiting on.
+        await cancelPendingEdit(chatId, 'photo');
         void handleMealPhoto(chatId, fromId, image).catch((err) => {
           request.log.error({ err }, 'telegram meal photo crashed');
         });
@@ -352,6 +363,11 @@ export default async function telegramRoutes(app: FastifyInstance) {
       // the generic "what is this bot", which would suggest it did not notice.
       if (!text && hasOtherMedia(message)) {
         await sendToChat(chatId, MEAL_BILINGUAL.photosOnly);
+        return reply.send({ ok: true });
+      }
+
+      // The value for a meal field being edited, if the bot is waiting for one.
+      if (text && !text.startsWith('/') && (await handleMealEditText(chatId, fromId, text))) {
         return reply.send({ ok: true });
       }
 

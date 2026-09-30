@@ -183,17 +183,20 @@ export interface Message {
   url?: string;
   /** One row of buttons. Takes the place of the `url` button when given. */
   buttons?: Button[];
+  /** Several rows, one above the other — a menu. Takes the place of both of the above. */
+  rows?: Button[][];
 }
 
 /** The text and keyboard of a message, shared by sending and editing. */
 function render(message: Message) {
   const row = message.buttons ?? (message.url ? [{ text: 'DailyQ', url: message.url }] : []);
+  const rows = (message.rows ?? [row]).filter((r) => r.length > 0);
   return {
     text: `<b>${escapeHtml(message.title)}</b>\n${escapeHtml(message.body)}`,
     parse_mode: 'HTML',
     // The preview of our own origin adds nothing and takes half the screen.
     link_preview_options: { is_disabled: true },
-    ...(row.length ? { reply_markup: { inline_keyboard: [row] } } : {}),
+    ...(rows.length ? { reply_markup: { inline_keyboard: rows } } : {}),
   };
 }
 

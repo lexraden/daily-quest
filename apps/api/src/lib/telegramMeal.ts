@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { prisma } from '../db.js';
 import { apiEnv } from '../env.api.js';
 import { analyzeMealPhoto, type MealPhotoAnalyzer } from '../ai/meal.js';
@@ -7,7 +7,8 @@ import { HttpError } from './errors.js';
 import { appendMealIn, localDay, mealBody, type MealInput } from './meals.js';
 import { langFor } from './notifications.js';
 import { storeUpload } from './storage.js';
-import { answerCallback, call, downloadFile, editMessage, sendToChat } from './telegram.js';
+import { answerCallback, call, downloadFile, editMessage, sendToChat, type Button } from './telegram.js';
+import { openMealEdit } from './telegramMealEdit.js';
 
 /**
  * A meal photographed straight into the bot.
@@ -20,9 +21,9 @@ import { answerCallback, call, downloadFile, editMessage, sendToChat } from './t
  *
  * Like the app's report modal, nothing is saved until the user says so: the
  * reply is a preview with Save and Cancel under it, and the meal waits in
- * telegram_meal_previews for the tap. The numbers themselves are not editable
- * here — a chat has no good place for a form — so the preview says they can be
- * fixed in the app once saved.
+ * telegram_meal_previews for the tap. The preview itself has no form — a chat
+ * has no good place for one — so the numbers are fixed after saving, from the
+ * Edit button under the confirmation (telegramMealEdit) or in the app.
  */
 
 type Lang = 'ru' | 'en';
@@ -32,12 +33,11 @@ const COPY = {
     macros: (m: MealNumbers) =>
       `${m.calories} ккал · белки ${m.protein} г · жиры ${m.fat} г · углеводы ${m.carbs} г`,
     forDay: (day: string) => `Сохраню за сегодня, ${dayLabel(day, 'ru')}.`,
-    confirm: 'Всё верно? Поправить цифры можно будет в приложении после сохранения.',
+    confirm: 'Всё верно? Поправить цифры можно будет после сохранения.',
     save: '✅ Сохранить',
     cancel: '❌ Отмена',
-    openHistory: 'Открыть историю',
     saved: (day: string) =>
-      `Сохранено в дневник питания за ${dayLabel(day, 'ru')}. Поправить можно в приложении.`,
+      `Сохранено в дневник питания за ${dayLabel(day, 'ru')}. Поправить можно здесь или в приложении.`,
     savedToast: 'Сохранено',
     cancelled: 'Не сохранено. Фото распознано, но в дневник ничего не попало.',
     cancelledToast: 'Отменено',
@@ -67,12 +67,11 @@ const COPY = {
     macros: (m: MealNumbers) =>
       `${m.calories} kcal · protein ${m.protein} g · fat ${m.fat} g · carbs ${m.carbs} g`,
     forDay: (day: string) => `I will log it for today, ${dayLabel(day, 'en')}.`,
-    confirm: 'Look right? The numbers can be fixed in the app once it is saved.',
+    confirm: 'Look right? The numbers can be fixed once it is saved.',
     save: '✅ Save',
     cancel: '❌ Cancel',
-    openHistory: 'Open history',
     saved: (day: string) =>
-      `Saved to your meal log for ${dayLabel(day, 'en')}. You can edit it in the app.`,
+      `Saved to your meal log for ${dayLabel(day, 'en')}. You can edit it here or in the app.`,
     savedToast: 'Saved',
     cancelled: 'Not saved. The photo was analyzed, but nothing went into your log.',
     cancelledToast: 'Cancelled',
@@ -329,7 +328,8 @@ export async function handleMealCallback(query: MealCallback): Promise<void> {
     await answerCallback(query.id);
     return;
   }
-  const copy = COPY[await langFor(link.userId)];
+  const lang: Lang = await langFor(link.userId);
+  const copy = COPY[lang];
 
   const preview = await prisma.telegramMealPreview.findUnique({
     where: { tokenHash: hash(token) },
@@ -371,15 +371,22 @@ export async function handleMealCallback(query: MealCallback): Promise<void> {
     return;
   }
 
-  let saved: boolean;
+  // Named here so the Edit button can find the meal again, in the same
+  // transaction that saves it.
+  const id = randomUUID();
+  let buttons: Button[] | null;
   try {
-    saved = await prisma.$transaction(async (tx) => {
+    buttons = await prisma.$transaction(async (tx) => {
       const { count } = await tx.telegramMealPreview.deleteMany({
         where: { ...claim, expiresAt: { gt: new Date() } },
       });
-      if (count === 0) return false;
-      await appendMealIn(tx, link.userId, meal);
-      return true;
+      if (count === 0) return null;
+      await appendMealIn(tx, link.userId, meal, id);
+      return openMealEdit(
+        tx,
+        { chatId, userId: link.userId, fromId: preview.fromId, mealId: id, messageId },
+        lang,
+      );
     });
   } catch (err) {
     // The claim rolled back with the meal, so the same tap can be tried again.
@@ -387,7 +394,7 @@ export async function handleMealCallback(query: MealCallback): Promise<void> {
     await answerCallback(query.id, body);
     return;
   }
-  if (!saved) {
+  if (!buttons) {
     await answerCallback(query.id, copy.stale);
     return;
   }
@@ -395,9 +402,7 @@ export async function handleMealCallback(query: MealCallback): Promise<void> {
   await editMessage(chatId, messageId, {
     title: `✅ ${meal.meal_name}`,
     body: `${copy.macros(meal)}\n\n${copy.saved(meal.date)}`,
-    ...(apiEnv.APP_ORIGIN
-      ? { buttons: [{ text: copy.openHistory, url: `${apiEnv.APP_ORIGIN.replace(/\/$/, '')}/History` }] }
-      : {}),
+    buttons,
   });
   await answerCallback(query.id, copy.savedToast);
   console.log('telegram meal: saved', summary(link.userId, meal));
